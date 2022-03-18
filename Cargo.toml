@@ -1,0 +1,13 @@
+[package]
+name = "traproot-bdk"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bdk={version="0.17.0", feature=["rpc","all-keys","rand"]}
+lightning = "0.0.105"
+# bitcoin="0.27.1"
+bitcoin={git="https://github.com/rust-bitcoin/rust-bitcoin.git",features=["rand"] }
+# rand= "0.8.5"
