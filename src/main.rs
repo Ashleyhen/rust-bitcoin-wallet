@@ -10,9 +10,10 @@ fn main() {
 	
 	let wallet_context =client_wallet::WalletContext::new(keys);
 
+	wallet_context.get_balance();
 	
 
-	wallet_context.send_coins(to,10000);
+	// wallet_context.send_coins(to,10000);
 
 	
 

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr};
 
 use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
 
@@ -8,6 +8,7 @@ pub struct WalletContext{
 	wallet_state: Wallet<MemoryDatabase>,
 	blockchain:ElectrumBlockchain
 }
+
 impl WalletContext{
 	pub fn new (keys :BitcoinKeys)-> WalletContext{
 		let invalid_master_key=|err|panic!("invalid master key, using bdk {}",err);
@@ -29,17 +30,14 @@ impl WalletContext{
 		let blockchain = ElectrumBlockchain::from(
 			Client::new("ssl://electrum.blockstream.info:60002")
 			.unwrap_or_else(|err|panic!("client connection failed !!!{}",err)));
-
-		let get_balance=wallet_state.sync(&blockchain, SyncOptions::default());
-
-		get_balance.and_then(|_|Ok({
-			println!("p2wpkh {}", wallet_state.get_address(AddressIndex::LastUnused).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
-			println!("Balance {}",wallet_state.get_balance().unwrap_or_else(|err| panic!("failed to retrieve the balance from the current wallet !! {}", err)))
-		})).unwrap_or_else(|_|println!("failed to sync wallet !!"));
-		
 		return WalletContext{ wallet_state,blockchain };
-
 	}
+
+	pub fn get_balance(self){
+		get_balance(&self.wallet_state, &self.blockchain);
+	}
+	
+
 // "mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB"
 	pub fn send_coins(&self, send_address: &str,stats: u64){
 		let address=Address::from_str(send_address).unwrap_or_else(|err|panic!("invalid address bitcoin : {}",err));
@@ -63,3 +61,12 @@ impl WalletContext{
 		println!("broadcasted transaction successfully");
 	}
 }
+ fn get_balance(wallet_state: &Wallet<MemoryDatabase>, blockchain: &ElectrumBlockchain){
+		let get_balance=wallet_state.sync(blockchain, SyncOptions::default());
+
+		get_balance.and_then(|_|Ok({
+			println!("p2wpkh {}", wallet_state.get_address(AddressIndex::LastUnused).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
+			println!("Balance {}",wallet_state.get_balance().unwrap_or_else(|err| panic!("failed to retrieve the balance from the current wallet !! {}", err)))
+		})).unwrap_or_else(|_|println!("failed to sync wallet !!"));
+	
+	}
