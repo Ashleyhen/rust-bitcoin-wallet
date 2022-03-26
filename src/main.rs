@@ -1,22 +1,19 @@
-pub mod bitcoin_client_extended;
 pub mod bitcoin_keys;
-pub mod connections;
+pub mod client_wallet;
 fn main() {
 
-	// bitcoin_client_extended::bitcoin_client_extended();
+	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
 
-	let key= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
-	// Some(key.to_owned())
-	// bitcoin_client::generate_wallet(Some(key.to_owned()) );
+	let to="mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB";
 
-	 let bitcoin_keys=bitcoin_keys::Bitcoin_keys::new(Some(key.to_owned()));
-	 connections::blockchain_connection(bitcoin_keys);
+	let keys=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
+	
+	let wallet_context =client_wallet::WalletContext::new(keys);
 
-	// let address =bitcoin_client::generate_wallet(None );
 	
 
-// connections::blockchain_connection(address);
+	wallet_context.send_coins(to,10000);
+
+	
 
 }
-
-// tb1qzvsdwjay5x69088n27h0qgu0tm4u6gwq202sjy

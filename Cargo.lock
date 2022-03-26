@@ -725,6 +725,7 @@ version = "0.1.0"
 dependencies = [
  "bdk",
  "bitcoin 0.28.0-rc.1",
+ "miniscript",
 ]
 
 [[package]]
