@@ -1,16 +1,17 @@
-use std::{str::FromStr};
+use std::{str::FromStr, borrow::BorrowMut};
 
-use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
+use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address, Transaction}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
+use lightning::chain::chaininterface::BroadcasterInterface;
 
 use crate::bitcoin_keys::BitcoinKeys;
 
-pub struct WalletContext{
-	wallet_state: Wallet<MemoryDatabase>,
-	blockchain:ElectrumBlockchain
+pub struct BtcWallet{
+	pub wallet_state: Wallet<MemoryDatabase>,
+	pub blockchain:ElectrumBlockchain
 }
 
-impl WalletContext{
-	pub fn new (keys :BitcoinKeys)-> WalletContext{
+impl BtcWallet{
+	pub fn new (keys :BitcoinKeys)-> BtcWallet{
 		let invalid_master_key=|err|panic!("invalid master key, using bdk {}",err);
 
 		let master_key=ExtendedPrivKey::from_str(&keys.master_key).unwrap_or_else(invalid_master_key);
@@ -30,7 +31,7 @@ impl WalletContext{
 		let blockchain = ElectrumBlockchain::from(
 			Client::new("ssl://electrum.blockstream.info:60002")
 			.unwrap_or_else(|err|panic!("client connection failed !!!{}",err)));
-		return WalletContext{ wallet_state,blockchain };
+		return BtcWallet{ wallet_state,blockchain };
 	}
 
 	pub fn get_balance(self){
@@ -38,8 +39,8 @@ impl WalletContext{
 	}
 	
 
-// "mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB"
 	pub fn send_coins(&self, send_address: &str,stats: u64){
+// "mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB"
 		let address=Address::from_str(send_address).unwrap_or_else(|err|panic!("invalid address bitcoin : {}",err));
 
 		let (mut psbt, details)={
@@ -55,12 +56,15 @@ impl WalletContext{
 		let signed_transaction=psbt.clone().extract_tx();
 		println!("transaction id: {}",signed_transaction.txid().to_string());
 		
-		let broadcast=self.blockchain.broadcast(&signed_transaction);
-
-		broadcast.unwrap_or_else(|err|panic!("transaction failed to broadcast! {}",err));
+		self.blockchain.broadcast(&signed_transaction)
+		.unwrap_or_else(|err|panic!("transaction failed to broadcast! {}",err));
 		println!("broadcasted transaction successfully");
 	}
+
 }
+
+ 	
+
  fn get_balance(wallet_state: &Wallet<MemoryDatabase>, blockchain: &ElectrumBlockchain){
 		let get_balance=wallet_state.sync(blockchain, SyncOptions::default());
 

@@ -278,6 +278,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad5c14e80759d0939d013e6ca49930e59fc53dd8e5009132f76240c179380c09"
 
 [[package]]
+name = "lightning"
+version = "0.0.105"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a10e7439623b293d000fc875627704210d8d0ff5b7badbb689f2a3d51afc618f"
+dependencies = [
+ "bitcoin 0.27.1",
+ "secp256k1 0.20.3",
+]
+
+[[package]]
+name = "lightning-persister"
+version = "0.0.105"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77150d61ceea59c6ee1598f26f4f9589935fe464d530f44d3d54ccc31b060512"
+dependencies = [
+ "bitcoin 0.27.1",
+ "libc",
+ "lightning",
+ "winapi",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -725,6 +747,8 @@ version = "0.1.0"
 dependencies = [
  "bdk",
  "bitcoin 0.28.0-rc.1",
+ "lightning",
+ "lightning-persister",
  "miniscript",
 ]
 
