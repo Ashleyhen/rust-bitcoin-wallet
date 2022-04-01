@@ -2,7 +2,7 @@ use std::{str::FromStr};
 
 use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
 
-use crate::bitcoin_keys::BitcoinKeys;
+use crate::bitcoin_keys;
 
 pub struct WalletContext{
 	wallet_state: Wallet<MemoryDatabase>,
@@ -10,7 +10,10 @@ pub struct WalletContext{
 }
 
 impl WalletContext{
-	pub fn new (keys :BitcoinKeys)-> WalletContext{
+	pub fn new (seed:Option<String>)-> WalletContext{
+
+		let keys = bitcoin_keys::BitcoinKeys::new(seed.to_owned());
+		
 		let invalid_master_key=|err|panic!("invalid master key, using bdk {}",err);
 
 		let master_key=ExtendedPrivKey::from_str(&keys.master_key).unwrap_or_else(invalid_master_key);
@@ -42,11 +45,11 @@ impl WalletContext{
 	pub fn send_coins(&self, send_address: &str,stats: u64){
 		let address=Address::from_str(send_address).unwrap_or_else(|err|panic!("invalid address bitcoin : {}",err));
 
-		let (mut psbt, details)={
 			let mut builder=self.wallet_state.build_tx();
 			builder.drain_wallet().fee_rate(FeeRate::from_sat_per_vb(2.0)).add_recipient(address.script_pubkey(), stats);
-			builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err))
-		};
+			let (mut psbt, details)=builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err));
+
+		
 
 		let is_transaction_valid = self.wallet_state.sign(&mut psbt, Default::default() )
 		.unwrap_or_else(|err|panic!("wallet signature failed!!! {}",err));
