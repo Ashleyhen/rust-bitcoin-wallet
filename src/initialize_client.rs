@@ -4,9 +4,9 @@ use std::sync::Arc;
 use bdk::{bitcoin::Transaction, blockchain::Blockchain};
 use lightning::chain::{chaininterface::BroadcasterInterface,  transaction::OutPoint, channelmonitor::{ChannelMonitor, ChannelMonitorUpdate}, ChannelMonitorUpdateErr, chainmonitor::Persist, keysinterface::Sign};
 use lightning_persister::FilesystemPersister;
-use crate::client_wallet::BtcWallet;
+use crate::client_wallet::WalletContext;
 
-impl BroadcasterInterface for BtcWallet{
+impl BroadcasterInterface for WalletContext{
     fn broadcast_transaction(&self, tx: &Transaction) {
 		self.blockchain.broadcast(tx);
     }

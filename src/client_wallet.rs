@@ -3,15 +3,18 @@ use std::{str::FromStr, borrow::BorrowMut};
 use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address, Transaction}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
 use lightning::chain::chaininterface::BroadcasterInterface;
 
-use crate::bitcoin_keys::BitcoinKeys;
+use crate::bitcoin_keys;
 
-pub struct BtcWallet{
+pub struct WalletContext{
 	pub wallet_state: Wallet<MemoryDatabase>,
 	pub blockchain:ElectrumBlockchain
 }
 
-impl BtcWallet{
-	pub fn new (keys :BitcoinKeys)-> BtcWallet{
+impl WalletContext{
+	pub fn new (seed:Option<String>)-> WalletContext{
+
+		let keys = bitcoin_keys::BitcoinKeys::new(seed.to_owned());
+		
 		let invalid_master_key=|err|panic!("invalid master key, using bdk {}",err);
 
 		let master_key=ExtendedPrivKey::from_str(&keys.master_key).unwrap_or_else(invalid_master_key);
@@ -31,7 +34,7 @@ impl BtcWallet{
 		let blockchain = ElectrumBlockchain::from(
 			Client::new("ssl://electrum.blockstream.info:60002")
 			.unwrap_or_else(|err|panic!("client connection failed !!!{}",err)));
-		return BtcWallet{ wallet_state,blockchain };
+		return WalletContext{ wallet_state,blockchain };
 	}
 
 	pub fn get_balance(self){
@@ -43,11 +46,11 @@ impl BtcWallet{
 // "mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB"
 		let address=Address::from_str(send_address).unwrap_or_else(|err|panic!("invalid address bitcoin : {}",err));
 
-		let (mut psbt, details)={
 			let mut builder=self.wallet_state.build_tx();
 			builder.drain_wallet().fee_rate(FeeRate::from_sat_per_vb(2.0)).add_recipient(address.script_pubkey(), stats);
-			builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err))
-		};
+			let (mut psbt, details)=builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err));
+
+		
 
 		let is_transaction_valid = self.wallet_state.sign(&mut psbt, Default::default() )
 		.unwrap_or_else(|err|panic!("wallet signature failed!!! {}",err));
