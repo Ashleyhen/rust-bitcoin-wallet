@@ -1,6 +1,15 @@
+use std::borrow::Borrow;
+
+use bdk::bitcoin::BlockHash;
+use bitcoin::hashes::Hash;
+use client_wallet::WalletContext;
+use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
+use taproot_multi_sig::WalletInfo;
+
 pub mod bitcoin_keys;
 pub mod client_wallet;
-pub mod initialize_client;
+pub mod client_node;
+pub mod taproot_multi_sig;
 fn main() {
 
 	_test_transactionn();
@@ -8,17 +17,15 @@ fn main() {
 }
 
 fn _test_transactionn(){
-	
-	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
-	
-	let wallet_context =client_wallet::WalletContext::new(Some(seed.to_owned()));
-
-	wallet_context.get_balance();
-	
+	// person 1 
+	// let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
 
 	let to="mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB";
+	
+	let seed_2="6ad78e4a5a39f597618de01eb788b89dce4f23a4375ad70aa535ecd122145cd8";
+	let thereAddr= "tb1pph50luptud9wkq2lvn0h9kvm6s0dz058afvxhnu3fpltruyqzx4s9x39s7";
 
-	// wallet_context.send_coins(to,10000);
-
-
+	let wallet_info=WalletInfo::get_taproot_address(Some(seed_2.to_owned()));
+	wallet_info.single_sign();
+	
 }
