@@ -2,8 +2,8 @@
 use std::{str::FromStr, borrow::BorrowMut, hash::Hash, ops::{Add, Deref}};
 
 
-use bdk::KeychainKind;
-use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::TapTree, KeyPair, Txid, PublicKey, hashes::hex::FromHex};
+use bdk::{KeychainKind};
+use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::TapTree, KeyPair, Txid, PublicKey, hashes::hex::FromHex};
 use electrum_client::{Client, ElectrumApi};
 
 pub struct BitcoinKeys{
@@ -31,33 +31,50 @@ impl BitcoinKeys{
 			seed:seed.secret_bytes()
 		 }
 	}
-	// m / purpose' / coin_type' / account' / change / address_index
+	// wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)
 	fn get_network(&self)-> Network{return Network::from_magic(self.network).unwrap();}
+	
+	fn get_zprv(&self)->ExtendedPrivKey{return ExtendedPrivKey::new_master(self.get_network(), &self.seed).unwrap()}
 
-	pub fn derive_key_pair(&self)->KeyPair{
-		let secp =Secp256k1::new();
-		let ext_prv_key_str=ExtendedPrivKey::new_master(self.get_network(), &self.seed).unwrap();
+	fn get_p2wpkh_path(&self)->DerivationPath{
+		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
+		// m / purpose' / coin_type' / account' / change / address_index
 
 		let keychain=KeychainKind::External;
-
-		
-
-
-		// bip84
-		// For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
-		return ext_prv_key_str.derive_priv(&secp, &vec![
+		return bip32::DerivationPath::from(vec![
 			bip32::ChildNumber::from_hardened_idx(84).unwrap(),// purpose 
 			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// first recieve 
 			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// second recieve 
 			bip32::ChildNumber::from_normal_idx(keychain as u32).unwrap(),// change address
-		]).unwrap().to_keypair(&secp);
-	}
-		pub fn get_balance(&self){
+		]);
 
-		let client =Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!");
-		let key_pair=self.derive_key_pair();
-		let p_k=bitcoin::PublicKey::new(bitcoin::secp256k1::PublicKey::from_keypair(&key_pair));
+	}
+	
+	pub fn derive_key_pair(&self)->KeySource {
+		let secp =Secp256k1::new();
+		let parent_finger_print=self.get_zprv().fingerprint(&secp);
+		let child_list= self.get_p2wpkh_path();
+		return (parent_finger_print,child_list);
+	}
+
+
+
+		pub fn get_balance(&self){
+		let secp =Secp256k1::new();
+
+		let prvx=self.get_zprv().derive_priv(&secp, &self.get_p2wpkh_path()).unwrap();
+		let pubx=ExtendedPubKey::from_priv(&secp , &prvx);
+		let child_pubx=pubx.ckd_pub(&secp, ChildNumber::from_normal_idx(2).unwrap()).unwrap();//index
+// let p_k=child_pubx.public_key;
+
+		let p_k=bitcoin::PublicKey::new(child_pubx.public_key);
+		
 		let address=Address::p2wpkh(&p_k, Network::Testnet).unwrap();
+		
+		let client =Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!");
+		// let key_pair=self.derive_key_pair();
+		// let p_k=bitcoin::PublicKey::new(bitcoin::secp256k1::PublicKey::from_keypair(&key_pair));
+		// let address=Address::p2wpkh(&p_k, Network::Testnet).unwrap();
 		let script =bdk::bitcoin::blockdata::script::Script::from(address.script_pubkey().to_bytes());
 		let balance =client.script_get_balance(&script).unwrap();
 		println!("address {}",address.to_qr_uri().to_lowercase());
