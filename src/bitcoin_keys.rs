@@ -1,19 +1,25 @@
 
-use std::{str::FromStr, borrow::BorrowMut, hash::Hash, ops::{Add, Deref}};
+use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Deref}, collections::BTreeMap};
 
 
 use bdk::{KeychainKind};
-use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::TapTree, KeyPair, Txid, PublicKey, hashes::hex::FromHex};
+use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction}, KeyPair, Txid, PublicKey, hashes::hex::FromHex, OutPoint, TxIn, blockdata::witness, Witness, TxOut, Transaction};
 use electrum_client::{Client, ElectrumApi};
 
 pub struct BitcoinKeys{
-	pub network: u32,
+	pub network: Network,
 	pub seed: [u8;constants::SECRET_KEY_SIZE],
+	pub client:Client,
+	pub pubz:ExtendedPubKey,
 	
 }
+
 impl BitcoinKeys{
 	
 	pub fn new(secret_seed:Option<String>) -> BitcoinKeys{
+
+		let secp =Secp256k1::new();
+
 		let network =Network::Testnet;
 
 		let invalid_seed=|err|panic!("failed to initalize seed, check if the seed is valid {}", err);
@@ -25,58 +31,75 @@ impl BitcoinKeys{
 			_ => SecretKey::new(&mut OsRng::new().unwrap_or_else(invalid_generator) ) };
 		println!("secrete seed is {}",seed.display_secret());
 
+		let prvz= ExtendedPrivKey::new_master(network, &seed.secret_bytes()).unwrap().derive_priv(&secp, &get_p2wpkh_path()).unwrap();
+		let pubx=ExtendedPubKey::from_priv(&secp , &prvz);
+		let pubz=pubx.ckd_pub(&secp, ChildNumber::from_normal_idx(2).unwrap()).unwrap();//index
 
 		return BitcoinKeys {
-			network:network.magic(),
-			seed:seed.secret_bytes()
+			network,
+			seed:seed.secret_bytes(),
+			client: Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!"),
+			pubz
 		 }
 	}
+
 	// wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)
-	fn get_network(&self)-> Network{return Network::from_magic(self.network).unwrap();}
+	fn get_network(&self)-> Network{return Network::from_magic(self.network.magic()).unwrap();}
 	
 	fn get_zprv(&self)->ExtendedPrivKey{return ExtendedPrivKey::new_master(self.get_network(), &self.seed).unwrap()}
 
-	fn get_p2wpkh_path(&self)->DerivationPath{
-		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
-		// m / purpose' / coin_type' / account' / change / address_index
-
-		let keychain=KeychainKind::External;
-		return bip32::DerivationPath::from(vec![
-			bip32::ChildNumber::from_hardened_idx(84).unwrap(),// purpose 
-			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// first recieve 
-			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// second recieve 
-			bip32::ChildNumber::from_normal_idx(keychain as u32).unwrap(),// change address
-		]);
-
-	}
-	
 	pub fn derive_key_pair(&self)->KeySource {
 		let secp =Secp256k1::new();
 		let parent_finger_print=self.get_zprv().fingerprint(&secp);
-		let child_list= self.get_p2wpkh_path();
+		let child_list= get_p2wpkh_path();
 		return (parent_finger_print,child_list);
 	}
 
-
-
-		pub fn get_balance(&self){
-		let secp =Secp256k1::new();
-
-		let prvx= ExtendedPrivKey::new_master(self.get_network(), &self.seed).unwrap().derive_priv(&secp, &self.get_p2wpkh_path()).unwrap();
-		let pubx=ExtendedPubKey::from_priv(&secp , &prvx);
-		let child_pubx=pubx.ckd_pub(&secp, ChildNumber::from_normal_idx(2).unwrap()).unwrap();//index
-
-		let p_k=bitcoin::PublicKey::new(child_pubx.public_key);
+	pub fn get_balance(&self){
 		
-		let address=Address::p2wpkh(&p_k, Network::Testnet).unwrap();
-		
-		let client =Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!");
-	
-		let script =bdk::bitcoin::blockdata::script::Script::from(address.script_pubkey().to_bytes());
-		let balance =client.script_get_balance(&script).unwrap();
+		let address=self.get_address();
+		let script =to_bdk_script(address.script_pubkey());
+		let balance =self.client.script_get_balance(&script).unwrap();
 		println!("address {}",address.to_qr_uri().to_lowercase());
 		
 		println!("The current balance is {}",balance.confirmed);
+	}
+
+	pub fn get_address(&self)->Address{
+		return Address::p2wpkh(&bitcoin::PublicKey::new(self.pubz.public_key), self.network).unwrap();
+	}
+
+	pub fn transaction(&self){
+
+		let to_addr="tb1qhzwe6wr46rvfndz9kzrdtzddepah82vqtyqde5";
+		let history=self.client.script_get_history(&to_bdk_script(self.get_address().script_pubkey())).unwrap();
+		let txid=to_txid(history.get(0).unwrap().tx_hash);
+		let out_point=OutPoint::new(txid, 0);
+		
+		let tx_in=TxIn{
+			previous_output: out_point,
+			script_sig: self.get_address().script_pubkey(),
+			sequence: 0xFFFFFFFF,
+			witness: Witness::default() 
+		};
+
+		let txOut=TxOut{ value: 1000, script_pubkey:Address::from_str(to_addr).unwrap().script_pubkey()  };
+		
+		let transaction =Transaction{
+			version: 1,
+			lock_time: 0,
+			input: [tx_in].to_vec(),
+			output: [txOut].to_vec(),
+		};
+		
+		// std::collections::BTreeMap<bitcoin::util::bip32::ExtendedPubKey, (bitcoin::util::bip32::Fingerprint, bitcoin::util::bip32::DerivationPath)>
+		// let secp=Secp256k1::new();
+		// let parent_finger_print=self.get_zprv().fingerprint(&secp);
+		// let child_list= get_p2wpkh_path();
+
+		// PartiallySignedTransaction{ unsigned_tx: transaction, version: 0, xpub: BTreeMap::from([(self.pubz,self.derive_key_pair())]), proprietary: BTreeMap::default(), unknown: BTreeMap::default(), inputs: txIn, outputs: txOut };
+
+		dbg!(PartiallySignedTransaction::from_unsigned_tx(transaction).unwrap());
 	}
 
 // https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
@@ -87,4 +110,25 @@ impl BitcoinKeys{
 
 		return bdk::bitcoin::util::bip32::ExtendedPrivKey::from_str(&ext_prv_key_str).unwrap();
 	}
+}
+
+pub fn to_bdk_script(script:Script)->bdk::bitcoin::blockdata::script::Script{
+	return bdk::bitcoin::blockdata::script::Script::from(script.to_bytes());
+}
+pub fn get_p2wpkh_path()->DerivationPath{
+		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
+		// m / purpose' / coin_type' / account' / change / address_index
+
+		let keychain=KeychainKind::External;
+		return bip32::DerivationPath::from(vec![
+			bip32::ChildNumber::from_hardened_idx(84).unwrap(),// purpose 
+			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// first recieve 
+			bip32::ChildNumber::from_hardened_idx(0).unwrap(),// second recieve 
+			bip32::ChildNumber::from_normal_idx(keychain as u32).unwrap(),// change address
+		]);
+	}
+pub fn to_txid(id:bdk::bitcoin::hash_types::Txid)->Txid{
+	return Txid::from_hash(id.as_hash());
+	// id.as_hash();
+	// return bdk::bitcoin::hash_types::Txid::from_hash(id.as_hash());
 }

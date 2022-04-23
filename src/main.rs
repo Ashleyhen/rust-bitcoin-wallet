@@ -1,17 +1,17 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, env};
 
 use bdk::bitcoin::BlockHash;
 use bitcoin::hashes::Hash;
-use client_wallet::WalletContext;
+// use client_wallet::WalletContext;
 use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
-use taproot_multi_sig::WalletInfo;
+// use taproot_multi_sig::WalletInfo;
 
 pub mod bitcoin_keys;
-pub mod client_wallet;
-pub mod client_node;
-pub mod taproot_multi_sig;
+// pub mod client_wallet;
+// pub mod client_node;
+// pub mod taproot_multi_sig;
 fn main() {
-
+	env::set_var("RUST_BACKTRACE", "full");
 	_test_transactionn();
 
 }
@@ -28,8 +28,8 @@ fn _test_transactionn(){
 	// let c=WalletContext::new(Some(seed.to_owned()));
 	let key=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
 
-	// c.get_balance();
 	key.get_balance();
+	key.transaction();
 	
 	// let wallet_info=WalletInfo::get_taproot_address(Some(seed_2.to_owned()));
 	// wallet_info.single_sign();
