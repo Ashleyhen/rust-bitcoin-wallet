@@ -72,22 +72,22 @@ impl WalletInfo{
 		// psbt::Output
 		// psbt::Input
 
-		let s=TxIn{
-    previous_output: todo!(),
-    script_sig: todo!(),
-    sequence: todo!(),
-    witness: todo!(),
-};
-	let s=TxOut{
-    value: todo!(),
-    script_pubkey: todo!(),
-};
-		let transaction=Transaction{
-			version: 1,
-			lock_time: 0,
-			input: todo!(),
-			output: todo!(),
-		};
+// 		let s=TxIn{
+//     previous_output: todo!(),
+//     script_sig: todo!(),
+//     sequence: todo!(),
+//     witness: todo!(),
+// };
+// 	let s=TxOut{
+//     value: todo!(),
+//     script_pubkey: todo!(),
+// };
+// 		let transaction=Transaction{
+// 			version: 1,
+// 			lock_time: 0,
+// 			input: todo!(),
+// 			output: todo!(),
+// 		};
 
 		let is_valid=secp.verify_schnorr(&signature, &message, &key_pair.public_key()).is_ok();
 		println!("is valid {}",is_valid);

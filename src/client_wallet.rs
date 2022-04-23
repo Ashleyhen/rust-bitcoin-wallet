@@ -18,6 +18,7 @@ impl WalletContext {
 	pub fn new (seed:Option<String>)-> WalletContext{
 
 		let keys = bitcoin_keys::BitcoinKeys::new(seed.to_owned());
+		keys.get_balance();
 
 		let network=Network::from_magic(keys.network).unwrap();
 		
@@ -45,7 +46,7 @@ impl WalletContext {
  pub fn  get_balance(&self){
 
 		self.wallet_state.sync(&self.blockchain, SyncOptions::default()).and_then(|_|Ok({
-			println!("p2wpkh {}", self.wallet_state.get_address(AddressIndex::LastUnused).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
+			println!("p2wpkh {}", self.wallet_state.get_address(AddressIndex::Peek((2))).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
 			println!("Balance {}",self.wallet_state.get_balance().unwrap_or_else(|err| panic!("failed to retrieve the balance from the current wallet !! {}", err)))
 		})).unwrap_or_else(|_|println!("failed to sync wallet !!"));
 	
