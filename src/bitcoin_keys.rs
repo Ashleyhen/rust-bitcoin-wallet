@@ -76,9 +76,10 @@ impl BitcoinKeys{
 		let txid=to_txid(history.get(0).unwrap().tx_hash);
 		let out_point=OutPoint::new(txid, 0);
 		
+		
 		let tx_in=TxIn{
 			previous_output: out_point,
-			script_sig: self.get_address().script_pubkey(),
+			script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 			sequence: 0xFFFFFFFF,
 			witness: Witness::default() 
 		};
