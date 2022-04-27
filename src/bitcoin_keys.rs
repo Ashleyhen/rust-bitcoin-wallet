@@ -3,7 +3,7 @@ use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Dere
 
 
 use bdk::{KeychainKind};
-use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction}, KeyPair, Txid, PublicKey, hashes::hex::FromHex, OutPoint, TxIn, blockdata::witness, Witness, TxOut, Transaction};
+use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey, ecdsa::{Signature, SerializedSignature} }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}, sighash::SigHashCache, bip143::SigHashCache }, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction}, KeyPair, Txid, PublicKey, hashes::hex::FromHex, OutPoint, TxIn, blockdata::witness, Witness, TxOut, Transaction, WitnessMerkleNode, WitnessCommitment};
 use electrum_client::{Client, ElectrumApi};
 
 pub struct BitcoinKeys{
@@ -78,28 +78,42 @@ impl BitcoinKeys{
 		
 		let tx_in=TxIn{
 			previous_output: out_point,
-			script_sig: self.get_address().script_pubkey(),
+			script_sig: Script::new(),
 			sequence: 0xFFFFFFFF,
 			witness: Witness::default() 
 		};
-
+// bdk::bitcoin::WitnessCommitment
 		let txOut=TxOut{ value: 1000, script_pubkey:Address::from_str(to_addr).unwrap().script_pubkey()  };
-		
-		let transaction =Transaction{
+
+		let mut transaction =Transaction{
 			version: 1,
 			lock_time: 0,
 			input: [tx_in].to_vec(),
 			output: [txOut].to_vec(),
 		};
+		let input_count=transaction.input.len();
+		let mut sig_hasher=SigHashCache::new(&mut transaction);
+		for inp in 0..input_count{
+			let _sig_hash=sig_hasher.segwit_signature_hash(inp, &Script::new(), 1000, bitcoin::EcdsaSigHashType::All).unwrap();
+			let wit=sig_hasher.witness_mut(inp).unwrap().push(Vec::new());
 		
+			// Signature::from_der(data: &[u8])
+			// wit.push(Vec::new())
+			// self.client.transaction_broadcast(tx)
+			
+
+		}
+
+// SerializedSignature::from_signature(sig: &Signature)
+		dbg!(transaction);
 		// std::collections::BTreeMap<bitcoin::util::bip32::ExtendedPubKey, (bitcoin::util::bip32::Fingerprint, bitcoin::util::bip32::DerivationPath)>
 		// let secp=Secp256k1::new();
 		// let parent_finger_print=self.get_zprv().fingerprint(&secp);
 		// let child_list= get_p2wpkh_path();
 
 		// PartiallySignedTransaction{ unsigned_tx: transaction, version: 0, xpub: BTreeMap::from([(self.pubz,self.derive_key_pair())]), proprietary: BTreeMap::default(), unknown: BTreeMap::default(), inputs: txIn, outputs: txOut };
+let psbt=PartiallySignedTransaction::from_unsigned_tx(transaction).unwrap();
 
-		dbg!(PartiallySignedTransaction::from_unsigned_tx(transaction).unwrap());
 	}
 
 // https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
