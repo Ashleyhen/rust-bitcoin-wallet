@@ -3,7 +3,7 @@ use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Dere
 
 
 use bdk::{KeychainKind};
-use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey, ecdsa::{Signature, SerializedSignature} }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}, sighash::SigHashCache, bip143::SigHashCache }, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction}, KeyPair, Txid, PublicKey, hashes::hex::FromHex, OutPoint, TxIn, blockdata::witness, Witness, TxOut, Transaction, WitnessMerkleNode, WitnessCommitment};
+use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey, ecdsa::{Signature, SerializedSignature} }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}, sighash::SigHashCache }, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction}, KeyPair, Txid, PublicKey, hashes::hex::FromHex, OutPoint, TxIn, blockdata::witness, Witness, TxOut, Transaction, WitnessMerkleNode, WitnessCommitment};
 use electrum_client::{Client, ElectrumApi};
 
 pub struct BitcoinKeys{
@@ -76,9 +76,10 @@ impl BitcoinKeys{
 		let txid=to_txid(history.get(0).unwrap().tx_hash);
 		let out_point=OutPoint::new(txid, 0);
 		
+		
 		let tx_in=TxIn{
 			previous_output: out_point,
-			script_sig: Script::new(),
+			script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 			sequence: 0xFFFFFFFF,
 			witness: Witness::default() 
 		};
@@ -105,7 +106,7 @@ impl BitcoinKeys{
 		}
 
 // SerializedSignature::from_signature(sig: &Signature)
-		dbg!(transaction);
+		// dbg!(transaction);
 		// std::collections::BTreeMap<bitcoin::util::bip32::ExtendedPubKey, (bitcoin::util::bip32::Fingerprint, bitcoin::util::bip32::DerivationPath)>
 		// let secp=Secp256k1::new();
 		// let parent_finger_print=self.get_zprv().fingerprint(&secp);
