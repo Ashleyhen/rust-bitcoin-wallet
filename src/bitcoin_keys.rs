@@ -3,7 +3,7 @@ use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Dere
 
 
 use bdk::{KeychainKind, Wallet, keys::DescriptorSecretKey};
-use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey, ecdsa::{Signature, SerializedSignature}, Message  }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}, bip143::{SigHashCache, self}, sighash::{self, SighashCache}, merkleblock::PartialMerkleTree, misc::signed_msg_hash}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction, serialize::Serialize}, KeyPair, Txid, PublicKey, hashes::{hex::FromHex, serde_macros::serde_details::SerdeHash }, OutPoint, TxIn, blockdata::{witness, opcodes, script::Builder}, Witness, TxOut, Transaction, WitnessMerkleNode, WitnessCommitment, EcdsaSighashType, SigHashType, EcdsaSig, PubkeyHash};
+use bitcoin::{secp256k1::{rand::{rngs::OsRng, RngCore},  constants, Secp256k1, SecretKey, ecdsa::{Signature, SerializedSignature}, Message, self, PublicKey  }, Network, util::{bip32::{ExtendedPrivKey, ChildNumber, ExtendedPubKey, self, KeySource, DerivationPath, Fingerprint}, taproot::{TapLeafHash, LeafVersion, TaprootBuilder, TaprootMerkleBranch, TapBranchHash, TapBranchTag, TaprootSpendInfo}, bip143::{SigHashCache, self}, sighash::{self, SighashCache}, merkleblock::PartialMerkleTree, misc::signed_msg_hash}, Script, Address, schnorr::{TapTweak, TweakedKeyPair, UntweakedKeyPair}, psbt::{TapTree, Input, Output, PartiallySignedTransaction, serialize::Serialize}, KeyPair, Txid,  hashes::{hex::FromHex, serde_macros::serde_details::SerdeHash }, OutPoint, TxIn, blockdata::{witness, opcodes, script::Builder}, Witness, TxOut, Transaction, WitnessMerkleNode, WitnessCommitment, EcdsaSighashType, SigHashType, EcdsaSig, PubkeyHash};
 use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::{PsbtInputSatisfier, PsbtExt}, descriptor::{Tr, DescriptorXKey, Wpkh}, Descriptor, DescriptorPublicKey, Segwitv0, Tap, ToPublicKey};
 
@@ -35,7 +35,7 @@ impl BitcoinKeys{
 		
 		// SecretKey::new();
 
-		let prvz= ExtendedPrivKey::new_master(network, &seed.secret_bytes()).unwrap().derive_priv(&secp, &get_p2wpkh_path(2)).unwrap();
+		let prvz= ExtendedPrivKey::new_master(network, &seed.secret_bytes()).unwrap().derive_priv(&secp, &get_derivation_path(2)).unwrap();
 		let pubz=ExtendedPubKey::from_priv(&secp , &prvz);
 		;
 
@@ -49,6 +49,13 @@ impl BitcoinKeys{
 			pubz
 		 }
 	}
+	pub fn generate_ext_pub_k(&self, i: u32)->ExtendedPubKey{
+		let secp=Secp256k1::new();
+		let prvz= ExtendedPrivKey::new_master(self.network, &self.seed).unwrap().derive_priv(&secp, &get_derivation_path(i)).unwrap();
+		return ExtendedPubKey::from_priv(&secp , &prvz);
+		
+
+	}
 
 	// wpkh([d34db33f/44'/0'/0']tpubDEnoLuPdBep9bzw5LoGYpsxUQYheRQ9gcgrJhJEcdKFB9cWQRyYmkCyRoTqeD4tJYiVVgt6A3rN6rWn9RYhR9sBsGxji29LYWHuKKbdb1ev/0/*)
 	fn get_network(&self)-> Network{return Network::from_magic(self.network.magic()).unwrap();}
@@ -58,7 +65,7 @@ impl BitcoinKeys{
 	pub fn derive_key_pair(&self)->KeySource {
 		let secp =Secp256k1::new();
 		let parent_finger_print=self.get_zprv().fingerprint(&secp);
-		let child_list= get_p2wpkh_path(2);
+		let child_list= get_derivation_path(2);
 		return (parent_finger_print,child_list);
 	}
 
@@ -75,13 +82,21 @@ impl BitcoinKeys{
 		return Address::p2wpkh(&bitcoin::PublicKey::new(self.pubz.public_key), self.network).unwrap();
 	}
 
-	pub fn transaction(&self){
+	pub fn generate_address(&self,i: u32)->Address{
+		return Address::p2wpkh(&bitcoin::PublicKey::new(self.generate_ext_pub_k(i).public_key), self.network).unwrap();
+	}
+// self.generate_ext_pub_k(i).public_key
+		
+		// return 
+	
 
+	pub fn transaction(&self){
+let index=2;
 // let test_script=Script::from_str("OP_0 OP_PUSHBYTES_20 bbded7f44f6b54434cbc4579a39b0114ded1f512").unwrap();
 
 		let to_addr="tb1qhzwe6wr46rvfndz9kzrdtzddepah82vqtyqde5";
-		let test_change_addr=Address::from_str("tb1qh00d0az0dd2yxn9ug4u68xcpzn0dragjfpcynh").unwrap();
-		let history=self.client.script_get_history(&self.get_address().script_pubkey()).unwrap();
+		let change_addr=self.generate_address(index);
+		let history=self.client.script_get_history(&self.generate_address(index).script_pubkey()).unwrap();
 		let tx_in=history.iter().enumerate().map(|tx_id|
 			TxIn{
 				previous_output:OutPoint::new(tx_id.1.tx_hash, tx_id.0.try_into().unwrap()),
@@ -96,11 +111,9 @@ impl BitcoinKeys{
 // dbg!(previous_tx.clone());
 
 	let tx_out=vec![
-
 		TxOut{ value: 1000, script_pubkey:Address::from_str(to_addr).unwrap().script_pubkey()},
-		TxOut{ value: 1816211, script_pubkey:test_change_addr.clone().script_pubkey() }
+		TxOut{ value: 1816211, script_pubkey:change_addr.clone().script_pubkey() }
 		];
-		// TxOut{ value: 1816111, script_pubkey:test_script.clone() }];
 
 		let mut transaction =Transaction{
 			version: 1,
@@ -108,7 +121,38 @@ impl BitcoinKeys{
 			input: tx_in,
 			output: tx_out,
 		};
-		dbg!(transaction);
+// :(Vec<TxOut>,Vec<TxIn>)
+let input_vec=previous_tx.iter().map(|prev|{
+	let mut input_tx=Input::default();
+	input_tx.non_witness_utxo=Some(prev.clone());
+	input_tx.witness_utxo=Some(prev.output.iter().filter(|w|Script::is_v0_p2wpkh(&w.script_pubkey)).next().unwrap().clone());
+	return input_tx;
+}).collect::<Vec<Input>>();
+
+let mut xpub =BTreeMap::new();
+xpub.insert(self.generate_ext_pub_k(index),(self.generate_ext_pub_k(index).parent_fingerprint ,get_derivation_path(index)));
+
+let mut output=Output::default();
+output.bip32_derivation =BTreeMap::new();
+output.bip32_derivation.insert(self.generate_ext_pub_k(index+2).public_key,(self.generate_ext_pub_k(index+2).parent_fingerprint ,get_derivation_path(index+2)));
+
+let psbt=PartiallySignedTransaction{
+    unsigned_tx: transaction,
+    version: 1,
+    xpub,
+    proprietary: BTreeMap::new(),
+    unknown: BTreeMap::new(),
+    outputs: vec![output],
+    inputs: input_vec,
+};
+dbg!(psbt);
+// psbt_input.non_witness_utxo =Some(previous_tx);
+// PartiallySignedTransaction
+
+		
+	// Transaction{ version: 1, lock_time: 0, input: previous_tx, output: todo!() };	
+		// dbg!(input_vec);
+		// dbg!(transaction);
 		let secp = Secp256k1::new();
 	;
 	
@@ -116,19 +160,23 @@ impl BitcoinKeys{
 	}
 	
 // https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki
-
-	pub fn adapt_bitcoin_extended_priv_keys_to_bdk_version(&self)->bdk::bitcoin::util::bip32::ExtendedPrivKey{
+pub fn adapt_bitcoin_extended_priv_keys_to_bdk_version(&self)->bdk::bitcoin::util::bip32::ExtendedPrivKey{
 		let network=self.get_network();
 		let ext_prv_key_str=ExtendedPrivKey::new_master(network, &self.seed).unwrap().to_string();
 
 		return bdk::bitcoin::util::bip32::ExtendedPrivKey::from_str(&ext_prv_key_str).unwrap();
 	}
+	
 }
+
+
+
+
 
 pub fn to_bdk_script(script:Script)->bdk::bitcoin::blockdata::script::Script{
 	return bdk::bitcoin::blockdata::script::Script::from(script.to_bytes());
 }
-pub fn get_p2wpkh_path(i: u32)->DerivationPath{
+pub fn get_derivation_path(i: u32)->DerivationPath{
 		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
 		// m / purpose' / coin_type' / account' / change / address_index
 		let keychain=KeychainKind::External;
@@ -145,9 +193,6 @@ pub fn to_txid(id:bdk::bitcoin::hash_types::Txid)->Txid{
 	// id.as_hash();
 	// return bdk::bitcoin::hash_types::Txid::from_hash(id.as_hash());
 }
-
-
-
 
 
 
@@ -214,7 +259,6 @@ dbg!(&iterator.1.script_pubkey);
 			});
 */
 let tx_out =previous_tx.get(inp).unwrap().output.get(0).unwrap();
-
 
 
 

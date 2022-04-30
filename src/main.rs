@@ -27,11 +27,17 @@ fn _test_transactionn(){
 
 	let c=WalletContext::new(Some(seed.to_owned()));
 	let key=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
-
+// let key2=bitcoin_keys::BitcoinKeys::new(None);
+// key2.generate_address(7);
+	// key.generate_address(2);
+	// key.generate_address(3);
+	// key.generate_address(4);
+	// key.generate_address(0);
+	// key.generate_address(2);
 	key.get_balance();
 	key.transaction();
-
-		let to_addr="tb1qhzwe6wr46rvfndz9kzrdtzddepah82vqtyqde5";
+// let to_addr="37NFX8KWAQbaodUG6pE1hNUH1dXgkpzbyZ";
+		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
 		c.get_balance();
 	c.send_coins(to_addr, 1000);
 	
