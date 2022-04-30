@@ -1,7 +1,7 @@
 use std::{str::FromStr, borrow::{BorrowMut, Borrow}, time::SystemTime, sync::Arc, rc};
 
-use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address, Transaction, secp256k1::{Secp256k1, All, constants}, BlockHash}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
-use bitcoin::secp256k1::rand::{rngs::OsRng, RngCore};
+use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address, Transaction, secp256k1::{Secp256k1, All, constants}, BlockHash, Script}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
+use bitcoin::hashes::hex::{FromHex, HexIterator};
 use lightning::{chain::{chaininterface::{BroadcasterInterface, FeeEstimator, ConfirmationTarget}, chainmonitor::{Persist, MonitorUpdateId}, keysinterface::{Sign, self, KeysManager, InMemorySigner}, channelmonitor::{ChannelMonitorUpdate, ChannelMonitor}, transaction::OutPoint, ChannelMonitorUpdateErr, BestBlock}, util::logger::{Logger, Record}, ln::channelmanager::ChainParameters};
 use lightning_persister::FilesystemPersister;
 
@@ -18,9 +18,9 @@ impl WalletContext {
 	pub fn new (seed:Option<String>)-> WalletContext{
 
 		let keys = bitcoin_keys::BitcoinKeys::new(seed.to_owned());
-		keys.get_balance();
+		// keys.get_balance();
 
-		let network=Network::from_magic(keys.network).unwrap();
+		let network=Network::from_magic(keys.network.magic()).unwrap();
 		
 		let extended_priv_key=keys.adapt_bitcoin_extended_priv_keys_to_bdk_version() ;
 
@@ -33,11 +33,13 @@ impl WalletContext {
 			MemoryDatabase::default(),
 		)
 		.unwrap_or_else(|err|panic!("invalid wallet, {} ", err));
+
+
 		
 		let blockchain = ElectrumBlockchain::from(
 			Client::new("ssl://electrum.blockstream.info:60002")
 			.unwrap_or_else(|err|panic!("client connection failed !!!{}",err)));
-		return WalletContext{ wallet_state,blockchain,network:keys.network,seed: keys.seed };
+		return WalletContext{ wallet_state,blockchain,network:keys.network.magic(),seed: keys.seed };
 	}
 
 	
@@ -46,7 +48,7 @@ impl WalletContext {
  pub fn  get_balance(&self){
 
 		self.wallet_state.sync(&self.blockchain, SyncOptions::default()).and_then(|_|Ok({
-			println!("p2wpkh {}", self.wallet_state.get_address(AddressIndex::Peek((2))).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
+			println!("p2wpkh {}", self.wallet_state.get_address(AddressIndex::LastUnused).unwrap_or_else(|err|panic!("failed derive the next address !! {}",err)).address);
 			println!("Balance {}",self.wallet_state.get_balance().unwrap_or_else(|err| panic!("failed to retrieve the balance from the current wallet !! {}", err)))
 		})).unwrap_or_else(|_|println!("failed to sync wallet !!"));
 	
@@ -55,17 +57,33 @@ impl WalletContext {
 	pub fn send_coins(&self, send_address: &str,stats: u64){
 		let address=Address::from_str(send_address).unwrap_or_else(|err|panic!("invalid address bitcoin : {}",err));
 			let mut builder=self.wallet_state.build_tx();
-			builder.drain_wallet().fee_rate(FeeRate::from_sat_per_vb(2.0)).add_recipient(address.script_pubkey(), stats);
+			builder.fee_rate(FeeRate::from_sat_per_vb(2.0)).add_recipient(address.script_pubkey(), stats);
 			let (mut psbt, details)=builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err));
-
-		let is_transaction_valid = self.wallet_state.sign(&mut psbt, Default::default() )
+		
+			// dbg!(psbt.clone());
+			let is_transaction_valid = self.wallet_state.sign(&mut psbt, Default::default() )
 		.unwrap_or_else(|err|panic!("wallet signature failed!!! {}",err));
+
+		let signed_transaction=psbt.clone().extract_tx();
+		// dbg!(signed_transaction);
+/* 
+		for inp in psbt.clone().extract_tx().input{
+	// dbg!(Witness::from_vec(inp.witness));
+	for w in inp.witness{
+let scr=Script::bytes_to_asm(&w);
+		dbg!(scr);
+		// Script::from_byte_iter(w.iter()).unwrap();
+
+	}
+
+}
 
 		println!("valid transaction: {}",is_transaction_valid);
 		let signed_transaction=psbt.clone().extract_tx();
-		println!("transaction id: {}",signed_transaction.txid().to_string());
-		self.broadcast_transaction( &signed_transaction);
-		println!("broadcasted transaction successfully");
+		*/
+		// println!("transaction id: {}",signed_transaction.txid().to_string());
+		// self.broadcast_transaction( &signed_transaction);
+		// println!("broadcasted transaction successfully");
 	}
 }
 

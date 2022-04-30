@@ -57,7 +57,7 @@ dependencies = [
  "electrum-client 0.8.0",
  "js-sys",
  "log",
- "miniscript",
+ "miniscript 6.1.0",
  "rand 0.7.3",
  "serde",
  "serde_json",
@@ -97,12 +97,14 @@ dependencies = [
 
 [[package]]
 name = "bitcoin"
-version = "0.28.0-rc.1"
-source = "git+https://github.com/rust-bitcoin/rust-bitcoin.git#1295008dc64df9b4bf01d83d8f903165b258c8ee"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42b2a9a8e3c7544f5ce2b475f2f56580a3102b37e0ee001558ad4faedcf56cf4"
 dependencies = [
  "bech32",
  "bitcoin_hashes",
  "secp256k1 0.22.1",
+ "serde",
 ]
 
 [[package]]
@@ -204,11 +206,11 @@ dependencies = [
 
 [[package]]
 name = "electrum-client"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "873dd5f1aea56630ec85b0d0cd6ed75f7794bf2c5b1c082213e7f90590e8ef48"
+checksum = "ff0ecf5f0d1d0ca8ec87cefd7b3118be46cd47309a49c4172ce91adc98895413"
 dependencies = [
- "bitcoin 0.27.1",
+ "bitcoin 0.28.0",
  "log",
  "rustls 0.20.4",
  "serde",
@@ -349,6 +351,15 @@ checksum = "1e292b58407dfbf1384e5aca8428d3b0f2eaa09d24cb17088f6db0b7ca31194a"
 dependencies = [
  "bitcoin 0.27.1",
  "serde",
+]
+
+[[package]]
+name = "miniscript"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da39fc7a8adea97a677337b0091779dd86349226b869053af496584a9b9e5847"
+dependencies = [
+ "bitcoin 0.28.0",
 ]
 
 [[package]]
@@ -667,6 +678,7 @@ checksum = "26947345339603ae8395f68e2f3d85a6b0a8ddfe6315818e80b8504415099db0"
 dependencies = [
  "rand 0.6.5",
  "secp256k1-sys 0.5.0",
+ "serde",
 ]
 
 [[package]]
@@ -783,11 +795,11 @@ name = "traproot-bdk"
 version = "0.1.0"
 dependencies = [
  "bdk",
- "bitcoin 0.28.0-rc.1",
- "electrum-client 0.9.0",
+ "bitcoin 0.28.0",
+ "electrum-client 0.10.0",
  "lightning",
  "lightning-persister",
- "miniscript",
+ "miniscript 7.0.0",
 ]
 
 [[package]]

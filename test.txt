@@ -1,0 +1,215 @@
+tx_in.witness.to_vec() = [
+    [
+        48, 69, 2, 33, 0, 245, 78, 146, 88, 181, 234, 92, 82, 44, 78, 7, 41, 24, 91, 28, 67, 105, 207, 53, 223, 124, 119, 87, 122, 213, 96, 247, 67, 69, 5, 35, 58, 2, 32, 60, 245, 12, 237, 222, 214, 91, 232, 177, 14, 130, 203, 225, 125, 138, 172, 164, 63, 169, 215, 36, 206, 66, 201, 255, 136, 247, 119, 249, 9, 163, 206, 1,
+    ],
+    [
+        0, 20, 239, 160, 107, 185, 39, 141, 188, 16, 19, 154, 5, 145, 141, 84, 186, 219, 79, 59, 29, 30,
+    ],
+]
+     48, 68, 2, 32, 121, 62, 235, 206, 157, 88, 145, 66, 250, 133, 188, 245, 232, 245, 97, 198, 24, 180, 167, 114, 28, 139, 56, 232, 236, 134, 179, 217, 173, 108, 212, 101, 2, 32, 94, 40, 185, 46, 29, 80, 130, 80, 18, 95, 212, 195, 118, 189, 97, 144, 53, 40, 181, 15, 227, 254, 43, 79, 42, 91, 42, 226, 40, 65, 198, 114, 1,
+    ],
+    [
+        118, 169, 20, 159, 154, 122, 189, 96, 12, 12, 170, 3, 152, 58, 119, 200, 195, 223, 142, 6, 44, 178, 250, 136, 172,
+} 
+
+        
+    output: [
+        TxOut {
+            value: 1816111,
+            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 bbded7f44f6b54434cbc4579a39b0114ded1f512),
+        },
+        TxOut {
+            value: 1000,
+            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 b89d9d3875d0d899b445b086d589adc87b73a980),
+        },
+    ],
+}
+
+
+Transaction {
+    version: 1,
+    lock_time: 0,
+    input: [
+        TxIn {
+            previous_output: OutPoint {
+                txid: d5e3d7002e425fbde43b016ee9aa876b6ce56879da3d55ec0e963d392b9c392b,
+                vout: 1,
+            },
+            script_sig: Script(),
+            sequence: 4294967295,
+            witness: [],
+        },
+    ],
+    output: [
+        TxOut {
+            value: 1816211,
+            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 bbded7f44f6b54434cbc4579a39b0114ded1f512),
+        },
+        TxOut {
+            value: 1000,
+            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 b89d9d3875d0d899b445b086d589adc87b73a980),
+        },
+    ],
+}
+
+
+
+
+
+
+
+
+
+
+PartiallySignedTransaction {
+    global: Global {
+        unsigned_tx: Transaction {
+            version: 1,
+            lock_time: 0,
+            input: [
+                TxIn {
+                    previous_output: OutPoint {
+                        txid: d5e3d7002e425fbde43b016ee9aa876b6ce56879da3d55ec0e963d392b9c392b,
+                        vout: 1,
+                    },
+                    script_sig: Script(),
+                    sequence: 4294967295,
+                    witness: [],
+                },
+            ],
+            output: [
+                TxOut {
+                    value: 1000,
+                    script_pubkey: Script(OP_0 OP_PUSHBYTES_20 b89d9d3875d0d899b445b086d589adc87b73a980),
+                },
+                TxOut {
+                    value: 1816211,
+                    script_pubkey: Script(OP_0 OP_PUSHBYTES_20 bbded7f44f6b54434cbc4579a39b0114ded1f512),
+                },
+            ],
+        },
+        version: 0,
+        xpub: {},
+        proprietary: {},
+        unknown: {},
+    },
+    inputs: [
+        Input {
+            non_witness_utxo: Some(
+                Transaction {
+                    version: 1,
+                    lock_time: 0,
+                    input: [
+                        TxIn {
+                            previous_output: OutPoint {
+                                txid: 89dff99d98ec0ffdf9b2317035cb862f4e6772037614f1e7365918a8cd5dbda3,
+                                vout: 1,
+                            },
+                            script_sig: Script(),
+                            sequence: 4294967295,
+                            witness: [
+                                [
+                                    48, 68, 2, 32, 19, 183, 21, 71, 153, 113, 18, 20, 255, 232, 54, 69, 225, 55, 233, 38, 99, 77, 246, 166, 49, 73, 64, 194, 155, 23, 234, 98, 156, 251, 151, 186, 2, 32, 76, 66, 78, 143, 0, 38, 153, 228, 31, 153, 39, 176, 196, 117, 181, 116, 147, 41, 21, 58, 253, 191, 188, 208, 19, 194, 11, 204, 180, 6, 177, 13, 1,
+                                ],
+                                [
+                                    3, 76, 18, 218, 220, 189, 146, 242, 169, 202, 220, 227, 83, 32, 192, 40, 211, 100, 168, 245, 84, 20, 236, 67, 198, 67, 188, 160, 34, 94, 115, 88, 27,
+                                ],
+                            ],
+                        },
+                        TxIn {
+                            previous_output: OutPoint {
+                                txid: a35e443bbdabbefb2a964676f8b414ed429305b20d0570bf85c44622050448ca,
+                                vout: 0,
+                            },
+                            script_sig: Script(),
+                            sequence: 4294967295,
+                            witness: [
+                                [
+                                    48, 69, 2, 33, 0, 151, 23, 252, 246, 92, 233, 230, 87, 144, 227, 184, 149, 66, 4, 56, 55, 35, 76, 134, 206, 118, 145, 139, 240, 76, 246, 188, 178, 112, 229, 4, 7, 2, 32, 76, 75, 161, 103, 87, 228, 75, 2, 226, 6, 70, 144, 185, 245, 253, 109, 42, 124, 175, 140, 223, 15, 208, 208, 224, 169, 39, 23, 117, 61, 20, 72, 1,
+                                ],
+                                [
+                                    3, 76, 18, 218, 220, 189, 146, 242, 169, 202, 220, 227, 83, 32, 192, 40, 211, 100, 168, 245, 84, 20, 236, 67, 198, 67, 188, 160, 34, 94, 115, 88, 27,
+                                ],
+                            ],
+                        },
+                    ],
+                    output: [
+                        TxOut {
+                            value: 10000,
+                            script_pubkey: Script(OP_DUP OP_HASH160 OP_PUSHBYTES_20 9f9a7abd600c0caa03983a77c8c3df8e062cb2fa OP_EQUALVERIFY OP_CHECKSIG),
+                        },
+                        TxOut {
+                            value: 1817493,
+                            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 efa06bb9278dbc10139a05918d54badb4f3b1d1e),
+                        },
+                    ],
+                },
+            ),
+            witness_utxo: Some(
+                TxOut {
+                    value: 1817493,
+                    script_pubkey: Script(OP_0 OP_PUSHBYTES_20 efa06bb9278dbc10139a05918d54badb4f3b1d1e),
+                },
+            ),
+            partial_sigs: {},
+            sighash_type: None,
+            redeem_script: None,
+            witness_script: None,
+            bip32_derivation: {
+                PublicKey {
+                    compressed: true,
+                    key: PublicKey(
+                        c98d681becb75d43f14fa90a4d06f3d9836119e42977d8b51bd203ca567466a4f3395d645736d114f104e1f8c61c5fdc5d2542a9e0a708a136073975840c239a,
+                    ),
+                }: (
+                    fa398fdd,
+                    m/84h/0h/0h/0/2,
+                ),
+            },
+            final_script_sig: None,
+            final_script_witness: None,
+            ripemd160_preimages: {},
+            sha256_preimages: {},
+            hash160_preimages: {},
+            hash256_preimages: {},
+            proprietary: {},
+            unknown: {},
+        },
+    ],
+    outputs: [
+        Output {
+            redeem_script: None,
+            witness_script: None,
+            bip32_derivation: {
+                PublicKey {
+                    compressed: true,
+                    key: PublicKey(
+                        8f94633c07b2c31c2af3a0c287cb51185918df10f3f45699976455b21b1b4a63f3465585b33e53c4a313089db46fe7f265ab2828e03cd5a94165ed5ead4d35d2,
+                    ),
+                }: (
+                    fa398fdd,
+                    m/84h/0h/0h/0/3,
+                ),
+            },
+            proprietary: {},
+            unknown: {},
+        },
+        Output {
+            redeem_script: None,
+            witness_script: None,
+            bip32_derivation: {
+                PublicKey {
+                    compressed: true,
+                    key: PublicKey(
+                        9888304007a653e7be2f38f525381f6b8726a315c975cb3d5cbf71036e167fa5285bebdb7bd3e491b6f75d98a225373b768b3812ea1054a1cb65326e8a8e5c58,
+                    ),
+                }: (
+                    fa398fdd,
+                    m/84h/0h/0h/0/4,
+                ),
+            },
+            proprietary: {},
+            unknown: {},
+        },
+    ],
+}
