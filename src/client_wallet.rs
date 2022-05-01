@@ -60,7 +60,7 @@ impl WalletContext {
 			builder.fee_rate(FeeRate::from_sat_per_vb(2.0)).add_recipient(address.script_pubkey(), stats);
 			let (mut psbt, details)=builder.finish().unwrap_or_else(|err|panic!("error invalid transaction! {}",err));
 		
-			dbg!(psbt.clone());
+			// dbg!(psbt.clone());
 			let is_transaction_valid = self.wallet_state.sign(&mut psbt, Default::default() )
 		.unwrap_or_else(|err|panic!("wallet signature failed!!! {}",err));
 
