@@ -38,8 +38,8 @@ fn _test_transactionn(){
 	key.transaction();
 // let to_addr="37NFX8KWAQbaodUG6pE1hNUH1dXgkpzbyZ";
 		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
-		c.get_balance();
-	c.send_coins(to_addr, 1000);
+		// c.get_balance();
+	// c.send_coins(to_addr, 1000);
 	
 	// let wallet_info=WalletInfo::get_taproot_address(Some(seed_2.to_owned()));
 	// wallet_info.single_sign();

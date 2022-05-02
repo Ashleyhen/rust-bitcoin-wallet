@@ -1,5 +1,5 @@
 
-use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Deref}, collections::BTreeMap, io::Read};
+use std::{str::FromStr, borrow::{BorrowMut, Borrow}, hash::Hash, ops::{Add, Deref}, collections::BTreeMap, io::Read, sync::Arc};
 
 
 use bdk::{KeychainKind, Wallet, keys::DescriptorSecretKey, template::P2Pkh, bitcoin::SigHash};
@@ -72,7 +72,8 @@ impl BitcoinKeys{
 	pub fn get_balance(&self){
 		
 		let address=self.get_address();
-		let balance =self.client.script_get_balance(&address.script_pubkey()).unwrap();
+let scr=self.generate_address(4).script_pubkey();
+		let balance =self.client.script_get_balance(&scr).unwrap();
 		println!("address {}",address.to_qr_uri().to_lowercase());
 		
 		println!("The current balance is {}",balance.confirmed);
@@ -88,12 +89,13 @@ impl BitcoinKeys{
 
 
 	pub fn transaction(&self){
-let index=2;
+let index=4;
 
 	let secp =Secp256k1::new();
 		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
-		let change_addr=self.generate_address(index+2);
-		let history=self.client.script_get_history(&self.generate_address(index).script_pubkey()).unwrap();
+		let change_addr=self.generate_address(index+1);
+		let history= Arc::new(self.client.script_get_history(&self.generate_address(index).script_pubkey()).unwrap());
+		
 		let tx_in=history.iter().enumerate().map(|tx_id|
 			TxIn{
 				previous_output:OutPoint::new(tx_id.1.tx_hash, tx_id.0 as u32+1),
@@ -103,11 +105,13 @@ let index=2;
 			}
 		).collect::<Vec<TxIn>>();
 		
-		let previous_tx=tx_in.iter().map(|tx_id|self.client.transaction_get(&tx_id.previous_output.txid).unwrap()).collect::<Vec<Transaction>>();
+		// dbg!(tx_in.clone());
+		let previous_tx=Arc::new(tx_in.iter().map(|tx_id|self.client.transaction_get(&tx_id.previous_output.txid).unwrap()).collect::<Vec<Transaction>>());
+		dbg!(previous_tx.clone());
 
 	let tx_out=vec![
 		TxOut{ value: 1000, script_pubkey:Address::from_str(to_addr).unwrap().script_pubkey()},
-		TxOut{ value: 1816211, script_pubkey:change_addr.clone().script_pubkey() }
+		TxOut{ value: 1815211, script_pubkey:change_addr.clone().script_pubkey() }
 		];
 
 		let mut transaction =Transaction{
@@ -117,20 +121,21 @@ let index=2;
 			output: tx_out,
 		};
 // :(Vec<TxOut>,Vec<TxIn>)
+
+let ext_pub_k=self.generate_ext_pub_k(index);
 let input_vec=previous_tx.iter().map(|prev|{
 	let mut input_tx=Input::default();
 	input_tx.non_witness_utxo=Some(prev.clone());
-	input_tx.witness_utxo=Some(prev.output.iter().filter(|w|Script::is_v0_p2wpkh(&w.script_pubkey)).next().unwrap().clone());
+	input_tx.witness_utxo=Some(prev.output.iter().filter(|w|Script::is_v0_p2wpkh(&w.script_pubkey)&&w.script_pubkey.eq(&Script::new_v0_p2wpkh(&ext_pub_k.public_key.to_public_key().wpubkey_hash().unwrap()))).next().unwrap().clone());
 	return input_tx;
 }).collect::<Vec<Input>>();
-let ext_pub_k=self.generate_ext_pub_k(index);
 
 let mut xpub =BTreeMap::new();
-xpub.insert(ext_pub_k,(self.generate_ext_pub_k(index).fingerprint() ,get_derivation_path(index)));
+xpub.insert(ext_pub_k,(ext_pub_k.clone().fingerprint() ,get_derivation_path(index)));
 
 let mut output=Output::default();
 output.bip32_derivation =BTreeMap::new();
-output.bip32_derivation.insert(self.generate_ext_pub_k(index+2).public_key,(self.generate_ext_pub_k(index+2).fingerprint() ,get_derivation_path(index+2)));
+output.bip32_derivation.insert(self.generate_ext_pub_k(index+1).public_key,(self.generate_ext_pub_k(index+1).fingerprint() ,get_derivation_path(index+1)));
 
 let mut psbt=PartiallySignedTransaction{
     unsigned_tx: transaction,
@@ -142,7 +147,11 @@ let mut psbt=PartiallySignedTransaction{
     inputs: input_vec,
 };
 
+
 let hash=psbt.inputs.iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(|w| {
+// dbg!(w.clone().1.witness_utxo.as_ref().unwrap().script_pubkey);
+let addr=Address::from_script(&w.clone().1.witness_utxo.as_ref().unwrap().script_pubkey, Network::Testnet).unwrap().to_qr_uri().to_lowercase();
+println!("address {}",addr);
 	return sighash::SighashCache::new(&mut psbt.unsigned_tx)
 	.segwit_signature_hash(
 		w.0,
@@ -150,11 +159,12 @@ let hash=psbt.inputs.iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(
 		 w.1.witness_utxo.as_ref().unwrap().value, 
 		 EcdsaSighashType::All).unwrap()
 }).next().unwrap();
+dbg!(Address::p2wpkh(&ext_pub_k.public_key.to_public_key(),Network::Testnet).unwrap().to_qr_uri().to_ascii_lowercase());
 
 let prvz= ExtendedPrivKey::new_master(self.network, &self.seed).unwrap().derive_priv(&secp, &get_derivation_path(index)).unwrap();
 let ecdsa=EcdsaSig::sighash_all(secp.sign_ecdsa(&Message::from_slice(&hash).unwrap(),&prvz.private_key));
-
 psbt.inputs[0].partial_sigs.insert(ext_pub_k.public_key.to_public_key(), ecdsa);
+// dbg!(psbt.clone());
 let stadisfied_tx=psbt.finalize(&secp).unwrap();
 		
 // broadcast transaction
