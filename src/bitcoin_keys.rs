@@ -88,6 +88,7 @@ let scr=self.generate_address(4).script_pubkey();
 	}
 
 
+	
 	pub fn transaction(&self){
 let index=4;
 

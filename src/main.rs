@@ -5,7 +5,7 @@ use bitcoin::hashes::Hash;
 use client_wallet::WalletContext;
 use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
 // use taproot_multi_sig::WalletInfo;
-
+pub mod btc_k;
 pub mod bitcoin_keys;
 pub mod client_wallet;
 // pub mod client_node;
@@ -26,7 +26,14 @@ fn _test_transactionn(){
 	// let thereAddr= "tb1pph50luptud9wkq2lvn0h9kvm6s0dz058afvxhnu3fpltruyqzx4s9x39s7";
 
 	let c=WalletContext::new(Some(seed.to_owned()));
+	let btc_keys=btc_k::BtcK::new(Some(seed.to_owned()));
+	btc_keys.get_balance();
+
+		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
+	btc_keys.submit_transaction(4, 0, to_addr.to_string(), 1000);
+
 	let key=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
+	
 // let key2=bitcoin_keys::BitcoinKeys::new(None);
 // key2.generate_address(7);
 	// key.generate_address(2);
@@ -34,10 +41,9 @@ fn _test_transactionn(){
 	// key.generate_address(4);
 	// key.generate_address(0);
 	// key.generate_address(2);
-	key.get_balance();
-	key.transaction();
+	// key.get_balance();
+	// key.transaction();
 // let to_addr="37NFX8KWAQbaodUG6pE1hNUH1dXgkpzbyZ";
-		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
 		// c.get_balance();
 	// c.send_coins(to_addr, 1000);
 	
