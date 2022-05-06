@@ -11,9 +11,10 @@ pub struct BtcK{
     seed:Seed
 }
 type Seed=[u8;constants::SECRET_KEY_SIZE];
-
 const NETWORK: bitcoin::Network = Network::Testnet;
+    
 impl BtcK{
+
     pub fn new(secret_seed:Option<String>)->BtcK {
         BtcK{
             secp:Secp256k1::new(),
@@ -57,6 +58,7 @@ impl BtcK{
 			ChildNumber::from_normal_idx(keychain as u32).unwrap()
 		]).extend(change.map(|c|vec![ChildNumber::from_normal_idx(c).unwrap()]).unwrap_or_else(||Vec::new()));
 	}
+
     pub fn submit_transaction(&self,change:u32,recieve:u32,send_to:String,amount:u64){
         let map_ext_keys=|c:u32|BtcK::get_ext_keys(&self.seed,&Some(BtcK::derivation_path(Some(c), recieve)),&self.secp);
         let map_addr=|ext_public_key:ExtendedPubKey|Address::p2wpkh(&ext_public_key.public_key.to_public_key(), Network::Testnet).unwrap();
@@ -66,9 +68,9 @@ impl BtcK{
         
         let history=Arc::new(self.client.script_get_history(&map_addr(ower_pub_k).script_pubkey()).expect("address history call failed"));
 
-		let tx_in=history.iter().enumerate().map(|tx_id|
+		let tx_in=history.iter().enumerate().map(|(index,h)|
 			TxIn{
-				previous_output:OutPoint::new(tx_id.1.tx_hash, tx_id.0 as u32+1),
+				previous_output:OutPoint::new(h.tx_hash, index as u32+1),
 				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
@@ -82,7 +84,8 @@ impl BtcK{
         let input_vec=previous_tx.iter().map(|prev|{
         let mut input_tx=Input::default();
         input_tx.non_witness_utxo=Some(prev.clone());
-        input_tx.witness_utxo=Some(prev.output.iter().filter(|w|
+        input_tx.witness_utxo=Some(
+            prev.output.iter().filter(|w|
             Script::is_v0_p2wpkh(&w.script_pubkey) &&
             w.script_pubkey.eq(&Script::new_v0_p2wpkh(&ower_pub_k.public_key.to_public_key().wpubkey_hash().unwrap()))
             ).next().unwrap().clone());
@@ -129,11 +132,13 @@ impl BtcK{
                 .segwit_signature_hash(i, &BtcK::p2wpkh_script_code(&input.witness_utxo.as_ref().unwrap().script_pubkey), value, bitcoin::EcdsaSighashType::All).unwrap();
 
             let ecdsa= EcdsaSig::sighash_all(self.secp.sign_ecdsa(&Message::from_slice(&sighash).unwrap(),&owner_prv_k.private_key));
+            
 
             return (ower_pub_k.to_pub().to_public_key(),ecdsa);
         }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>(); 
 
-        psbt.finalize(&self.secp).unwrap();
+        psbt.clone().finalize(&self.secp).unwrap();
+        dbg!(psbt);
     }
 
     pub fn p2wpkh_script_code(script: &Script) -> Script {
