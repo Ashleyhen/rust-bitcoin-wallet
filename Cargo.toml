@@ -17,7 +17,7 @@ bitcoin={version="^0.28.0",features=["rand","std"]}
 bdk={git="https://github.com/bitcoindevkit/bdk.git"}
 # bitcoin={git="https://github.com/rust-bitcoin/rust-bitcoin.git",features=["rand"] }
 
-
+predicates = "2.1.1"
 # [dependencies.electrum-client]
 electrum-client={version="0.10.0"}
 
