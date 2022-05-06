@@ -72,7 +72,7 @@ impl BitcoinKeys{
 	pub fn get_balance(&self){
 		
 		let address=self.get_address();
-let scr=self.generate_address(4).script_pubkey();
+		let scr=self.generate_address(4).script_pubkey();
 		let balance =self.client.script_get_balance(&scr).unwrap();
 		println!("address {}",address.to_qr_uri().to_lowercase());
 		

@@ -2,12 +2,15 @@ use std::{borrow::Borrow, env};
 
 use bdk::bitcoin::BlockHash;
 use bitcoin::hashes::Hash;
+use btc_k::{ClientWithSchema, p2wpk::P2PWKh,AddressSchema};
 use client_wallet::WalletContext;
 use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
 // use taproot_multi_sig::WalletInfo;
+pub mod wallet_p2wpkh;
 pub mod btc_k;
 pub mod bitcoin_keys;
 pub mod client_wallet;
+
 // pub mod client_node;
 // pub mod taproot_multi_sig;
 fn main() {
@@ -20,17 +23,24 @@ fn _test_transactionn(){
 	// person 1 
 	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
 
+		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
+	let client_with_schema=ClientWithSchema::new(P2PWKh::new(Some(seed.to_string())) );
+        client_with_schema.print_balance(0, 4);
+		client_with_schema.submitTx(to_addr.to_string(), 1000, 0, 4);
+		// client_with_schema.submitTx(to_addr, amount, wallet_keys)
 	// let to="mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB";
 	
 	// let seed_2="6ad78e4a5a39f597618de01eb788b89dce4f23a4375ad70aa535ecd122145cd8";
 	// let thereAddr= "tb1pph50luptud9wkq2lvn0h9kvm6s0dz058afvxhnu3fpltruyqzx4s9x39s7";
 
+	// let btc_keys=wallet_p2wpkh::BtcK::new(Some(seed.to_owned()));
+
+	// btc_keys.submit_transaction(4, 0, to_addr.to_string(), 1000);
+/* 
 	let c=WalletContext::new(Some(seed.to_owned()));
-	let btc_keys=btc_k::BtcK::new(Some(seed.to_owned()));
 	btc_keys.get_balance();
 
 		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
-	btc_keys.submit_transaction(4, 0, to_addr.to_string(), 1000);
 
 	let key=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
 	
@@ -49,5 +59,5 @@ fn _test_transactionn(){
 	
 	// let wallet_info=WalletInfo::get_taproot_address(Some(seed_2.to_owned()));
 	// wallet_info.single_sign();
-	
+	*/
 }
