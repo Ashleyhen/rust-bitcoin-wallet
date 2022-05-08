@@ -112,7 +112,7 @@ let index=4;
 
 	let tx_out=vec![
 		TxOut{ value: 1000, script_pubkey:Address::from_str(to_addr).unwrap().script_pubkey()},
-		TxOut{ value: 1815211, script_pubkey:change_addr.clone().script_pubkey() }
+		TxOut{ value: 1815011, script_pubkey:change_addr.clone().script_pubkey() }
 		];
 
 		let mut transaction =Transaction{
@@ -160,13 +160,13 @@ println!("address {}",addr);
 		 w.1.witness_utxo.as_ref().unwrap().value, 
 		 EcdsaSighashType::All).unwrap()
 }).next().unwrap();
-dbg!(Address::p2wpkh(&ext_pub_k.public_key.to_public_key(),Network::Testnet).unwrap().to_qr_uri().to_ascii_lowercase());
+// dbg!(Address::p2wpkh(&ext_pub_k.public_key.to_public_key(),Network::Testnet).unwrap().to_qr_uri().to_ascii_lowercase());
 
 let prvz= ExtendedPrivKey::new_master(self.network, &self.seed).unwrap().derive_priv(&secp, &get_derivation_path(index)).unwrap();
 let ecdsa=EcdsaSig::sighash_all(secp.sign_ecdsa(&Message::from_slice(&hash).unwrap(),&prvz.private_key));
 psbt.inputs[0].partial_sigs.insert(ext_pub_k.public_key.to_public_key(), ecdsa);
-// dbg!(psbt.clone());
-let stadisfied_tx=psbt.finalize(&secp).unwrap();
+let stadisfied_tx=psbt.clone().finalize(&secp).unwrap();
+dbg!(psbt.clone());
 		
 // broadcast transaction
 // self.client.transaction_broadcast(&stadisfied_tx.extract_tx()).unwrap();

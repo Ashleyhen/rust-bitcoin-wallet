@@ -1,7 +1,7 @@
 use std::{str::FromStr, borrow::{BorrowMut, Borrow}, time::SystemTime, sync::Arc, rc};
 
 use bdk::{template::Bip84, KeychainKind, bitcoin::{util::bip32::ExtendedPrivKey, Network, Address, Transaction, secp256k1::{Secp256k1, All, constants}, BlockHash, Script}, Wallet, database::MemoryDatabase, blockchain::{ElectrumBlockchain, Blockchain}, electrum_client::Client, SyncOptions, wallet::AddressIndex, FeeRate};
-use bitcoin::hashes::hex::{FromHex, HexIterator};
+use bitcoin::{hashes::hex::{FromHex, HexIterator}, Witness};
 use lightning::{chain::{chaininterface::{BroadcasterInterface, FeeEstimator, ConfirmationTarget}, chainmonitor::{Persist, MonitorUpdateId}, keysinterface::{Sign, self, KeysManager, InMemorySigner}, channelmonitor::{ChannelMonitorUpdate, ChannelMonitor}, transaction::OutPoint, ChannelMonitorUpdateErr, BestBlock}, util::logger::{Logger, Record}, ln::channelmanager::ChainParameters};
 use lightning_persister::FilesystemPersister;
 
@@ -66,7 +66,11 @@ impl WalletContext {
 
 		dbg!(psbt.clone());
 		let signed_transaction=psbt.clone().extract_tx();
-/* 
+		psbt.clone().inputs.iter().for_each(|a|{
+			let test=Witness::from_vec(a.final_script_witness.as_ref().unwrap().to_vec());
+			dbg!(test);
+		});
+		/*
 		for inp in psbt.clone().extract_tx().input{
 	// dbg!(Witness::from_vec(inp.witness));
 	for w in inp.witness{
@@ -77,10 +81,9 @@ let scr=Script::bytes_to_asm(&w);
 	}
 
 }
-
+*/
 		println!("valid transaction: {}",is_transaction_valid);
 		let signed_transaction=psbt.clone().extract_tx();
-		*/
 		// println!("transaction id: {}",signed_transaction.txid().to_string());
 		// self.broadcast_transaction( &signed_transaction);
 		// println!("broadcasted transaction successfully");

@@ -1,6 +1,6 @@
-use std::{str::FromStr, collections::BTreeMap};
+use std::{str::FromStr, collections::BTreeMap, io::Read};
 
-use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::SighashCache}, psbt::{Output, Input}, Address, Transaction, TxOut, Script, blockdata::{script::Builder, opcodes}, secp256k1::{SecretKey, Message}, EcdsaSig};
+use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::SighashCache}, psbt::{Output, Input}, Address, Transaction, TxOut, Script, blockdata::{script::Builder, opcodes}, secp256k1::{SecretKey, Message}, EcdsaSig, EcdsaSighashType, Sighash};
 use miniscript::ToPublicKey;
 
 
@@ -12,10 +12,6 @@ impl AddressSchema for P2PWKh{
 
     fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> bitcoin::Address {
         return Address::p2wpkh(&recieve.public_key.to_public_key(), NETWORK).unwrap();
-    }
-
-    fn new_wallet(&self,recieve:u32, change:u32) -> WalletKeys {
-        return self.0.create_wallet(84, recieve, change);
     }
 
     fn new(seed: Option<String>)->Self {
@@ -34,11 +30,19 @@ impl AddressSchema for P2PWKh{
         return input_tx;
     }
 
-    fn create_sighash(&self,cache:&mut SighashCache<&mut bitcoin::Transaction>,i:usize,input:&Input)->EcdsaSig {
-        // self.0.secp
-        return EcdsaSig::sighash_all(self.0.secp.sign_ecdsa(&Message::from_slice(&cache.segwit_signature_hash(i, 
-        &p2wpkh_script_code(&input.witness_utxo.as_ref().unwrap().script_pubkey), 
-        input.witness_utxo.as_ref().unwrap().value, bitcoin::EcdsaSighashType::All).unwrap()).unwrap(),&SecretKey::from_slice(&self.0.seed).unwrap()));
+    fn create_sighash(&self,transaction:&mut bitcoin::Transaction,i:usize,input:&Input,path:&DerivationPath)->EcdsaSig {
+        let secp=&self.0.secp;
+        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, path).unwrap();
+        
+        let sighash=input.witness_utxo.as_ref().map(|tx|{
+            return SighashCache::new( transaction).segwit_signature_hash(
+                i, &p2wpkh_script_code(&tx.script_pubkey), tx.value, EcdsaSighashType::All)
+        }).unwrap().unwrap();
+return EcdsaSig::sighash_all(secp.sign_ecdsa(&Message::from_slice(&sighash).unwrap(),&ext_prv.private_key));
+    }
+
+    fn wallet_purpose(&self)-> u32 {
+        return 84;
     }
 
     

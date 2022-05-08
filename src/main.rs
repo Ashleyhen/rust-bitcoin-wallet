@@ -2,7 +2,7 @@ use std::{borrow::Borrow, env};
 
 use bdk::bitcoin::BlockHash;
 use bitcoin::hashes::Hash;
-use btc_k::{ClientWithSchema, p2wpk::P2PWKh,AddressSchema};
+use btc_k::{ClientWithSchema, p2wpk::P2PWKh,AddressSchema, p2tr::P2TR};
 use client_wallet::WalletContext;
 use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
 // use taproot_multi_sig::WalletInfo;
@@ -22,42 +22,11 @@ fn main() {
 fn _test_transactionn(){
 	// person 1 
 	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
-
 		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
-	let client_with_schema=ClientWithSchema::new(P2PWKh::new(Some(seed.to_string())) );
-        client_with_schema.print_balance(0, 4);
-		client_with_schema.submitTx(to_addr.to_string(), 1000, 0, 4);
-		// client_with_schema.submitTx(to_addr, amount, wallet_keys)
-	// let to="mv4rnyY3Su5gjcDNzbMLKBQkBicCtHUtFB";
 	
-	// let seed_2="6ad78e4a5a39f597618de01eb788b89dce4f23a4375ad70aa535ecd122145cd8";
-	// let thereAddr= "tb1pph50luptud9wkq2lvn0h9kvm6s0dz058afvxhnu3fpltruyqzx4s9x39s7";
+	let client_with_schema=ClientWithSchema::new(P2TR::new(Some(seed.to_string())) );
+	client_with_schema.print_balance(0,1);
 
-	// let btc_keys=wallet_p2wpkh::BtcK::new(Some(seed.to_owned()));
-
-	// btc_keys.submit_transaction(4, 0, to_addr.to_string(), 1000);
-/* 
-	let c=WalletContext::new(Some(seed.to_owned()));
-	btc_keys.get_balance();
-
-		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
-
-	let key=bitcoin_keys::BitcoinKeys::new(Some(seed.to_owned()));
-	
-// let key2=bitcoin_keys::BitcoinKeys::new(None);
-// key2.generate_address(7);
-	// key.generate_address(2);
-	// key.generate_address(3);
-	// key.generate_address(4);
-	// key.generate_address(0);
-	// key.generate_address(2);
-	// key.get_balance();
-	// key.transaction();
-// let to_addr="37NFX8KWAQbaodUG6pE1hNUH1dXgkpzbyZ";
-		// c.get_balance();
-	// c.send_coins(to_addr, 1000);
-	
-	// let wallet_info=WalletInfo::get_taproot_address(Some(seed_2.to_owned()));
-	// wallet_info.single_sign();
-	*/
+		// client_with_schema.submitTx(to_addr.to_string(), 1000, 0, 5);
+		
 }

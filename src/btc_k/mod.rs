@@ -1,20 +1,21 @@
 use std::{str::FromStr, ops::Add, sync::Arc, collections::BTreeMap};
 
 use bdk::{ KeychainKind, template::P2Pkh};
-use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, ChildNumber, KeySource}, sighash::SighashCache}, Address, psbt::{Input, Output, PartiallySignedTransaction}, secp256k1::{Secp256k1, All, constants, SecretKey, rand::rngs::OsRng, PublicKey}, Network, Script, OutPoint, Witness, TxIn, Transaction, TxOut, Sighash, EcdsaSig};
+use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, ChildNumber, KeySource}, sighash::SighashCache}, Address, psbt::{Input, Output, PartiallySignedTransaction}, secp256k1::{Secp256k1, All, constants, SecretKey, rand::rngs::OsRng, PublicKey, Message}, Network, Script, OutPoint, Witness, TxIn, Transaction, TxOut, Sighash, EcdsaSig, EcdsaSighashType};
 use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
-pub type WalletKeys=(ExtendedPrivKey,ExtendedPubKey,KeySource);
+pub type WalletKeys=(ExtendedPubKey,KeySource);
 pub type RecieveChange=(u32,u32);
 pub mod p2wpk;
+pub mod p2tr;
 pub trait AddressSchema{
     fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> Address;
     fn create_inputs(&self,wallet_keys:&ExtendedPubKey,previous_tx:&Transaction ) -> Input;
-    fn new_wallet(&self,recieve:u32,change:u32)-> WalletKeys;
+    fn wallet_purpose(&self)-> u32;
     fn new(seed: Option<String>)->Self;
     fn to_wallet(&self)->ClientWallet;
-    fn create_sighash(&self,cache:&mut SighashCache<&mut Transaction>,s:usize,input:&Input)->EcdsaSig;
+    fn create_sighash(&self,cache:&mut Transaction,s:usize,input:&Input,dp:&DerivationPath)->EcdsaSig;
 }
 #[derive(Clone)]
 pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed }
@@ -35,79 +36,88 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         };
     }
 
-    
-
     pub fn submitTx(&self,to_addr:String,amount:u64, recieve:u32,change:u32){
-        let tip=100;
+        let tip:u64=200;
+        let secp=&self.schema.to_wallet().secp;
+        let wallet=self.schema.to_wallet();
+        ;
+        let (signer_pub_k,(signer_finger_p, signer_dp))=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change);
+        let (change_pub_k,(change_finger_p, change_dp))=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change+1);
+        let signer_addr=self.schema.map_ext_keys(&signer_pub_k);
+        let change_addr=self.schema.map_ext_keys(&change_pub_k);
+        
+        let history=Arc::new(self.client.script_get_history(&signer_addr.script_pubkey()).expect("address history call failed"));
 
-       let (_, ext_pub,(fingerprint,derived_path))= self.schema.new_wallet(recieve, change);
-
-       let history=Arc::new(self.client.script_get_history(&self.schema.map_ext_keys(&ext_pub).script_pubkey()).unwrap());
-
-       let tx_in=history.iter().enumerate().map(|(i, h)|{
-            TxIn{
-                previous_output:OutPoint::new(h.tx_hash,i as u32+1),
-                script_sig:Script::new(),
+		let tx_in=history.iter().enumerate().map(|(index,h)|
+			TxIn{
+				previous_output:OutPoint::new(h.tx_hash, index as u32+1),
+				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 				sequence: 0xFFFFFFFF,
-                witness: Witness::default()
-            }
-        }).collect::<Vec<TxIn>>();
-
-        let previous_tx=Arc::new(tx_in.iter()
+				witness: Witness::default() 
+			}
+		).collect::<Vec<TxIn>>();
+		
+		let previous_tx=Arc::new(tx_in.iter()
         .map(|tx_id|self.client.transaction_get(&tx_id.previous_output.txid).unwrap())
         .collect::<Vec<Transaction>>());
+        // the above loads in the previous transactions
 
-        let inputs=previous_tx.iter()
-        .map(|prev|self.schema.create_inputs(&ext_pub,prev)).collect::<Vec<Input>>();
+        // loads in our uxto that we control
+        let mut input_vec=previous_tx.iter().map(|previous_tx|{
+            return self.schema.create_inputs(&signer_pub_k,previous_tx );
+        }).collect::<Vec<Input>>();
 
-// if amount are same use script above
-    let (_,chg_ext_pub,(chg_fp,chg_dp) )=self.schema.new_wallet(recieve,change+1);
+        // value of our utxo that we have control over since we only control one I will just get the next one 
+        let value=input_vec.iter().map(|tx|tx.witness_utxo.as_ref().unwrap().value).next().unwrap();
 
-    let recepient=previous_tx.clone().iter().flat_map(|tx|{
-    return tx.output.iter()
-            .filter(|tx_out| tx_out.script_pubkey.eq(&self.schema.map_ext_keys(&ext_pub).script_pubkey()))
-            .flat_map(|tx_out|
-                [ TxOut{value:tx_out.value-(amount+tip),script_pubkey:self.schema.map_ext_keys(&chg_ext_pub).script_pubkey()},
-                TxOut{value:amount, script_pubkey: Address::from_str(&to_addr).unwrap().script_pubkey() } ]
-            )
-            .collect::<Vec<TxOut>>();
-        }).collect::<Vec<TxOut>>();
+        let change_amt=value-(amount+tip);
+        // creates a transaction for the recipent
+        // and another transaction for the change the rest of the uxto will be sent as a tip  
+        let tx_out=vec![
+                TxOut{ value: amount, script_pubkey:Address::from_str(&to_addr).unwrap().script_pubkey()},
+                TxOut{ value: change_amt, script_pubkey:change_addr.script_pubkey() }
+            ];
 
-        let mut transaction= Transaction{ 
-            version: 1, 
-            lock_time:0, 
-            output:recepient,
-            input: tx_in, };
-        
-        let mut xpub =BTreeMap::new();
-        xpub.insert(ext_pub,(fingerprint,derived_path.clone()));
 
-        
-         let mut output=Output::default();
-        
-        output.bip32_derivation=BTreeMap::new();
-        output.bip32_derivation.insert(ext_pub.public_key, (fingerprint,chg_dp.clone()));
+        let mut transaction =Transaction{
+                version: 1,
+                lock_time: 0,
+                input: tx_in,
+                output: tx_out,
+            };
+            let mut xpub =BTreeMap::new();
 
+        // the current public key and derivation path   
+        xpub.insert(signer_pub_k,(signer_finger_p ,signer_dp.clone()));
+
+        let mut output=Output::default();
+        output.bip32_derivation =BTreeMap::new();
+        output.bip32_derivation.insert(change_pub_k.public_key,(change_finger_p ,change_dp));
+
+        // we have all the infomation for the partially signed transaction 
         let mut psbt=PartiallySignedTransaction{
-            unsigned_tx:transaction.clone(),
-            version:0,
+            unsigned_tx: transaction.clone(),
+            version: 0,
             xpub,
-            proprietary:BTreeMap::new(),
-            unknown:BTreeMap::new(),
-            outputs:vec![output],
-            inputs
+            proprietary: BTreeMap::new(),
+            unknown: BTreeMap::new(),
+            outputs: vec![output],
+            inputs: input_vec.clone(),
         };
+    // signs our the spending inputs to unlock from the previous script
+        psbt.inputs[0].partial_sigs=input_vec.clone().iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(|(i,input)|{
+             
+            return (signer_pub_k.to_pub().to_public_key(),self.schema.create_sighash(&mut transaction, i, input, &signer_dp));
+        }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>(); 
 
-       psbt.inputs[0].partial_sigs= psbt.inputs.clone().iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(|(i,inpts)|{
-
-        return (ext_pub.to_pub(),self.schema.create_sighash(&mut SighashCache::new(&mut transaction), i, &inpts));
-        }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>();
-        dbg!(psbt.clone());
-        psbt.finalize(&self.schema.to_wallet().secp).unwrap();
+        //  finailize the transaction
+        let complete=psbt.clone().finalize(&secp).unwrap();
+        // self.client.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
+        // dbg!(complete.clone());
     }
 
     pub fn print_balance(&self,recieve:u32, change:u32){
-        let (_,ext_pub,_)=self.schema.new_wallet(recieve, change);
+        let (ext_pub,_)=self.schema.to_wallet().create_wallet(self.schema.wallet_purpose(), recieve, change);
         let address=self.schema.map_ext_keys(&ext_pub);
         let get_balance=self.client.script_get_balance(&address.script_pubkey()).unwrap();
         println!("address: {}",address);
@@ -127,11 +137,6 @@ impl ClientWallet{
             }
         }
 
-
-    fn get_ext_keys(&self,dp:&DerivationPath)->(ExtendedPrivKey){
-        return ExtendedPrivKey::new_master(NETWORK, &self.seed).unwrap().derive_priv(&self.secp,&dp).unwrap(); 
-    }
-
  fn create_wallet(&self,purpose:u32, recieve:u32,index:u32) -> WalletKeys {
 		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
 		// m / purpose' / coin_type' / account' / change / address_index
@@ -149,7 +154,7 @@ impl ClientWallet{
         
         let ext_pub=ExtendedPubKey::from_priv(&self.secp, &ext_prv)
         .derive_pub(&self.secp, &child).unwrap();
-         return (ext_prv, ext_pub,(ext_pub.fingerprint(),path.extend(child)));
+         return ( ext_pub,(ext_pub.fingerprint(),path.extend(child)));
     }
 }
 //1816211 

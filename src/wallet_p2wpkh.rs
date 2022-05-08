@@ -62,7 +62,7 @@ impl BtcK{
     pub fn submit_transaction(&self,change:u32,recieve:u32,send_to:String,amount:u64){
         let map_ext_keys=|c:u32|BtcK::get_ext_keys(&self.seed,&Some(BtcK::derivation_path(Some(c), recieve)),&self.secp);
         let map_addr=|ext_public_key:ExtendedPubKey|Address::p2wpkh(&ext_public_key.public_key.to_public_key(), Network::Testnet).unwrap();
-        let tip:u64=100;
+        let tip:u64=200;
         let (owner_prv_k,ower_pub_k)=map_ext_keys(change);
         let change_pub_k=map_ext_keys(change).1;
         
@@ -96,7 +96,7 @@ impl BtcK{
 
         let tx_out=vec![
                 TxOut{ value: amount, script_pubkey:Address::from_str(&send_to).unwrap().script_pubkey()},
-                TxOut{ value: (value-tip), script_pubkey:map_addr(change_pub_k).script_pubkey() }
+                TxOut{ value: (value-(tip+amount)), script_pubkey:map_addr(change_pub_k).script_pubkey() }
             ];
 
         let mut transaction =Transaction{
@@ -138,6 +138,8 @@ impl BtcK{
         }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>(); 
 
         psbt.clone().finalize(&self.secp).unwrap();
+
+        self.client.transaction_broadcast(&psbt.clone().extract_tx()).unwrap();
         dbg!(psbt);
     }
 
