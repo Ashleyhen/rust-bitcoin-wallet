@@ -24,9 +24,9 @@ fn _test_transactionn(){
 	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
 		let to_addr="tb1qgdzfpafdhdgkfum7mnemk4e2vm2rx63ltd8z7t";
 	
-	let client_with_schema=ClientWithSchema::new(P2TR::new(Some(seed.to_string())) );
-	client_with_schema.print_balance(0,1);
+	let client_with_schema=ClientWithSchema::new(P2PWKh::new(Some(seed.to_string())) );
+	client_with_schema.print_balance(0,5);
 
-		// client_with_schema.submitTx(to_addr.to_string(), 1000, 0, 5);
+		client_with_schema.submitTx(to_addr.to_string(), 1000, 0, 5);
 		
 }
