@@ -1,0 +1,315 @@
+[src/btc_wallet/mod.rs:133] psbt.clone() = PartiallySignedTransaction {
+    unsigned_tx: Transaction {
+        version: 1,
+        lock_time: 0,
+        input: [
+            TxIn {
+                previous_output: OutPoint {
+                    txid: 57ec4755c2bef7bc8730cf5d1bb275904032cc7a6b53ddd3028365950112c537,
+                    vout: 1,
+                },
+                script_sig: Script(),
+                sequence: 4294967295,
+                witness: Witness {
+                    content: [],
+                    witness_elements: 0,
+                    last: 0,
+                    second_to_last: 0,
+                },
+            },
+        ],
+        output: [
+            TxOut {
+                value: 800,
+                script_pubkey: Script(OP_PUSHNUM_1 OP_PUSHBYTES_32 e6faf4f6076a396c32fb3e5d04767279f2d44f7acc88dcc72ca7d86656fe7018),
+            },
+            TxOut {
+                value: 0,
+                script_pubkey: Script(OP_PUSHNUM_1 OP_PUSHBYTES_32 bad13233409567ab02dbdab8246a2f6094bda195b62ed0d6b2f6c9a00f350349),
+            },
+        ],
+    },
+    version: 0,
+    xpub: {
+        ExtendedPubKey {
+            network: Testnet,
+            depth: 5,
+            parent_fingerprint: a99e5f34,
+            child_number: Normal {
+                index: 0,
+            },
+            public_key: PublicKey(
+                cbee418da3e40463a65bc8a3ebb1b662363edaa2a9bc35ffdf8bab86e11a919506310b1a3cb93a516a5784894e47a5eaf281c8370fa0f7dfb04e54ccc84ded6e,
+            ),
+            chain_code: d3e85c1c4589ffc7036bee3049ac1f6082a9ea72b22d0d974d3a399679135e79,
+        }: (
+            4ec9ad8c,
+            m/341h/0h/0h/0/0,
+        ),
+    },
+    proprietary: {},
+    unknown: {},
+    inputs: [
+        Input {
+            non_witness_utxo: Some(
+                Transaction {
+                    version: 1,
+                    lock_time: 0,
+                    input: [
+                        TxIn {
+                            previous_output: OutPoint {
+                                txid: bc8e7e4eb350acd2988aa3bf99cf3833dbd6c1c47205d1cb80327ef0415ad9a9,
+                                vout: 1,
+                            },
+                            script_sig: Script(),
+                            sequence: 4294967295,
+                            witness: Witness {
+                                content: [
+                                    72,
+                                    48,
+                                    69,
+                                    2,
+                                    33,
+                                    0,
+                                    154,
+                                    3,
+                                    161,
+                                    112,
+                                    73,
+                                    236,
+                                    80,
+                                    232,
+                                    224,
+                                    117,
+                                    104,
+                                    174,
+                                    178,
+                                    242,
+                                    16,
+                                    145,
+                                    246,
+                                    223,
+                                    1,
+                                    120,
+                                    30,
+                                    90,
+                                    45,
+                                    201,
+                                    234,
+                                    254,
+                                    74,
+                                    67,
+                                    175,
+                                    178,
+                                    116,
+                                    161,
+                                    2,
+                                    32,
+                                    6,
+                                    99,
+                                    200,
+                                    66,
+                                    93,
+                                    71,
+                                    21,
+                                    228,
+                                    233,
+                                    227,
+                                    177,
+                                    161,
+                                    87,
+                                    213,
+                                    97,
+                                    252,
+                                    180,
+                                    196,
+                                    233,
+                                    8,
+                                    24,
+                                    128,
+                                    201,
+                                    49,
+                                    180,
+                                    69,
+                                    67,
+                                    126,
+                                    173,
+                                    201,
+                                    75,
+                                    108,
+                                    1,
+                                    33,
+                                    3,
+                                    178,
+                                    110,
+                                    101,
+                                    62,
+                                    96,
+                                    185,
+                                    253,
+                                    212,
+                                    103,
+                                    178,
+                                    35,
+                                    213,
+                                    231,
+                                    132,
+                                    13,
+                                    149,
+                                    118,
+                                    159,
+                                    197,
+                                    85,
+                                    92,
+                                    169,
+                                    194,
+                                    95,
+                                    3,
+                                    151,
+                                    191,
+                                    24,
+                                    142,
+                                    172,
+                                    150,
+                                    178,
+                                ],
+                                witness_elements: 2,
+                                last: 73,
+                                second_to_last: 0,
+                            },
+                        },
+                    ],
+                    output: [
+                        TxOut {
+                            value: 1000,
+                            script_pubkey: Script(OP_PUSHNUM_1 OP_PUSHBYTES_32 e6faf4f6076a396c32fb3e5d04767279f2d44f7acc88dcc72ca7d86656fe7018),
+                        },
+                        TxOut {
+                            value: 1813811,
+                            script_pubkey: Script(OP_0 OP_PUSHBYTES_20 eb8875b30513f00d70359ce02cdb8433304335c3),
+                        },
+                    ],
+                },
+            ),
+            witness_utxo: Some(
+                TxOut {
+                    value: 1000,
+                    script_pubkey: Script(OP_PUSHNUM_1 OP_PUSHBYTES_32 e6faf4f6076a396c32fb3e5d04767279f2d44f7acc88dcc72ca7d86656fe7018),
+                },
+            ),
+            partial_sigs: {},
+            sighash_type: None,
+            redeem_script: None,
+            witness_script: None,
+            bip32_derivation: {},
+            final_script_sig: None,
+            final_script_witness: None,
+            ripemd160_preimages: {},
+            sha256_preimages: {},
+            hash160_preimages: {},
+            hash256_preimages: {},
+            tap_key_sig: Some(
+                SchnorrSig {
+                    sig: Signature(677b7ab5c8abdf646525b12b09cea9dc9ad67cf457250188bb2766b6632e9d1a02c452f15b5c9bc07c53869f67b3f36dc7df9e687eb66fe7feda97d2cec5268f),
+                    hash_ty: All,
+                },
+            ),
+            tap_script_sigs: {},
+            tap_scripts: {},
+            tap_key_origins: {},
+            tap_internal_key: Some(
+                XOnlyPublicKey(
+                    cbee418da3e40463a65bc8a3ebb1b662363edaa2a9bc35ffdf8bab86e11a919506310b1a3cb93a516a5784894e47a5eaf281c8370fa0f7dfb04e54ccc84ded6e,
+                ),
+            ),
+            tap_merkle_root: None,
+            proprietary: {},
+            unknown: {},
+        },
+    ],
+    outputs: [
+        Output {
+            redeem_script: None,
+            witness_script: None,
+            bip32_derivation: {
+                PublicKey(
+                    270821629aeb7ef9b5b913b347e71f91f035577af215fe5bb8ddf6e062ecb66c6d3046fdcec1fa494319d2a680cc6ca1f70dd99ee54076e5dfdb048fdd2534be,
+                ): (
+                    fda675be,
+                    m/341h/0h/0h/0/1,
+                ),
+            },
+            tap_internal_key: None,
+            tap_tree: None,
+            tap_key_origins: {},
+            proprietary: {},
+            unknown: {},
+        },
+    ],
+}
+
+      [0] = 203
+      [1] = 238
+      [2] = 65
+      [3] = 141
+      [4] = 163
+      [5] = 228
+      [6] = 4
+      [7] = 99
+      [8] = 166
+      [9] = 91
+      [10] = 200
+      [11] = 163
+      [12] = 235
+      [13] = 177
+      [14] = 182
+      [15] = 98
+      [16] = 54
+      [17] = 62
+      [18] = 218
+      [19] = 162
+      [20] = 169
+      [21] = 188
+      [22] = 53
+      [23] = 255
+      [24] = 223
+      [25] = 139
+      [26] = 171
+      [27] = 134
+      [28] = 225
+      [29] = 26
+      [30] = 145
+      [31] = 149
+      [32] = 6
+      [33] = 49
+      [34] = 11
+      [35] = 26
+      [36] = 60
+      [37] = 185
+      [38] = 58
+      [39] = 81
+      [40] = 106
+      [41] = 87
+      [42] = 132
+      [43] = 137
+      [44] = 78
+      [45] = 71
+      [46] = 165
+      [47] = 234
+      [48] = 242
+      [49] = 129
+      [50] = 200
+      [51] = 55
+      [52] = 15
+      [53] = 160
+      [54] = 247
+      [55] = 223
+      [56] = 176
+      [57] = 78
+      [58] = 84
+      [59] = 204
+      [60] = 200
+      [61] = 77
+      [62] = 237
+      [63] = 110
+
