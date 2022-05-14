@@ -73,14 +73,19 @@ let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &key_pair.public_key
             new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
       new_input.tap_key_sig=Some(schnorr_sig.clone());
       new_input.tap_key_origins=tap_key_origin;
-let tx_out=TxOut{
-    value: input_outpoints.clone().witness_utxo.unwrap().value,
-    script_pubkey: Script::new_v1_p2tr(&secp, ext_prv.to_keypair(secp).public_key(), None),
-};
-new_input.witness_utxo=Some(tx_out);
+    let tx_out=TxOut{
+        value: input_outpoints.clone().witness_utxo.unwrap().value,
+        script_pubkey: Script::new_v1_p2tr(&secp, ext_prv.to_keypair(secp).public_key(), None),
+    };
+    new_input.witness_utxo=Some(tx_out.clone());
 
+    self.0.secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_keypair(&ext_prv.to_keypair(secp))).unwrap();
+    println!("signed_shnorr");
+dbg!(signed_shnorr); 
+dbg!(msg); 
+dbg!(&XOnlyPublicKey::from_keypair(&ext_prv.to_keypair(secp))); 
 
-
+ 
       return new_input;
 
   }
