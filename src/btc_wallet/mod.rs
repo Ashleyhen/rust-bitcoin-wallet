@@ -88,6 +88,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         
     // value of our utxo that we have control over since we only control one I will just get the next one 
         let value=input_vec.iter().map(|tx|tx.witness_utxo.as_ref().unwrap().value).next().unwrap();
+        // let value=1000;
 
         let change_amt=value-(amount+tip);
         // creates a transaction for the recipent

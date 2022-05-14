@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey};
-use miniscript::Interpreter;
+use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey}};
+use miniscript::{Interpreter, ToPublicKey};
 
 use super::{AddressSchema, ClientWallet, NETWORK, UnlockPreviousUTXO, WalletKeys};
 
@@ -30,8 +30,12 @@ impl UnlockPreviousUTXO for P2TR{
       let mut input_tx= Input::default();
       let tr_script=Script::new_v1_p2tr(&self.0.secp,ext_pub.to_x_only_pub(),None);
       input_tx.non_witness_utxo=Some((*previous_tx).clone());
+      
       input_tx.witness_utxo=Some(previous_tx.output.iter()
       .filter(|w|w.script_pubkey.eq(&tr_script)).next().unwrap().clone());
+// input_tx.witness_utxo.unwrap().script_pubkey
+
+// Script::new_v1_p2tr(&secp, key_pair.public_key(), None);
       return input_tx;
     }
 
@@ -39,6 +43,8 @@ impl UnlockPreviousUTXO for P2TR{
       let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_keys;
       let secp=&self.0.secp;
       let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
+
+
       let out_tx=prev_transaction.output.iter().filter(|out|
         Address::p2tr(secp, signer_pub_k.to_x_only_pub(), None, NETWORK)
         .eq(&Address::from_script(&out.script_pubkey,NETWORK).unwrap())).map(|out|out.clone()).collect::<Vec<TxOut>>();
@@ -47,6 +53,7 @@ let script_list=out_tx.iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, 
         tap_key_origin.insert
         (signer_pub_k.to_x_only_pub(),
         (script_list,(signer_finger_p.clone(),signer_dp.clone())));
+
         // Interpreter::verify_sig(&self, secp, tx, input_idx, prevouts, sig) ;
         // PublicKey::f
         
@@ -56,6 +63,7 @@ let script_list=out_tx.iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, 
               i, &Prevouts::All(&out_tx), SchnorrSighashType::Default).unwrap();
 let msg=Message::from_slice(&sighash).unwrap();
 let key_pair=&ext_prv.to_keypair(secp);
+
 let signed_shnorr=secp.sign_schnorr(&msg, &key_pair);
 let schnorr_sig=SchnorrSig{ sig:signed_shnorr ,hash_ty: SchnorrSighashType::Default };
 let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &key_pair.public_key()).is_ok();
@@ -65,6 +73,13 @@ let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &key_pair.public_key
             new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
       new_input.tap_key_sig=Some(schnorr_sig.clone());
       new_input.tap_key_origins=tap_key_origin;
+let tx_out=TxOut{
+    value: input_outpoints.clone().witness_utxo.unwrap().value,
+    script_pubkey: Script::new_v1_p2tr(&secp, ext_prv.to_keypair(secp).public_key(), None),
+};
+new_input.witness_utxo=Some(tx_out);
+
+
 
       return new_input;
 
