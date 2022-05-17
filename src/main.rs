@@ -22,7 +22,7 @@ fn _test_transactionn(){
 		let to_addr="tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz";
 	
 	let client_with_schema=ClientWithSchema::new(P2TR::new(Some(seed.to_string())) );
-	client_with_schema.print_balance(0,1);
+	client_with_schema.print_balance(0,0);
 
 		client_with_schema.submit_tx(to_addr.to_string(), 800, 0, 0);
 		

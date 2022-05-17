@@ -1,7 +1,7 @@
 use std::{str::FromStr, ops::Add, sync::Arc, collections::BTreeMap};
 
 use bdk::{KeychainKind, bitcoin::blockdata::transaction};
-use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, ChildNumber, KeySource}, sighash::SighashCache}, Address, psbt::{Input, Output, PartiallySignedTransaction}, secp256k1::{Secp256k1, All, constants, SecretKey, rand::rngs::OsRng, PublicKey, Message}, Network, Script, OutPoint, Witness, TxIn, Transaction, TxOut, Sighash, EcdsaSig, EcdsaSighashType};
+use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, ChildNumber, KeySource}, sighash::SighashCache, bip143::SigHashCache, taproot::{TapLeafHash, LeafVersion}}, Address, psbt::{Input, Output, PartiallySignedTransaction}, secp256k1::{Secp256k1, All, constants, SecretKey, rand::rngs::OsRng, PublicKey, Message}, Network, Script, OutPoint, Witness, TxIn, Transaction, TxOut, Sighash, EcdsaSig, EcdsaSighashType};
 use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
@@ -129,6 +129,9 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             inputs: utxo_func.into_iter().enumerate().map(|(i,func)|
                 func.prv_psbt_input(&mut transaction, &input_vec[i], i,&(signer_pub_k,(signer_finger_p, signer_dp.clone())))).collect::<Vec<Input>>(),
         };
+        ;
+// psbt.sighash_msg(0, &mut SighashCache::new(&mut transaction), 
+// Some(TapLeafHash::from_script(&input_vec[0].witness_utxo.as_ref().unwrap().script_pubkey, LeafVersion::TapScript))).unwrap();
     // signs our the spending inputs to unlock from the previous script
     
         // psbt.inputs[0].partial_sigs=input_vec.clone().iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(|(i,input)|{
