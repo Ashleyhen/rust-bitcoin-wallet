@@ -52,20 +52,20 @@ impl UnlockPreviousUTXO for P2TR{
           
 return TxOut{
         value: f.value,
-        // script_pubkey: Script::new_v1_p2tr(&secp, signer_pub_k.to_x_only_pub(), None),
-        script_pubkey: Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(
-          XOnlyPublicKey::from_slice(&f.script_pubkey[2..]).unwrap()))
+	// script_pubkey: f.script_pubkey.to_v1_p2tr(secp, signer_pub_k.to_x_only_pub()),
+        // script_pubkey: Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(
+        //   XOnlyPublicKey::from_slice(&f.script_pubkey[2..]).unwrap()))
+        script_pubkey  :Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub()))
 
     };
         })
         .collect::<Vec<TxOut>>()
         ;
-   let temp=Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub()));
-    let tx_out=TxOut{
-        value: input_outpoints.clone().witness_utxo.unwrap().value,
-        // script_pubkey: Script::new_v1_p2tr(&secp, signer_pub_k.to_x_only_pub(), None),
-        script_pubkey:temp
-    };
+    // let tx_out=TxOut{
+    //     value: input_outpoints.clone().witness_utxo.unwrap().value,
+    //     // script_pubkey: Script::new_v1_p2tr(&secp, signer_pub_k.to_x_only_pub(), None),
+    //     script_pubkey:Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub()))
+    // };
     
         
         let mut tap_key_origin=BTreeMap::new();
@@ -81,7 +81,9 @@ let script_list=out_tx_list.clone().iter().map(|f|TapLeafHash::from_script(&f.sc
         
       let mut new_input=input_outpoints.clone() ;
 // let a=*out_tx_list.clone().iter().next().unwrap();
-    new_input.witness_utxo=Some(out_tx_list.iter().next().map(|t|t.clone()).unwrap());
+let temp=Script::new_v1_p2tr_tweaked(   TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub()));
+let uxto=out_tx_list.iter().next().map(|f|f.clone()).unwrap();
+    new_input.witness_utxo=Some(uxto.clone());
       let sighash=SighashCache::new(&mut prev_transaction.clone()).taproot_key_spend_signature_hash(
               i, &Prevouts::All(&out_tx_list), SchnorrSighashType::Default).unwrap();
               
@@ -94,7 +96,6 @@ let schnorr_sig=SchnorrSig{ sig:signed_shnorr ,hash_ty: SchnorrSighashType::Defa
 
 let key=KeySigPair::Schnorr(signer_pub_k.to_x_only_pub(),schnorr_sig );
 
-let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &key_pair.public_key()).is_ok();
 
 // BitcoinKey;
             new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
@@ -105,12 +106,13 @@ let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &key_pair.public_key
 
    
     
-      let x_only_2=XOnlyPublicKey::from_slice(&tx_out.script_pubkey[2..]).unwrap();
 
       let x_only=XOnlyPublicKey::from_slice(&new_input.clone().witness_utxo.unwrap().script_pubkey[2..]).unwrap();
     
 let x=signer_pub_k.to_x_only_pub();
-    self.0.secp.verify_schnorr(&signed_shnorr, &msg, &x_only_2).unwrap();
+
+let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
+    // self.0.secp.verify_schnorr(&signed_shnorr, &msg, &x_only_2).unwrap();
       // [29] = 244
       // [30] = 250
       // [31] = 230
