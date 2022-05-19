@@ -53,7 +53,7 @@ where
         change_addr:Script,
         input:Vec<TxIn>,
         previous_tx_list:Vec<Transaction>,
-        hello: Hello 
+        hello: &mut Hello 
     )->Transaction
  where 
     F:Sized,
@@ -63,16 +63,13 @@ where
     {
  hello.tr=Box::new(|a:&TxOut|{*a});
         
-        Hello::test();
-       hello.test(); 
-        hello.test();
-        <impl Hello as Temp>::hello();
         
-        hello.temp(|a|{
         let tip:u64=200;
         let output:(Vec<TxOut>)=previous_tx_list.iter().flat_map(|previous_tx|{
         let value=self.find_relevent_utxo(previous_tx,tx_out_mapping).iter().map(|v|v.value).count() as u64;
         let change_amt=value-(amount+tip);
+        let tx_out=TxOut::default();
+ hello.tr(tx_out);
         return vec![
             if change_amt>=tip { 
                 Some(TxOut{ value: change_amt, script_pubkey:change_addr.clone() })
@@ -85,23 +82,25 @@ where
     
         return Transaction{ version: 0, lock_time: 0, input, output };
  
-        })
-        let tip:u64=200;
-        let output:(Vec<TxOut>)=previous_tx_list.iter().flat_map(|previous_tx|{
-        let value=self.find_relevent_utxo(previous_tx,tx_out_mapping).iter().map(|v|v.value).count() as u64;
-        let change_amt=value-(amount+tip);
-        return vec![
-            if change_amt>=tip { 
-                Some(TxOut{ value: change_amt, script_pubkey:change_addr.clone() })
-            } else {None},
-            Some(TxOut{ value: amount, script_pubkey:Address::from_str(&to_addr).unwrap().script_pubkey()})
-        ].iter().filter(|f|f.is_some()).map(|f|f.unwrap());
+        }
     
-    }).collect(); 
-    // send_out; 
-    
-        return Transaction{ version: 0, lock_time: 0, input, output };
     }
+    //     let tip:u64=200;
+    //     let output:(Vec<TxOut>)=previous_tx_list.iter().flat_map(|previous_tx|{
+    //     let value=self.find_relevent_utxo(previous_tx,tx_out_mapping).iter().map(|v|v.value).count() as u64;
+    //     let change_amt=value-(amount+tip);
+    //     return vec![
+    //         if change_amt>=tip { 
+    //             Some(TxOut{ value: change_amt, script_pubkey:change_addr.clone() })
+    //         } else {None},
+    //         Some(TxOut{ value: amount, script_pubkey:Address::from_str(&to_addr).unwrap().script_pubkey()})
+    //     ].iter().filter(|f|f.is_some()).map(|f|f.unwrap());
+    
+    // }).collect(); 
+    // // send_out; 
+    
+    //     return Transaction{ version: 0, lock_time: 0, input, output };
+    // }
     
     pub fn find_relevent_utxo<F>(&self, previous_tx:&Transaction, tx_out_mapping:F)->Vec<TxOut>
             where Self:Sized, F:Copy, F:FnMut(&bitcoin::TxOut)->TxOut {
