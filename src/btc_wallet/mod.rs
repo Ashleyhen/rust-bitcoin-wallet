@@ -142,7 +142,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         //  finailize the transaction
         let complete=psbt.clone().finalize(&secp).unwrap();
         // self.rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
-        dbg!(complete.clone());
+        dbg!(complete.extract_tx().clone());
     }
 
     pub fn print_balance(&self,recieve:u32, change:u32){
