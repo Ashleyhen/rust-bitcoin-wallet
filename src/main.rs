@@ -19,7 +19,7 @@ fn main() {
 fn _test_transactionn(){
 	// person 1 
 	let seed= "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
-		let to_addr="tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz";
+		let to_addr="tb1p95xjusgkgh2zqhyr5q9hzwv607yc5dncnsastm9xygmmuu4xrcqs53468m";
 	
 	let client_with_schema=ClientWithSchema::new(P2PWKh::new(Some(seed.to_string())) );
 	client_with_schema.print_balance(0,6);
