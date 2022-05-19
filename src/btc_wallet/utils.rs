@@ -28,7 +28,7 @@ where
 }
 
  struct Hello{
-t:Box<dyn FnMut(&bitcoin::TxOut)->TxOut>
+pub tr:Box<dyn FnMut(&bitcoin::TxOut)->TxOut>
  }
  
     fn temp<F>(tx_out_mapping:F)->Transaction
@@ -61,7 +61,7 @@ where
     F:FnMut(&bitcoin::TxOut)->TxOut
     
     {
-        (hello.t)(|a|{*a});
+ hello.tr=Box::new(|a:&TxOut|{*a});
         
         Hello::test();
        hello.test(); 
