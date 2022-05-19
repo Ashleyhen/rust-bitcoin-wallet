@@ -1,32 +1,27 @@
 use std::{str::FromStr, ops::Add, sync::Arc, collections::BTreeMap};
 
-use bdk::{KeychainKind, bitcoin::blockdata::transaction};
+use bdk::KeychainKind;
 use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, ChildNumber, KeySource}, sighash::SighashCache, bip143::SigHashCache, taproot::{TapLeafHash, LeafVersion}}, Address, psbt::{Input, Output, PartiallySignedTransaction}, secp256k1::{Secp256k1, All, constants, SecretKey, rand::rngs::OsRng, PublicKey, Message}, Network, Script, OutPoint, Witness, TxIn, Transaction, TxOut, Sighash, EcdsaSig, EcdsaSighashType};
 use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
-use self::storage::UxtoStorage;
-
-
+use crate::btc_wallet::utils::UnlockAndSend;
+mod utils;
 
 pub type WalletKeys=(ExtendedPubKey,KeySource);
-pub type RecieveChange=(u32,u32);
 pub mod p2wpkh;
 pub mod p2tr;
-mod storage;
 
 pub trait AddressSchema{
     fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> Address;
     fn wallet_purpose(&self)-> u32;
     fn new(seed: Option<String>)->Self;
     fn to_wallet(&self)->ClientWallet;
-}
-
-pub trait UnlockPreviousUTXO{
-    fn prv_tx_input(&self,wallet_keys:&ExtendedPubKey,previous_tx:&Transaction ) ->Input;
-    // fn prv_psbt_input(&self,prev_transaction:&mut Transaction,index_input:usize,input:&Input,dp:&DerivationPath)->EcdsaSig;
+    fn prv_tx_input(&self,amount:u64,to_addr:String,change:Script,wallet_keys:&WalletKeys,previous_tx:Vec<Transaction>,current_input:Vec<TxIn> ) ->(Vec<Input>, Transaction);
     fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
 }
+
+
 
 
 #[derive(Clone)]
@@ -52,63 +47,33 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         let tip:u64=200;
         let secp=&self.schema.to_wallet().secp;
         let wallet=self.schema.to_wallet();
-        let (signer_pub_k,(signer_finger_p, signer_dp))=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change);
+        let signer=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change);
+        let (signer_pub_k,(signer_finger_p,signer_dp))=signer.clone();
         let (change_pub_k,(change_finger_p, change_dp))=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change+1);
         let signer_addr=self.schema.map_ext_keys(&signer_pub_k);
         let change_addr=self.schema.map_ext_keys(&change_pub_k);
-        // dbg!(signer_addr.script_pubkey().clone());
+
         let history=Arc::new(self.rpc_call.script_get_history(&signer_addr.script_pubkey()).expect("address history call failed"));
 
-		let tx_in=history.iter().enumerate().map(|(index,h)|
-			TxIn{
+		let tx_in=history.iter().enumerate().map(|(index,h)|{
+			return TxIn{
 				previous_output:OutPoint::new(h.tx_hash, index as u32+1),
 				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
 			}
+
+        }
 		).collect::<Vec<TxIn>>();
 		
 		let previous_tx=Arc::new(tx_in.iter()
         .map(|tx_id|self.rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
         .collect::<Vec<Transaction>>());
-        // the above loads in the previous transactions
-
-        // loads in our uxto that we control
-    let  (utxo_func, input_vec):(Vec<Arc<dyn UnlockPreviousUTXO>>,Vec<Input>)=previous_tx.iter().map(|previous_tx|{
-            return  previous_tx.output.iter()
-             .filter(|tx_in|{ 
-                return tx_in.script_pubkey.eq(&self.schema.map_ext_keys(&signer_pub_k).script_pubkey());
-             }).map(|tx_out|{
-            let prv_utxo_func =wallet.clone().unlock_tx_functions(tx_out.script_pubkey.clone() );
-                return (prv_utxo_func.clone(),prv_utxo_func.prv_tx_input(&signer_pub_k,previous_tx ));
-            }).unzip();
-        }).reduce(|previous,current|
-            return ([previous.0,current.0].concat(),[previous.1,current.1].concat())
-        ).unwrap();
-        
-    // value of our utxo that we have control over since we only control one I will just get the next one 
-        let value=input_vec.iter().map(|tx|tx.witness_utxo.as_ref().unwrap().value).next().unwrap();
-        // let value=1000;
-
-        let change_amt=value-(amount+tip);
-        // creates a transaction for the recipent
-        // and another transaction for the change the rest of the uxto will be sent as a tip  
-        let tx_out=vec![
-            if change_amt>=tip { 
-                Some(TxOut{ value: change_amt, script_pubkey:change_addr.script_pubkey() })
-            } else {None},
-            Some(TxOut{ value: amount, script_pubkey:Address::from_str(&to_addr).unwrap().script_pubkey()})
-            ].iter()
-        .filter(|f|f.is_some())
-        .map(|f|f.clone().unwrap()).collect();
-
-
-        let mut transaction =Transaction{
-                version: 0,
-                lock_time: 0,
-                input: tx_in,
-                output: tx_out
-            };
+      
+            let unlock_and_send=UnlockAndSend::new(self.schema, signer.clone());
+        let current_tx= |a:&dyn FnMut(&bitcoin::TxOut)|unlock_and_send.initialize(amount, to_addr, change_addr.script_pubkey(), tx_in, previous_tx.to_vec(),a);
+let (input_vec, current_tx)=self.schema.prv_tx_input(amount,to_addr,change_addr.script_pubkey(),&signer,previous_tx.to_vec(),tx_in );
+       
             let mut xpub =BTreeMap::new();
 
         // the current public key and derivation path   
@@ -120,23 +85,14 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 
         // we have all the infomation for the partially signed transaction 
         let mut psbt=PartiallySignedTransaction{
-            unsigned_tx: transaction.clone(),
+            unsigned_tx: current_tx.clone(),
             version: 1,
             xpub,
             proprietary: BTreeMap::new(),
             unknown: BTreeMap::new(),
             outputs: vec![output],
-            inputs: utxo_func.into_iter().enumerate().map(|(i,func)|
-                func.prv_psbt_input(&mut transaction, &input_vec[i], i,&(signer_pub_k,(signer_finger_p, signer_dp.clone())))).collect::<Vec<Input>>(),
+            inputs:input_vec
         };
-        ;
-// psbt.sighash_msg(0, &mut SighashCache::new(&mut transaction), 
-// Some(TapLeafHash::from_script(&input_vec[0].witness_utxo.as_ref().unwrap().script_pubkey, LeafVersion::TapScript))).unwrap();
-    // signs our the spending inputs to unlock from the previous script
-    
-        // psbt.inputs[0].partial_sigs=input_vec.clone().iter().filter(|w|w.witness_utxo.is_some()).enumerate().map(|(i,input)|{
-        //     return (signer_pub_k.to_pub().to_public_key(),utxo_func[i].clone().prv_psbt_input(&mut transaction, i, input, &signer_dp));
-        // }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>(); 
 
         // dbg!(psbt.clone());
         //  finailize the transaction
@@ -167,14 +123,7 @@ impl ClientWallet{
             }
         }
 
-pub fn unlock_tx_functions(self, script:Script)->Arc< dyn UnlockPreviousUTXO>{
-    if script.is_v0_p2wpkh() {
-        return  Arc::new(p2wpkh::P2PWKh(self));
-    }else if script.is_v1_p2tr(){
-        return Arc::new(p2tr::P2TR(self));
-    }
-    panic!("script type unknown");
-}
+
 
  fn create_wallet(&self,purpose:u32, recieve:u32,index:u32) -> WalletKeys {
 		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.

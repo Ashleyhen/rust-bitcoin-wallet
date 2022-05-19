@@ -1,12 +1,12 @@
 use std::{str::FromStr, collections::BTreeMap, io::Read, sync::Arc};
 
-use bdk::template::P2Pkh;
-use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::SighashCache}, psbt::{Output, Input}, Address, Transaction, TxOut, Script, blockdata::{script::Builder, opcodes}, secp256k1::{SecretKey, Message}, EcdsaSig, EcdsaSighashType, Sighash};
+use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::SighashCache}, psbt::{Output, Input}, Address, Transaction, TxOut, Script, blockdata::{script::Builder, opcodes}, secp256k1::{SecretKey, Message}, EcdsaSig, EcdsaSighashType, Sighash, TxIn};
 use miniscript::ToPublicKey;
 
 
-use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, ClientWithSchema, UnlockPreviousUTXO};
+use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::UnlockAndSend};
 
+#[derive( Clone)]
 pub struct P2PWKh(pub ClientWallet) ;
 
 impl AddressSchema for P2PWKh{
@@ -26,16 +26,42 @@ impl AddressSchema for P2PWKh{
     fn wallet_purpose(&self)-> u32 {
         return 84;
     }
-}
 
-impl UnlockPreviousUTXO for P2PWKh {
-    fn prv_tx_input(&self,ext_pub:&ExtendedPubKey,previous_tx:&Transaction) -> Input {
-        let mut input_tx=Input::default();
-        input_tx.non_witness_utxo=Some((*previous_tx).clone());
-        input_tx.witness_utxo=Some(previous_tx.output.iter()
-        .filter(|w|w.script_pubkey.eq(&Script::new_v0_p2wpkh(&ext_pub.public_key.to_public_key().wpubkey_hash().unwrap()))).next().unwrap().clone());
+    fn prv_tx_input(&self,amount:u64, to_addr:String,change_addr:Script,wallet_keys:&WalletKeys,previous_tx_list:Vec<Transaction>, current_input:Vec<TxIn>) -> (Vec<Input>,Transaction) {
+
+        let (signer_pub_k,(_, signer_dp))=wallet_keys;
+        let secp=&self.0.secp;
+        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, signer_dp).unwrap();
+        let unlock_and_send=UnlockAndSend::new(self.clone(), (*wallet_keys).clone());
+        let tx_out_mapping=|tx_out:&TxOut|tx_out.clone();
+        let current_tx= unlock_and_send.initialize(amount, to_addr, change_addr, current_input, previous_tx_list.clone()  );
+
+        // confirm
+        let input_list:Vec<Input>=previous_tx_list.iter().enumerate().map(|(i, previous_tx)|{
+            let mut b_tree=BTreeMap::new();
+            let mut input_tx=Input::default();
+                input_tx.non_witness_utxo=Some(previous_tx.clone());
+            unlock_and_send.find_relevent_utxo(previous_tx, tx_out_mapping).iter().for_each(|witness|{
+                input_tx.witness_utxo=Some(witness.clone());
+                let sig_hash=SighashCache::new(&mut current_tx.clone())
+                .segwit_signature_hash( i, &p2wpkh_script_code(&witness.script_pubkey), witness.value, EcdsaSighashType::All).unwrap();
+                let msg=Message::from_slice(&sig_hash).unwrap();
+                let sig=EcdsaSig::sighash_all(secp.sign_ecdsa(&msg,&ext_prv.private_key));
+                let pub_key=signer_pub_k.public_key.to_public_key();
+                b_tree.insert(pub_key,sig);
+            });
+        input_tx.partial_sigs=b_tree;
         return input_tx;
-    }
+        }).collect();
+        return (input_list,current_tx);
+        }
+
+       
+        
+        
+
+
+
 
     fn prv_psbt_input(&self,prev_transaction:&mut Transaction,old_input: &Input,i:usize,wallet_keys:&WalletKeys)->Input {
 
@@ -55,7 +81,9 @@ impl UnlockPreviousUTXO for P2PWKh {
         return new_input;
     }
 
+
 }
+
 
 
 
