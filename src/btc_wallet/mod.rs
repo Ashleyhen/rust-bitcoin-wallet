@@ -138,11 +138,11 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         //     return (signer_pub_k.to_pub().to_public_key(),utxo_func[i].clone().prv_psbt_input(&mut transaction, i, input, &signer_dp));
         // }).collect::<BTreeMap<bitcoin::PublicKey,EcdsaSig>>(); 
 
-        dbg!(psbt.clone());
+        // dbg!(psbt.clone());
         //  finailize the transaction
         let complete=psbt.clone().finalize(&secp).unwrap();
         // self.rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
-        dbg!(complete.extract_tx().clone());
+        dbg!(complete.clone());
     }
 
     pub fn print_balance(&self,recieve:u32, change:u32){
