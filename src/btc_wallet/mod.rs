@@ -21,12 +21,11 @@ pub trait AddressSchema{
     fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
     fn to_wallet(&self)->ClientWallet;
     fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->(Vec<Input>, Transaction);
-    fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
+    // fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
     fn map_tx( &self,tx_out:&TxOut)->  TxOut;
 // Item=&'a TxOut
 }
 
-type OutPutMap<'a>= Box<(dyn 'a + FnMut(TxOutMap)->Vec<TxOut>)>;
 
 
 
@@ -36,7 +35,7 @@ pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed, recieve:u32, change:u32
 #[derive(Clone)]
 pub struct ClientWithSchema<T:AddressSchema>{
    schema:T,
-   rpc_call:Arc<Client>,
+   electrum_rpc_call:Arc<Client>,
 }
 type Seed=[u8;constants::SECRET_KEY_SIZE];
 pub const NETWORK: bitcoin::Network = Network::Testnet;
@@ -46,25 +45,35 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 
         return ClientWithSchema {
         schema,
-         rpc_call:Arc::new(Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!"))
+         electrum_rpc_call:Arc::new(Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!"))
         };
     }
 
-    pub fn submit_tx(&self,to_addr:String,amount:u64, recieve:u32,change:u32){
-        let tip:u64=200;
+    pub fn print_balance(&self,recieve:u32, change:u32){
+        let (ext_pub,_)=self.schema.to_wallet().create_wallet(self.schema.wallet_purpose(), recieve, change);
+        let address=self.schema.map_ext_keys(&ext_pub);
+        let get_balance=self.electrum_rpc_call.script_get_balance(&address.script_pubkey()).unwrap();
+        println!("address: {}",address);
+        println!("confirmed: {}",get_balance.confirmed);
+        println!("unconfirmed: {}",get_balance.unconfirmed)
+    }
+
+    pub fn submit_tx(&self,to_addr:String,amount:u64){
         let secp=&self.schema.to_wallet().secp;
         let wallet=self.schema.to_wallet();
-        let signer=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change);
+        let signer=wallet.create_wallet(self.schema.wallet_purpose(),wallet.recieve,wallet.change);
         let (signer_pub_k,(signer_finger_p,signer_dp))=signer.clone();
-        let (change_pub_k,(change_finger_p, change_dp))=wallet.create_wallet(self.schema.wallet_purpose(), recieve, change+1);
+        let (change_pub_k,(change_finger_p, change_dp))=wallet.create_wallet(self.schema.wallet_purpose(), wallet.recieve, wallet.change+1);
         let signer_addr=self.schema.map_ext_keys(&signer_pub_k);
         let change_addr=self.schema.map_ext_keys(&change_pub_k);
 
-        let history=Arc::new(self.rpc_call.script_get_history(&signer_addr.script_pubkey()).expect("address history call failed"));
+        let history=Arc::new(self.electrum_rpc_call.script_list_unspent(&signer_addr.script_pubkey()).expect("address history call failed"));
 
 		let tx_in=history.iter().enumerate().map(|(index,h)|{
+            
+            
 			return TxIn{
-				previous_output:OutPoint::new(h.tx_hash, index as u32+1),
+				previous_output:OutPoint::new(h.tx_hash, h.tx_pos.try_into().unwrap()),
 				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
@@ -74,7 +83,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 		).collect::<Vec<TxIn>>();
 		
 		let previous_tx=tx_in.iter()
-        .map(|tx_id|self.rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
+        .map(|tx_id|self.electrum_rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
         .collect::<Vec<Transaction>>();
       
         /* 
@@ -118,20 +127,10 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             inputs:input_vec
         };
 
-        // dbg!(psbt.clone());
-        //  finailize the transaction
+        
         let complete=psbt.clone().finalize(&secp).unwrap();
-        dbg!(complete.clone());
-        // self.rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
-    }
-
-    pub fn print_balance(&self,recieve:u32, change:u32){
-        let (ext_pub,_)=self.schema.to_wallet().create_wallet(self.schema.wallet_purpose(), recieve, change);
-        let address=self.schema.map_ext_keys(&ext_pub);
-        let get_balance=self.rpc_call.script_get_balance(&address.script_pubkey()).unwrap();
-        println!("address: {}",address);
-        println!("confirmed: {}",get_balance.confirmed);
-        println!("unconfirmed: {}",get_balance.unconfirmed)
+        dbg!(complete.clone().extract_tx());
+        self.electrum_rpc_call.transaction_broadcast(&complete.extract_tx()).unwrap();
     }
 
 }
