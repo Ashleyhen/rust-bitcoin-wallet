@@ -1,9 +1,9 @@
-use std::{collections::BTreeMap, borrow::Borrow};
+use std::{collections::BTreeMap, borrow::Borrow, sync::Arc};
 
-use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message, schnorrsig::PublicKey }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey}};
+use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message, schnorrsig::PublicKey }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey}, TxIn};
 use miniscript::{interpreter::KeySigPair, ToPublicKey};
 
-use super::{AddressSchema, ClientWallet, NETWORK, WalletKeys, utils::UnlockAndSend};
+use super::{AddressSchema, ClientWallet, NETWORK, WalletKeys, utils::{UnlockAndSend, TxOutMap}, OutPutMap};
 
 #[derive( Clone)]
 pub struct P2TR(pub ClientWallet);
@@ -13,8 +13,8 @@ impl AddressSchema for P2TR{
 		return Address::p2tr(&self.0.secp, recieve.to_x_only_pub(), None, NETWORK);
     }
     
-    fn new(seed: Option<String>)->Self {
-		return P2TR(ClientWallet::new(seed));
+    fn new(seed: Option<String>, recieve:u32, change:u32)->Self {
+		return P2TR(ClientWallet::new(seed,recieve,change));
     }
 
     fn to_wallet(&self)->ClientWallet {
@@ -74,23 +74,17 @@ impl AddressSchema for P2TR{
 
     }
 
-    fn prv_tx_input(&self,amount:u64,to_addr:String,change_addr:Script,wallet_keys:&WalletKeys,previous_tx:Vec<Transaction>) ->(Vec<Input>, Transaction) {
-
-        let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_keys;
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) ->(Vec<Input>, Transaction) {
+        let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
+        let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
+;
         let secp=&self.0.secp;
-        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, signer_dp).unwrap();
-        let unlock_and_send=UnlockAndSend::new(self.clone(), (*wallet_keys).clone());
-        let  tx_out_mapping =|f:&TxOut| TxOut{
-          value: f.value,
-          script_pubkey:Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub())) };
-
-        let current_tx= unlock_and_send.initialize(amount, to_addr, change_addr, previous_tx.clone(),  tx_out_mapping);
-
-        // confirm
+        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
+       
+let tx_output=current_tx.output.clone();
         let input_list:Vec<Input>=previous_tx.iter().enumerate().map(|(i, previous_tx)|{
-        let utxo_list=unlock_and_send.find_relevent_utxo(previous_tx, tx_out_mapping);
-        let uxto=&utxo_list[0];
-        let script_list=utxo_list.clone().iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, TapScript)).collect::<Vec<TapLeafHash>>();
+        let script_list=tx_output.clone().iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, TapScript)).collect::<Vec<TapLeafHash>>();
+        let uxto=&tx_output.clone()[0];
         let mut tap_key_origin=BTreeMap::new();
           tap_key_origin.insert
           (signer_pub_k.to_x_only_pub(),
@@ -98,26 +92,35 @@ impl AddressSchema for P2TR{
 
                 
               let sig_hash=SighashCache::new(&mut current_tx.clone())
-                .taproot_key_spend_signature_hash( i, &Prevouts::All(&utxo_list), SchnorrSighashType::Default).unwrap();
+                .taproot_key_spend_signature_hash( i, &Prevouts::All(&tx_output), SchnorrSighashType::Default).unwrap();
                 let msg=Message::from_slice(&sig_hash).unwrap();
 
                 let signed_shnorr=secp.sign_schnorr(&msg, &ext_prv.to_keypair(secp));
 
                 let schnorr_sig=SchnorrSig{sig:signed_shnorr, hash_ty:SchnorrSighashType::Default};
-               let pub_key=signer_pub_k.public_key.to_public_key();
         let mut new_input=Input::default() ;
         new_input.witness_utxo=Some(uxto.clone());
         new_input.tap_key_origins=tap_key_origin;
         new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
         new_input.tap_key_sig=Some(schnorr_sig.clone());
 new_input.non_witness_utxo=Some(previous_tx.clone());
-                new_input.witness_utxo=Some((utxo_list[0]).clone());
+                new_input.witness_utxo=Some((uxto).clone());
         let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
  
 
         return new_input;
         }).collect();
         return (input_list,current_tx);
+    }
+
+    fn map_tx( &self,tx_out:&TxOut)->  TxOut {
+      let signer_pub_k=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change).0;
+        TxOut{
+            value: tx_out.value,
+            script_pubkey:Script::new_v1_p2tr_tweaked( TweakedPublicKey::dangerous_assume_tweaked(signer_pub_k.to_x_only_pub())) 
+        };
+
+        todo!()
     }
   }
        

@@ -6,27 +6,34 @@ use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
 use crate::btc_wallet::utils::UnlockAndSend;
+
+use self::utils::TxOutMap;
 mod utils;
 
 pub type WalletKeys=(ExtendedPubKey,KeySource);
 pub mod p2wpkh;
 pub mod p2tr;
-
+// `for<'r> fn(&'r TxOutMap) -> Vec<bitcoin::TxOut>`
+// struct Take(pub Box<dyn Fn(TxOutMap)->Vec<TxOut>>);
 pub trait AddressSchema{
     fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> Address;
     fn wallet_purpose(&self)-> u32;
-    fn new(seed: Option<String>)->Self;
+    fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
     fn to_wallet(&self)->ClientWallet;
-    fn prv_tx_input(&self,amount:u64,to_addr:String,change:Script,wallet_keys:&WalletKeys,previous_tx:Vec<Transaction>,current_input:Vec<TxIn> ) ->(Vec<Input>, Transaction);
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->(Vec<Input>, Transaction);
     fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
+    fn map_tx( &self,tx_out:&TxOut)->  TxOut;
+// Item=&'a TxOut
 }
 
+type OutPutMap<'a>= Box<(dyn 'a + FnMut(TxOutMap)->Vec<TxOut>)>;
 
 
 
 #[derive(Clone)]
-pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed }
+pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed, recieve:u32, change:u32 }
 
+#[derive(Clone)]
 pub struct ClientWithSchema<T:AddressSchema>{
    schema:T,
    rpc_call:Arc<Client>,
@@ -34,7 +41,7 @@ pub struct ClientWithSchema<T:AddressSchema>{
 type Seed=[u8;constants::SECRET_KEY_SIZE];
 pub const NETWORK: bitcoin::Network = Network::Testnet;
 
- impl <T: AddressSchema> ClientWithSchema<T>{
+ impl <'a, T: 'static +  AddressSchema+'a> ClientWithSchema<T>{
     pub fn new(schema: T)->ClientWithSchema<T> {
 
         return ClientWithSchema {
@@ -66,15 +73,32 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         }
 		).collect::<Vec<TxIn>>();
 		
-		let previous_tx=Arc::new(tx_in.iter()
+		let previous_tx=tx_in.iter()
         .map(|tx_id|self.rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
-        .collect::<Vec<Transaction>>());
+        .collect::<Vec<Transaction>>();
       
-            let unlock_and_send=UnlockAndSend::new(self.schema, signer.clone());
-        let current_tx= |a:&dyn FnMut(&bitcoin::TxOut)|unlock_and_send.initialize(amount, to_addr, change_addr.script_pubkey(), tx_in, previous_tx.to_vec(),a);
-let (input_vec, current_tx)=self.schema.prv_tx_input(amount,to_addr,change_addr.script_pubkey(),&signer,previous_tx.to_vec(),tx_in );
+        /* 
+        
+          let tx_out:Vec<TxOut>= previous_tx.iter().flat_map(|a|
+            a.output.iter().filter(|tx_out|unlock_and_send.find_relevent_utxo(tx_out)).map(|tx_out|self.schema.map_tx(tx_out))
+        ).collect();
+*/
+
+        let unlock_and_send=UnlockAndSend::new(&self.schema, signer.clone());
+        let tx_out=unlock_and_send.initialize_output(amount,change_pub_k,to_addr,previous_tx.clone());
+        let current_tx=Transaction{
+            version: 0,
+            lock_time: 0,
+            input: tx_in,
+            output: tx_out,
+        };
+        // let tx_out:Vec<TxOut>= previous_tx.iter().flat_map(|a|
+        //     a.output.iter().filter(|tx_out|).map(|tx_out|self.map_tx(tx_out))
+        // ).collect();
+
+        let (input_vec, current_tx)=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx );
        
-            let mut xpub =BTreeMap::new();
+        let mut xpub =BTreeMap::new();
 
         // the current public key and derivation path   
         xpub.insert(signer_pub_k,(signer_finger_p ,signer_dp.clone()));
@@ -97,8 +121,8 @@ let (input_vec, current_tx)=self.schema.prv_tx_input(amount,to_addr,change_addr.
         // dbg!(psbt.clone());
         //  finailize the transaction
         let complete=psbt.clone().finalize(&secp).unwrap();
-        // self.rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
         dbg!(complete.clone());
+        // self.rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
     }
 
     pub fn print_balance(&self,recieve:u32, change:u32){
@@ -113,13 +137,13 @@ let (input_vec, current_tx)=self.schema.prv_tx_input(amount,to_addr,change_addr.
 }
 impl ClientWallet{
 
-    pub fn new(secret_seed:Option<String>)-> ClientWallet{
+    pub fn new(secret_seed:Option<String>, recieve:u32, change:u32)-> ClientWallet{
             return ClientWallet{
                 secp:Secp256k1::new(),
                 seed: (match secret_seed{
                 Some(secret)=> SecretKey::from_str(&secret).expect("failed to initalize seed, check if the seed is valid"),
                 _ => SecretKey::new(&mut OsRng::new().expect("failed to create a random number generator !!! ") ) }).secret_bytes(),
-            
+                recieve,change
             }
         }
 

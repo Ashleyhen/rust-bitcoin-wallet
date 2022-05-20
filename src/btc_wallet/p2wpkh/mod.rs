@@ -4,10 +4,10 @@ use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, Ke
 use miniscript::ToPublicKey;
 
 
-use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::UnlockAndSend};
+use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend, TxOutMap}, OutPutMap};
 
 #[derive( Clone)]
-pub struct P2PWKh(pub ClientWallet) ;
+pub struct P2PWKh( pub  ClientWallet ); 
 
 impl AddressSchema for P2PWKh{
 
@@ -15,8 +15,8 @@ impl AddressSchema for P2PWKh{
         return Address::p2wpkh(&recieve.public_key.to_public_key(), NETWORK).unwrap();
     }
 
-    fn new(seed: Option<String>)->Self {
-        return P2PWKh(ClientWallet::new(seed));
+    fn new(seed: Option<String>,recieve:u32, change:u32)->Self {
+        return P2PWKh(ClientWallet::new(seed,recieve,change));
     }
 
     fn to_wallet(&self)->ClientWallet {
@@ -27,21 +27,24 @@ impl AddressSchema for P2PWKh{
         return 84;
     }
 
-    fn prv_tx_input(&self,amount:u64, to_addr:String,change_addr:Script,wallet_keys:&WalletKeys,previous_tx_list:Vec<Transaction>, current_input:Vec<TxIn>) -> (Vec<Input>,Transaction) {
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) -> (Vec<Input>,Transaction) {
 
-        let (signer_pub_k,(_, signer_dp))=wallet_keys;
+        let wallet_keys=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
+        let (signer_pub_k,(_, signer_dp))=wallet_keys.clone();
         let secp=&self.0.secp;
-        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, signer_dp).unwrap();
-        let unlock_and_send=UnlockAndSend::new(self.clone(), (*wallet_keys).clone());
-        let tx_out_mapping=|tx_out:&TxOut|tx_out.clone();
-        let current_tx= unlock_and_send.initialize(amount, to_addr, change_addr, current_input, previous_tx_list.clone()  );
+        let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
+        // let unlock_and_send=UnlockAndSend::new(&self.clone(), (wallet_keys).clone());
 
+        
+
+        // let current_tx=Transaction{ version:0, lock_time:0, input: tx_input, output:tx_out.clone() };
         // confirm
-        let input_list:Vec<Input>=previous_tx_list.iter().enumerate().map(|(i, previous_tx)|{
+        let input_list:Vec<Input>=previous_tx.iter().enumerate().map(|(i, previous_tx)|{
             let mut b_tree=BTreeMap::new();
             let mut input_tx=Input::default();
                 input_tx.non_witness_utxo=Some(previous_tx.clone());
-            unlock_and_send.find_relevent_utxo(previous_tx, tx_out_mapping).iter().for_each(|witness|{
+
+            previous_tx.output.iter().for_each(|witness|{
                 input_tx.witness_utxo=Some(witness.clone());
                 let sig_hash=SighashCache::new(&mut current_tx.clone())
                 .segwit_signature_hash( i, &p2wpkh_script_code(&witness.script_pubkey), witness.value, EcdsaSighashType::All).unwrap();
@@ -79,6 +82,10 @@ impl AddressSchema for P2PWKh{
         let mut new_input=old_input.clone();
         new_input.partial_sigs=b_tree;
         return new_input;
+    }
+
+     fn map_tx( &self,tx_out:&TxOut)->  TxOut {
+        return tx_out.clone();
     }
 
 
