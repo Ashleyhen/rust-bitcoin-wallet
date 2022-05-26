@@ -31,8 +31,7 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
             
             let tip:u64=200;
             return previous_tx_list.iter().flat_map(|previous_tx|{
-            let total= previous_tx.output.iter().filter(|tx_out|self.find_relevent_utxo(tx_out)).map(|tx_out|
-                self.schema.map_tx(tx_out)).map(|v|v.value).sum::<u64>();
+            let total= previous_tx.output.iter().filter(|tx_out|self.find_relevent_utxo(tx_out)).map(|tx_out|tx_out.clone()).map(|v|v.value).sum::<u64>();
 
             let change_amt=total-(amount+tip);
          ;   

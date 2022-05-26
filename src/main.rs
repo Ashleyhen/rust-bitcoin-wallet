@@ -23,9 +23,9 @@ fn _test_transactionn(){
 	
 	let client_with_schema=ClientWithSchema::new(P2TR::new(Some(seed.to_string()),0,1) );
 	// let client_with_schema=ClientWithSchema::new(P2TR::new(Some(seed.to_string()),0,0) );
-	client_with_schema.print_balance(0,0);
+	client_with_schema.print_balance(0,1);
 
-		// client_with_schema.submit_tx(to_addr.to_string(),800);
+		client_with_schema.submit_tx(to_addr.to_string(),800);
 		
 }
 // seed, vec<derivation path>

@@ -85,10 +85,7 @@ impl AddressSchema for P2PWKh{
     //     return new_input;
     // }
 
-     fn map_tx( &self,tx_out:&TxOut)->  TxOut {
-        return tx_out.clone();
-    }
-
+    
 
 }
 

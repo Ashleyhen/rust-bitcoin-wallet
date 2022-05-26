@@ -22,7 +22,6 @@ pub trait AddressSchema{
     fn to_wallet(&self)->ClientWallet;
     fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->(Vec<Input>, Transaction);
     // fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
-    fn map_tx( &self,tx_out:&TxOut)->  TxOut;
 // Item=&'a TxOut
 }
 
