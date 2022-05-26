@@ -35,22 +35,9 @@ impl AddressSchema for P2TR{
         let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
 
         let input_list:Vec<Input>=previous_tx.iter().enumerate().map(|(i, previous_tx)|{
-        let mut  key_pair=ext_prv.to_keypair(&secp);       
-        
-
-        for u in 1..5{
-        let (succ,new_input)=self.process_tx(i, previous_tx, current_tx.clone(),key_pair);
-        if(!succ){
-          key_pair=key_pair.tap_tweak(&secp, None).into_inner();
-        }else{
-          // yield;
-          println!("{}",u);
-          return new_input;
-        }
-      }
-
+        let tweaked_key_pair=ext_prv.to_keypair(&secp).tap_tweak(&secp,None).into_inner();       
        
-let (succ, new_input)=self.process_tx(i, previous_tx, current_tx.clone(),key_pair);
+        let new_input=self.process_tx(i, previous_tx, current_tx.clone(),tweaked_key_pair);
 
           
 
@@ -76,7 +63,7 @@ let (succ, new_input)=self.process_tx(i, previous_tx, current_tx.clone(),key_pai
     
 }
 impl P2TR{
-  pub fn process_tx(&self,i: usize,previous_tx:&Transaction,current_tx:Transaction,key_pair:KeyPair)->(bool,Input){
+  pub fn process_tx(&self,i: usize,previous_tx:&Transaction,current_tx:Transaction,key_pair:KeyPair)->(Input){
 let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
 
         let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
@@ -109,8 +96,8 @@ let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.
           new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
           new_input.tap_key_sig=Some(schnorr_sig.clone());
           new_input.non_witness_utxo=Some(previous_tx.clone());
-          let is_successful=secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
-          return (is_successful,new_input);
+          secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
+          return (new_input);
   
   }
 }
