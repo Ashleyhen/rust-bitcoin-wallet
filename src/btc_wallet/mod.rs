@@ -7,22 +7,19 @@ use miniscript::{psbt::PsbtExt, ToPublicKey};
 
 use crate::btc_wallet::utils::UnlockAndSend;
 
-use self::utils::TxOutMap;
 mod utils;
 
 pub type WalletKeys=(ExtendedPubKey,KeySource);
 pub mod p2wpkh;
 pub mod p2tr;
-// `for<'r> fn(&'r TxOutMap) -> Vec<bitcoin::TxOut>`
-// struct Take(pub Box<dyn Fn(TxOutMap)->Vec<TxOut>>);
+
 pub trait AddressSchema{
     fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> Address;
     fn wallet_purpose(&self)-> u32;
     fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
     fn to_wallet(&self)->ClientWallet;
     fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->(Vec<Input>, Transaction);
-    // fn prv_psbt_input(&self,prev_transaction:&mut Transaction,input:&Input,i:usize,wallet_keys:&WalletKeys)->Input;
-// Item=&'a TxOut
+    
 }
 
 
@@ -39,7 +36,7 @@ pub struct ClientWithSchema<T:AddressSchema>{
 type Seed=[u8;constants::SECRET_KEY_SIZE];
 pub const NETWORK: bitcoin::Network = Network::Testnet;
 
- impl <'a, T: 'static +  AddressSchema+'a> ClientWithSchema<T>{
+ impl < T:  AddressSchema> ClientWithSchema<T>{
     pub fn new(schema: T)->ClientWithSchema<T> {
 
         return ClientWithSchema {
@@ -48,8 +45,9 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         };
     }
 
-    pub fn print_balance(&self,recieve:u32, change:u32){
-        let (ext_pub,_)=self.schema.to_wallet().create_wallet(self.schema.wallet_purpose(), recieve, change);
+    pub fn print_balance(&self){
+        let wallet=self.schema.to_wallet();
+        let (ext_pub,_)=self.schema.to_wallet().create_wallet(self.schema.wallet_purpose(), wallet.recieve, wallet.change);
         let address=self.schema.map_ext_keys(&ext_pub);
         let get_balance=self.electrum_rpc_call.script_get_balance(&address.script_pubkey()).unwrap();
         println!("address: {}",address);
@@ -64,15 +62,13 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         let (signer_pub_k,(signer_finger_p,signer_dp))=signer.clone();
         let (change_pub_k,(change_finger_p, change_dp))=wallet.create_wallet(self.schema.wallet_purpose(), wallet.recieve, wallet.change+1);
         let signer_addr=self.schema.map_ext_keys(&signer_pub_k);
-        let change_addr=self.schema.map_ext_keys(&change_pub_k);
 
         let history=Arc::new(self.electrum_rpc_call.script_list_unspent(&signer_addr.script_pubkey()).expect("address history call failed"));
 
-		let tx_in=history.iter().enumerate().map(|(index,h)|{
-            
+		let tx_in=history.clone().iter().map(|tx|{
             
 			return TxIn{
-				previous_output:OutPoint::new(h.tx_hash, h.tx_pos.try_into().unwrap()),
+				previous_output:OutPoint::new(tx.tx_hash, tx.tx_pos.try_into().unwrap()),
 				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
@@ -84,25 +80,15 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 		let previous_tx=tx_in.iter()
         .map(|tx_id|self.electrum_rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
         .collect::<Vec<Transaction>>();
-      
-        /* 
-        
-          let tx_out:Vec<TxOut>= previous_tx.iter().flat_map(|a|
-            a.output.iter().filter(|tx_out|unlock_and_send.find_relevent_utxo(tx_out)).map(|tx_out|self.schema.map_tx(tx_out))
-        ).collect();
-*/
 
-        let unlock_and_send=UnlockAndSend::new(&self.schema, signer.clone());
-        let tx_out=unlock_and_send.initialize_output(amount,change_pub_k,to_addr,previous_tx.clone());
-        let current_tx=Transaction{
+       let unlock_and_send=UnlockAndSend::new(&self.schema, signer.clone());
+       let tx_out=unlock_and_send.initialize_output(amount,history);
+       let current_tx=Transaction{
             version: 0,
             lock_time: 0,
             input: tx_in,
             output: tx_out,
         };
-        // let tx_out:Vec<TxOut>= previous_tx.iter().flat_map(|a|
-        //     a.output.iter().filter(|tx_out|).map(|tx_out|self.map_tx(tx_out))
-        // ).collect();
 
         let (input_vec, current_tx)=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx );
        
@@ -129,7 +115,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         
         let complete=psbt.clone().finalize(&secp).unwrap();
         dbg!(complete.clone().extract_tx());
-        //  self.electrum_rpc_call.transaction_broadcast(&complete.extract_tx()).unwrap();
+
     }
 
 }
@@ -144,8 +130,6 @@ impl ClientWallet{
                 recieve,change
             }
         }
-
-
 
  fn create_wallet(&self,purpose:u32, recieve:u32,index:u32) -> WalletKeys {
 		// bip84 For the purpose-path level it uses 84'. The rest of the levels are used as defined in BIP44 or BIP49.
@@ -164,13 +148,6 @@ impl ClientWallet{
          return ( ext_pub,(ext_pub.fingerprint(),path));
     }
     
-}
-struct WalletPath{
-    purpose:u32,
-    recieve:u32,
-    second_recieve:u32,
-    key_chain:u32,
-    change:u32
 }
 
 // fn path<F>(change:F) 

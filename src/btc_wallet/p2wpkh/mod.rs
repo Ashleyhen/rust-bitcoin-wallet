@@ -4,7 +4,7 @@ use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, Ke
 use miniscript::ToPublicKey;
 
 
-use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend, TxOutMap}};
+use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend}};
 
 #[derive( Clone)]
 pub struct P2PWKh( pub  ClientWallet ); 
