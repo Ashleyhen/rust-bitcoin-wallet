@@ -3,16 +3,11 @@ use bitcoin::{Transaction, Script, TxOut, TxIn, Address, Witness, psbt::{Input, 
 use electrum_client::ListUnspentRes;
 use crate::btc_wallet::{AddressSchema, WalletKeys};
 
-
-// type Thunk = Box<dyn Fn() + Send + 'static>;
- 
-
 #[derive( Clone)]
 pub struct UnlockAndSend< 'a, T:AddressSchema>{
     schema: &'a T,
     wallet_keys:WalletKeys 
 }
-// pub type TxOutMap=Box<dyn for<'r> Fn(&'r bitcoin::TxOut) -> bitcoin::TxOut>;
 
  impl <'a, T: AddressSchema> UnlockAndSend<'a, T>{
     
@@ -26,7 +21,7 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
         &self,amount:u64, 
         previous_tx_list:Arc<Vec<ListUnspentRes>>,
         )->Vec<TxOut> {
-        let tip:u64=200;
+        let tip:u64=300;
         let total=previous_tx_list.iter().map(|f|f.value).sum::<u64>();
         let tx_func=|value|TxOut{
             value: value,

@@ -115,6 +115,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         
         let complete=psbt.clone().finalize(&secp).unwrap();
         dbg!(complete.clone().extract_tx());
+        // self.electrum_rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
 
     }
 

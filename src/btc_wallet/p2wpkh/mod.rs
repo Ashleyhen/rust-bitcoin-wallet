@@ -33,22 +33,17 @@ impl AddressSchema for P2PWKh{
         let (signer_pub_k,(_, signer_dp))=wallet_keys.clone();
         let secp=&self.0.secp;
         let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
-        // let unlock_and_send=UnlockAndSend::new(&self.clone(), (wallet_keys).clone());
-
-        
-
-        // let current_tx=Transaction{ version:0, lock_time:0, input: tx_input, output:tx_out.clone() };
+      
         // confirm
         let input_list:Vec<Input>=previous_tx.iter().enumerate().map(|(i, previous_tx)|{
             let mut b_tree=BTreeMap::new();
             let mut input_tx=Input::default();
-// let a=previous_tx.clone().input.iter();
                 input_tx.non_witness_utxo=Some(previous_tx.clone());
 
             previous_tx.output.iter().for_each(|witness|{
                 input_tx.witness_utxo=Some(witness.clone());
                 let sig_hash=SighashCache::new(&mut current_tx.clone())
-                .segwit_signature_hash( 0, &p2wpkh_script_code(&witness.script_pubkey), witness.value, EcdsaSighashType::All).unwrap();
+                .segwit_signature_hash( i, &p2wpkh_script_code(&witness.script_pubkey), witness.value, EcdsaSighashType::All).unwrap();
                 let msg=Message::from_slice(&sig_hash).unwrap();
                 let sig=EcdsaSig::sighash_all(secp.sign_ecdsa(&msg,&ext_prv.private_key));
                 let pub_key=signer_pub_k.public_key.to_public_key();
