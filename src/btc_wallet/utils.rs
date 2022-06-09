@@ -26,14 +26,19 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
         &self,amount:u64, 
         previous_tx_list:Arc<Vec<ListUnspentRes>>,
         )->Vec<TxOut> {
-            
         let tip:u64=200;
         let total=previous_tx_list.iter().map(|f|f.value).sum::<u64>();
-        let change_amt=total-(amount+tip);
-        return vec![TxOut{
-            value: change_amt,
+        let tx_func=|value|TxOut{
+            value: value,
             script_pubkey: self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey(),
-        }];
+        };
+
+        if(total<(amount+tip)){
+            return vec![tx_func(amount)]
+        }
+
+        let change_amt=total-(amount+tip);
+        return vec![tx_func(amount),tx_func(change_amt)];
     }
    
     

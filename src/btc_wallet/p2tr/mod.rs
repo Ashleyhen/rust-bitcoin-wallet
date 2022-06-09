@@ -27,22 +27,18 @@ impl AddressSchema for P2TR{
 
 
     fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) ->(Vec<Input>, Transaction) {
+
+        let secp=&self.0.secp;
         let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
 
         let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
 
-        let secp=&self.0.secp;
+
         let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
 
-        let input_list:Vec<Input>=previous_tx.iter().enumerate().map(|(i, previous_tx)|{
+        let input_list:Vec<Input>=previous_tx.clone().iter().enumerate().map(|(i, previous_tx)|{
         let tweaked_key_pair=ext_prv.to_keypair(&secp).tap_tweak(&secp,None).into_inner();       
        
-let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
-
-        let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
-
-        let secp=&self.0.secp;
-
           let tx_output:Vec<TxOut>= previous_tx.output.clone().iter()
           .filter(|tx_out|UnlockAndSend::new(self,wallet_key.clone()).find_relevent_utxo(tx_out)).map(|tx_out|tx_out.clone()).collect();
 
@@ -57,7 +53,7 @@ let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.
             (tap_leaf_hash_list,(signer_finger_p.clone(),signer_dp.clone())));
 
           let sig_hash=SighashCache::new(&mut current_tx.clone())
-                  .taproot_key_spend_signature_hash( i, &Prevouts::All(&tx_output), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
+                  .taproot_key_spend_signature_hash( i, &Prevouts::One(i,&previous_tx.output[0]), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
                   let msg=Message::from_slice(&sig_hash).unwrap();
 
           let signed_shnorr=secp.sign_schnorr(&msg, &tweaked_key_pair);
