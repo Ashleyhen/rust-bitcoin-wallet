@@ -53,7 +53,7 @@ impl AddressSchema for P2TR{
             (tap_leaf_hash_list,(signer_finger_p.clone(),signer_dp.clone())));
 
           let sig_hash=SighashCache::new(&mut current_tx.clone())
-                  .taproot_key_spend_signature_hash( i, &Prevouts::One(i,&previous_tx.output[0]), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
+                  .taproot_key_spend_signature_hash( i, &Prevouts::All(&previous_tx.output), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
                   let msg=Message::from_slice(&sig_hash).unwrap();
 
           let signed_shnorr=secp.sign_schnorr(&msg, &tweaked_key_pair);

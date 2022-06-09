@@ -82,7 +82,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         .collect::<Vec<Transaction>>();
 
        let unlock_and_send=UnlockAndSend::new(&self.schema, signer.clone());
-       let tx_out=unlock_and_send.initialize_output(amount,history);
+       let tx_out=unlock_and_send.initialize_output(amount,history,change_pub_k,to_addr);
        let current_tx=Transaction{
             version: 0,
             lock_time: 0,
@@ -115,7 +115,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         
         let complete=psbt.clone().finalize(&secp).unwrap();
         dbg!(complete.clone().extract_tx());
-        // self.electrum_rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
+        self.electrum_rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
 
     }
 

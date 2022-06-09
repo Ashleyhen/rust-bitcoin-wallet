@@ -20,20 +20,31 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
     pub fn initialize_output(
         &self,amount:u64, 
         previous_tx_list:Arc<Vec<ListUnspentRes>>,
+        change_addr:ExtendedPubKey,
+        to_addr:String
+        
         )->Vec<TxOut> {
         let tip:u64=300;
         let total=previous_tx_list.iter().map(|f|f.value).sum::<u64>();
-        let tx_func=|value|TxOut{
-            value: value,
+        self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey();
+        
+        let send_tx=TxOut{
+            value: amount,
+            script_pubkey: Address::from_str(&to_addr).unwrap().script_pubkey(),
+        };
+
+        
+
+        if(total<=(amount+tip)){
+            return vec![send_tx]
+        }
+
+        let change_tx=TxOut{
+            value: total-(amount+tip),
             script_pubkey: self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey(),
         };
 
-        if(total<(amount+tip)){
-            return vec![tx_func(amount)]
-        }
-
-        let change_amt=total-(amount+tip);
-        return vec![tx_func(amount),tx_func(change_amt)];
+        return vec![send_tx,change_tx];
     }
    
     
