@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap};
+use std::{collections::BTreeMap, str::FromStr};
 
 use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message, schnorrsig::PublicKey }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey, TapTweak}, TxIn};
 use miniscript::{interpreter::KeySigPair, ToPublicKey};
@@ -9,7 +9,7 @@ use super::{AddressSchema, ClientWallet, NETWORK, WalletKeys, utils::{UnlockAndS
 pub struct P2TR(pub ClientWallet);
 
 impl AddressSchema for P2TR{
-    fn map_ext_keys(&self,recieve:&bitcoin::util::bip32::ExtendedPubKey) -> bitcoin::Address { ;
+    fn map_ext_keys(&self,recieve:&bitcoin::util::bip32::ExtendedPubKey) -> bitcoin::Address { 
 		return Address::p2tr(&self.0.secp, recieve.to_x_only_pub(), None, NETWORK);
     }
     
@@ -26,13 +26,12 @@ impl AddressSchema for P2TR{
     }
 
 
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) ->(Vec<Input>, Transaction) {
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) ->Vec<Input> {
 
         let secp=&self.0.secp;
         let wallet_key=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
 
         let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
-
 
         let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
 
@@ -69,23 +68,21 @@ impl AddressSchema for P2TR{
  
         return new_input;
         }).collect();
-        return (input_list,current_tx);
+        return input_list;
     }
 
  
   }
-       
-   
- 
+impl P2TR {
+  pub fn aggregate(&self,addresses:Vec<String>){
 
-  pub fn p2wpkh_script_code(script: &Script) -> Script {
-    Builder::new()
-        .push_opcode(opcodes::all::OP_DUP)
-        .push_opcode(opcodes::all::OP_HASH160)
-        .push_slice(&script[2..])
-        .push_opcode(opcodes::all::OP_EQUALVERIFY)
-        .push_opcode(opcodes::all::OP_CHECKSIG)
-        .into_script()
-    
+      Address::from_str("").unwrap();
+      Script::new_v1_p2tr(&self.0.secp, internal_key, None);
+    // addresses.iter().reduce(|a,b|{
+      
+    // })
+
+  }
 }
+
 

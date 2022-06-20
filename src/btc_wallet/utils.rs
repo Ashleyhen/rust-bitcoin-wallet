@@ -21,9 +21,7 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
         &self,amount:u64, 
         previous_tx_list:Arc<Vec<ListUnspentRes>>,
         change_addr:ExtendedPubKey,
-        to_addr:String
-        
-        )->Vec<TxOut> {
+        to_addr:String)->Vec<TxOut> {
         let tip:u64=300;
         let total=previous_tx_list.iter().map(|f|f.value).sum::<u64>();
         self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey();
@@ -33,15 +31,13 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
             script_pubkey: Address::from_str(&to_addr).unwrap().script_pubkey(),
         };
 
-        
-
         if(total<=(amount+tip)){
             return vec![send_tx]
         }
 
         let change_tx=TxOut{
             value: total-(amount+tip),
-            script_pubkey: self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey(),
+            script_pubkey: self.schema.map_ext_keys(&change_addr).script_pubkey(),
         };
 
         return vec![send_tx,change_tx];

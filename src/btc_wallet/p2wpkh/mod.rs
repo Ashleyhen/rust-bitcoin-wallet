@@ -27,7 +27,7 @@ impl AddressSchema for P2PWKh{
         return 84;
     }
 
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) -> (Vec<Input>,Transaction) {
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) -> Vec<Input> {
 
         let wallet_keys=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
         let (signer_pub_k,(_, signer_dp))=wallet_keys.clone();
@@ -52,7 +52,7 @@ impl AddressSchema for P2PWKh{
         input_tx.partial_sigs=b_tree;
         return input_tx;
         }).collect();
-        return (input_list,current_tx);
+        return input_list;
         }
 
        

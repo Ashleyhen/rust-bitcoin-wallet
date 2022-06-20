@@ -5,7 +5,12 @@ use bitcoin::{util::{bip32::{ExtendedPrivKey, ExtendedPubKey, DerivationPath, Ch
 use electrum_client::{Client, ElectrumApi};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
+
 use crate::btc_wallet::utils::UnlockAndSend;
+
+use self::input_data::ApiCall;
+// pub mod input_data;
+pub mod input_data;
 
 mod utils;
 
@@ -18,30 +23,25 @@ pub trait AddressSchema{
     fn wallet_purpose(&self)-> u32;
     fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
     fn to_wallet(&self)->ClientWallet;
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->(Vec<Input>, Transaction);
-    
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->Vec<Input>;
 }
-
-
-
 
 #[derive(Clone)]
 pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed, recieve:u32, change:u32 }
 
 #[derive(Clone)]
-pub struct ClientWithSchema<T:AddressSchema>{
-   schema:T,
-   electrum_rpc_call:Arc<Client>,
+pub struct ClientWithSchema<S:AddressSchema,A:ApiCall>{
+   schema:S,
+   electrum_rpc_call:Arc<A>,
 }
 type Seed=[u8;constants::SECRET_KEY_SIZE];
 pub const NETWORK: bitcoin::Network = Network::Testnet;
 
- impl < T:  AddressSchema> ClientWithSchema<T>{
-    pub fn new(schema: T)->ClientWithSchema<T> {
-
+ impl <S: AddressSchema,A:ApiCall> ClientWithSchema<S,A>{
+    pub fn new(schema: S,api_call:A)->ClientWithSchema<S,A> {
         return ClientWithSchema {
-        schema,
-         electrum_rpc_call:Arc::new(Client::new("ssl://electrum.blockstream.info:60002").expect("client connection failed !!!"))
+            schema,
+            electrum_rpc_call:Arc::new(api_call)
         };
     }
 
@@ -73,7 +73,6 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
 			}
-
         }
 		).collect::<Vec<TxIn>>();
 		
@@ -90,7 +89,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             output: tx_out,
         };
 
-        let (input_vec, current_tx)=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx );
+        let input_vec=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx.clone() );
        
         let mut xpub =BTreeMap::new();
 
@@ -115,7 +114,6 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         
         let complete=psbt.clone().finalize(&secp).unwrap();
         dbg!(complete.clone().extract_tx());
-        self.electrum_rpc_call.transaction_broadcast(&complete.clone().extract_tx()).unwrap();
 
     }
 
@@ -148,11 +146,13 @@ impl ClientWallet{
 
          return ( ext_pub,(ext_pub.fingerprint(),path));
     }
-    
 }
+
+
 
 // fn path<F>(change:F) 
 //         where F: FnOnce(Script) ->dyn UnlockPreviousUTXO{
         
 // }
 
+// multi sig 
