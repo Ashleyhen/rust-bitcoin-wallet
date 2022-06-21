@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr, borrow::Borrow};
 
-use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message, schnorrsig::PublicKey }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey, TapTweak}, TxIn};
+use bitcoin::{Address, util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, KeySource}, sighash::{SighashCache, Prevouts}, taproot::{TapLeafHash,LeafVersion::TapScript}, address::Payload}, Transaction, psbt::Input, Script, SchnorrSighashType, SchnorrSig, secp256k1::{schnorr::Signature, Message, schnorrsig::PublicKey, Parity }, KeyPair, TxOut, blockdata::{script::Builder, opcodes},  XOnlyPublicKey, schnorr::{UntweakedPublicKey, TweakedPublicKey, TapTweak}, TxIn};
 use miniscript::{interpreter::KeySigPair, ToPublicKey};
 
 use super::{AddressSchema, ClientWallet, NETWORK, WalletKeys, utils::{UnlockAndSend}};
@@ -74,14 +74,19 @@ impl AddressSchema for P2TR{
  
   }
 impl P2TR {
-  pub fn aggregate(&self,addresses:Vec<String>){
+  pub fn aggregate(&self,address_list:Vec<String>)->String{
+      let wallet_key=self.0.create_wallet(self.wallet_purpose(), self.0.recieve, self.0.change);
+      let (signer_pub_k,(signer_finger_p, signer_dp))=wallet_key.clone();
+      let secp=self.0.secp.clone();
+      return address_list.iter().map(|address|{
 
-      Address::from_str("").unwrap();
-      Script::new_v1_p2tr(&self.0.secp, internal_key, None);
-    // addresses.iter().reduce(|a,b|{
-      
-    // })
-
+        let addr=Address::from_str(address).unwrap();
+        let x_only_pub_k=signer_pub_k.public_key.to_public_key().inner.combine(&XOnlyPublicKey::from_slice(&addr.script_pubkey()[2..])
+        .unwrap().to_public_key().inner).unwrap().to_x_only_pubkey();
+        let address=Address::p2tr(&secp, x_only_pub_k,  None, NETWORK);
+        return address.to_qr_uri().to_lowercase();
+      }).last().unwrap();
+    
   }
 }
 
