@@ -22,7 +22,9 @@ fn _test_transactionn(){
 
 	let schema=P2TR::new(Some(seed.to_string()),0,3);
 	let address_list=vec![to_addr.to_string(),first_addr.to_string()];
-	dbg!(schema.aggregate(address_list));
+	let aggregate=schema.aggregate(address_list);
+
+	
 
 	let client_with_schema=
 	ClientWithSchema::new(schema,ElectrumRpc::new());

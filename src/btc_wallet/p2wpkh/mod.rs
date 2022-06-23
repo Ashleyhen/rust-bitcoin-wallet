@@ -4,7 +4,7 @@ use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, Ke
 use miniscript::ToPublicKey;
 
 
-use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend}};
+use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend}, Broadcast_op};
 
 #[derive( Clone)]
 pub struct P2PWKh( pub  ClientWallet ); 
@@ -27,7 +27,7 @@ impl AddressSchema for P2PWKh{
         return 84;
     }
 
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction) -> Vec<Input> {
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction,broadcast_op:&Broadcast_op) -> Vec<Input> {
 
         let wallet_keys=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
         let (signer_pub_k,(_, signer_dp))=wallet_keys.clone();
@@ -49,6 +49,9 @@ impl AddressSchema for P2PWKh{
                 let pub_key=signer_pub_k.public_key.to_public_key();
                 b_tree.insert(pub_key,sig);
             });
+            
+        if(broadcast_op.eq(&Broadcast_op::Finalize)){}
+
         input_tx.partial_sigs=b_tree;
         return input_tx;
         }).collect();

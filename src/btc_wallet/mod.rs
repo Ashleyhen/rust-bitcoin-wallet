@@ -23,7 +23,7 @@ pub trait AddressSchema{
     fn wallet_purpose(&self)-> u32;
     fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
     fn to_wallet(&self)->ClientWallet;
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction ) ->Vec<Input>;
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction,broadcast_op:&Broadcast_op ) ->Vec<Input>;
 }
 
 #[derive(Clone)]
@@ -55,7 +55,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         println!("unconfirmed: {}",get_balance.unconfirmed)
     }
 
-    pub fn submit_tx(&self,to_addr:String,amount:u64){
+    pub fn submit_tx(&self,to_addr:String,amount:u64,broadcast_op:&Broadcast_op)->PartiallySignedTransaction{
         let secp=&self.schema.to_wallet().secp;
         let wallet=self.schema.to_wallet();
         let signer=wallet.create_wallet(self.schema.wallet_purpose(),wallet.recieve,wallet.change);
@@ -89,7 +89,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             output: tx_out,
         };
 
-        let input_vec=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx.clone() );
+        let input_vec=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx.clone(),broadcast_op );
        
         let mut xpub =BTreeMap::new();
 
@@ -111,10 +111,14 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             inputs:input_vec
         };
 
-        
-        let complete=psbt.clone().finalize(&secp).unwrap();
-        dbg!(complete.clone().extract_tx());
-
+        return match broadcast_op{
+            Broadcast_op::Finalize => {
+                let complete =psbt.clone().finalize(&secp).unwrap();
+                dbg!(complete.clone().extract_tx());
+                return psbt.clone();
+            },
+            Broadcast_op::None => psbt,
+        };
     }
 
 }
@@ -148,7 +152,12 @@ impl ClientWallet{
     }
 }
 
+#[derive(PartialEq,Clone, Copy)]
+pub enum Broadcast_op{
+    Finalize,
+    None
 
+}
 
 // fn path<F>(change:F) 
 //         where F: FnOnce(Script) ->dyn UnlockPreviousUTXO{
