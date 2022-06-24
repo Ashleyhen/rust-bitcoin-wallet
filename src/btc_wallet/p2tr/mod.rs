@@ -5,6 +5,7 @@ use miniscript::{interpreter::KeySigPair, ToPublicKey};
 
 use super::{AddressSchema, ClientWallet, NETWORK, WalletKeys, utils::{UnlockAndSend}, Broadcast_op};
 
+
 #[derive( Clone)]
 pub struct P2TR(pub ClientWallet);
 
@@ -35,38 +36,39 @@ impl AddressSchema for P2TR{
       let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, &signer_dp).unwrap();
 
       let input_list:Vec<Input>=previous_tx.clone().iter().enumerate().map(|(i, previous_tx)|{
-      let tweaked_key_pair=ext_prv.to_keypair(&secp).tap_tweak(&secp,None).into_inner();       
-      
-      let tx_output:Vec<TxOut>= previous_tx.output.clone().iter()
-        .filter(|tx_out|UnlockAndSend::new(self,wallet_key.clone()).find_relevent_utxo(tx_out)).map(|tx_out|tx_out.clone()).collect();
 
-      let tap_leaf_hash_list=tx_output.clone().iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, TapScript)).collect::<Vec<TapLeafHash>>();
+        let tweaked_key_pair=ext_prv.to_keypair(&secp).tap_tweak(&secp,None).into_inner();       
+        
+        let tx_output:Vec<TxOut>= previous_tx.output.clone().iter()
+          .filter(|tx_out|UnlockAndSend::new(self,wallet_key.clone()).find_relevent_utxo(tx_out)).map(|tx_out|tx_out.clone()).collect();
 
-      let uxto=&tx_output.clone()[0];
+        let tap_leaf_hash_list=tx_output.clone().iter().map(|f|TapLeafHash::from_script(&f.script_pubkey, TapScript)).collect::<Vec<TapLeafHash>>();
 
-      let mut tap_key_origin=BTreeMap::new();
+        let uxto=&tx_output.clone()[i];
 
-      tap_key_origin.insert
-      (signer_pub_k.to_x_only_pub(),
-      (tap_leaf_hash_list,(signer_finger_p.clone(),signer_dp.clone())));
+        let mut tap_key_origin=BTreeMap::new();
 
-      let sig_hash=SighashCache::new(&mut current_tx.clone())
-                .taproot_key_spend_signature_hash( i, &Prevouts::All(&previous_tx.output), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
-      let msg=Message::from_slice(&sig_hash).unwrap();
+        tap_key_origin.insert
+        (signer_pub_k.to_x_only_pub(),
+        (tap_leaf_hash_list,(signer_finger_p.clone(),signer_dp.clone())));
 
-      let signed_shnorr=secp.sign_schnorr(&msg, &tweaked_key_pair);
+        let sig_hash=SighashCache::new(&mut current_tx.clone())
+                  .taproot_key_spend_signature_hash( i, &Prevouts::All(&previous_tx.output), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
+        let msg=Message::from_slice(&sig_hash).unwrap();
 
-      let schnorr_sig=SchnorrSig{sig:signed_shnorr, hash_ty:SchnorrSighashType::AllPlusAnyoneCanPay};
-      let mut new_input=Input::default() ;
-      new_input.witness_utxo=Some(uxto.clone());
-      new_input.tap_key_origins=tap_key_origin;
-      new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
-      new_input.tap_key_sig=Some(schnorr_sig.clone());
-      new_input.non_witness_utxo=Some(previous_tx.clone());
-      if(broadcast_op.eq(&Broadcast_op::Finalize)){
-        secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
-      }
-        return new_input;
+        let signed_shnorr=secp.sign_schnorr(&msg, &tweaked_key_pair);
+
+        let schnorr_sig=SchnorrSig{sig:signed_shnorr, hash_ty:SchnorrSighashType::AllPlusAnyoneCanPay};
+        let mut new_input=Input::default() ;
+        new_input.witness_utxo=Some(uxto.clone());
+        new_input.tap_key_origins=tap_key_origin;
+        new_input.tap_internal_key=Some(signer_pub_k.to_x_only_pub());
+        new_input.tap_key_sig=Some(schnorr_sig.clone());
+        new_input.non_witness_utxo=Some(previous_tx.clone());
+        if(broadcast_op.eq(&Broadcast_op::Finalize)){
+          secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
+        }
+          return new_input;
       }).collect();
       return input_list;
     }
@@ -84,7 +86,7 @@ impl P2TR {
         let x_only_pub_k=signer_pub_k.public_key.to_public_key().inner.combine(&XOnlyPublicKey::from_slice(&addr.script_pubkey()[2..])
         .unwrap().to_public_key().inner).unwrap().to_x_only_pubkey();
         let address=Address::p2tr(&secp, x_only_pub_k,  None, NETWORK);
-        return address.to_qr_uri().to_lowercase();
+        return address.to_string();
       }).last().unwrap();
   }
 }

@@ -73,8 +73,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
 				sequence: 0xFFFFFFFF,
 				witness: Witness::default() 
 			}
-        }
-		).collect::<Vec<TxIn>>();
+        }).collect::<Vec<TxIn>>();
 		
 		let previous_tx=tx_in.iter()
         .map(|tx_id|self.electrum_rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
@@ -111,13 +110,20 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             inputs:input_vec
         };
 
+        let paritally_signed=||{
+            let complete =psbt.clone().finalize(&secp).unwrap();
+            dbg!(complete.clone().extract_tx());
+            return complete;
+        };
+
         return match broadcast_op{
-            Broadcast_op::Finalize => {
-                let complete =psbt.clone().finalize(&secp).unwrap();
-                dbg!(complete.clone().extract_tx());
-                return psbt.clone();
+            Broadcast_op::Finalize => paritally_signed() ,
+            Broadcast_op::None => dbg!(psbt),
+            Broadcast_op::Broadcast => {
+                let p_signed=paritally_signed();
+                self.electrum_rpc_call.transaction_broadcast(&p_signed.clone().extract_tx()).unwrap();
+                return p_signed;
             },
-            Broadcast_op::None => psbt,
         };
     }
 
@@ -155,7 +161,8 @@ impl ClientWallet{
 #[derive(PartialEq,Clone, Copy)]
 pub enum Broadcast_op{
     Finalize,
-    None
+    None,
+    Broadcast
 
 }
 

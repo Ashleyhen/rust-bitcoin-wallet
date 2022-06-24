@@ -50,7 +50,9 @@ impl AddressSchema for P2PWKh{
                 b_tree.insert(pub_key,sig);
             });
             
-        if(broadcast_op.eq(&Broadcast_op::Finalize)){}
+        if(broadcast_op.eq(&Broadcast_op::Finalize)){
+            
+        }
 
         input_tx.partial_sigs=b_tree;
         return input_tx;
