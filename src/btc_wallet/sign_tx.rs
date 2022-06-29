@@ -30,7 +30,7 @@ impl SignTx{
 		  return input;
 	  }
 
-	pub fn p2wpkh_script_sign(&self)->(Input){
+	pub fn p2wpkh_script_sign(&self)->Input{
 
 			let mut input=Input::default();
 		self.previous_tx.iter().for_each(|witness|{
