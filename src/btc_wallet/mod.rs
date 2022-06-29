@@ -122,7 +122,8 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             .collect::<Vec<Transaction>>();
 
         let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
-        let tx_out = unlock_and_send.initialize_output(amount, history, change_pub_k, to_addr);
+        let total=history.iter().map(|f| f.value).sum::<u64>();
+        let tx_out = unlock_and_send.initialize_output(amount, total, change_pub_k, to_addr);
 
         let current_tx = Transaction {
             version: 0,

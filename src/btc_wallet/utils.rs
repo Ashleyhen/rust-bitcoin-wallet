@@ -25,12 +25,11 @@ impl<'a, T: AddressSchema> UnlockAndSend<'a, T> {
     pub fn initialize_output(
         &self,
         amount: u64,
-        previous_tx_list: Arc<Vec<ListUnspentRes>>,
+        total: u64,
         change_addr: ExtendedPubKey,
         to_addr: String,
     ) -> Vec<TxOut> {
         let tip: u64 = 300;
-        let total = previous_tx_list.iter().map(|f| f.value).sum::<u64>();
         self.schema
             .map_ext_keys(&self.wallet_keys.0)
             .script_pubkey();
