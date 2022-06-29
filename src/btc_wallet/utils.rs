@@ -1,7 +1,9 @@
 use std::{str::FromStr, borrow::BorrowMut, sync::Arc};
 use bitcoin::{Transaction, Script, TxOut, TxIn, Address, Witness, psbt::{Input, Output}, util::bip32::ExtendedPubKey};
 use electrum_client::ListUnspentRes;
-use crate::btc_wallet::{AddressSchema, WalletKeys};
+use crate::btc_wallet::{ WalletKeys};
+
+use super::wallet_traits::AddressSchema;
 
 #[derive( Clone)]
 pub struct UnlockAndSend< 'a, T:AddressSchema>{
@@ -9,11 +11,13 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
     wallet_keys:WalletKeys 
 }
 
+
+
  impl <'a, T: AddressSchema> UnlockAndSend<'a, T>{
     
  pub fn  new(schema:&'a T,wallet_keys:WalletKeys)->Self{
      return UnlockAndSend{
-         schema: schema,wallet_keys
+         schema,wallet_keys
      };
 
 }   
@@ -42,11 +46,4 @@ pub struct UnlockAndSend< 'a, T:AddressSchema>{
 
         return vec![send_tx,change_tx];
     }
-   
-    
-    pub fn find_relevent_utxo(&self, tx_out:&TxOut)-> bool {
-             return tx_out.script_pubkey.eq(&self.schema.map_ext_keys(&self.wallet_keys.0).script_pubkey()) ;
-    }
-    
-    
 }

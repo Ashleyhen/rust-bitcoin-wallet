@@ -1,7 +1,9 @@
 use bitcoin::{Transaction, Txid, Script};
 use electrum_client::{Error, ListUnspentRes, GetBalanceRes};
 
-use super::ApiCall;
+use crate::btc_wallet::wallet_traits::ApiCall;
+
+
 
 struct TestRpc();
 impl ApiCall for TestRpc{

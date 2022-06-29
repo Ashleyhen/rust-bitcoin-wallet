@@ -8,37 +8,34 @@ use miniscript::{psbt::PsbtExt, ToPublicKey};
 
 use crate::btc_wallet::utils::UnlockAndSend;
 
-use self::input_data::ApiCall;
+use self::{ wallet_traits::{AddressSchema, ApiCall}, sign_tx::SignTx};
 // pub mod input_data;
 pub mod input_data;
 
 mod utils;
+mod submit;
+pub mod wallet_traits;
 
 pub type WalletKeys=(ExtendedPubKey,KeySource);
 pub mod p2wpkh;
 pub mod p2tr;
+pub mod sign_tx;
 
-pub trait AddressSchema{
-    fn map_ext_keys(&self,recieve:&ExtendedPubKey) -> Address;
-    fn wallet_purpose(&self)-> u32;
-    fn new(seed: Option<String>,recieve:u32,change:u32)->Self;
-    fn to_wallet(&self)->ClientWallet;
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_input:Transaction,broadcast_op:&Broadcast_op ) ->Vec<Input>;
-}
 
 #[derive(Clone)]
 pub struct ClientWallet{ secp:Secp256k1<All>, seed:Seed, recieve:u32, change:u32 }
 
 #[derive(Clone)]
-pub struct ClientWithSchema<S:AddressSchema,A:ApiCall>{
-   schema:S,
+pub struct ClientWithSchema<'a, S:AddressSchema,A:ApiCall>{
+   schema:&'a S,
    electrum_rpc_call:Arc<A>,
 }
 type Seed=[u8;constants::SECRET_KEY_SIZE];
+
 pub const NETWORK: bitcoin::Network = Network::Testnet;
 
- impl <S: AddressSchema,A:ApiCall> ClientWithSchema<S,A>{
-    pub fn new(schema: S,api_call:A)->ClientWithSchema<S,A> {
+ impl <'a, S: AddressSchema,A:ApiCall> ClientWithSchema<'a, S,A>{
+    pub fn new(schema: &S,api_call:A)->ClientWithSchema<S,A> {
         return ClientWithSchema {
             schema,
             electrum_rpc_call:Arc::new(api_call)
@@ -55,8 +52,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         println!("unconfirmed: {}",get_balance.unconfirmed)
     }
 
-    pub fn submit_tx(&self,to_addr:String,amount:u64,broadcast_op:&Broadcast_op)->PartiallySignedTransaction{
-        let secp=&self.schema.to_wallet().secp;
+    pub fn submit_tx(&self,to_addr:String,amount:u64,signing_fn:&dyn Fn(SignTx) -> Input)->PartiallySignedTransaction{
         let wallet=self.schema.to_wallet();
         let signer=wallet.create_wallet(self.schema.wallet_purpose(),wallet.recieve,wallet.change);
         let (signer_pub_k,(signer_finger_p,signer_dp))=signer.clone();
@@ -66,7 +62,6 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         let history=Arc::new(self.electrum_rpc_call.script_list_unspent(&signer_addr.script_pubkey()).expect("address history call failed"));
 
 		let tx_in=history.clone().iter().map(|tx|{
-            
 			return TxIn{
 				previous_output:OutPoint::new(tx.tx_hash, tx.tx_pos.try_into().unwrap()),
 				script_sig: Script::new(),// The scriptSig must be exactly empty or the validation fails (native witness program)
@@ -76,11 +71,11 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         }).collect::<Vec<TxIn>>();
 		
 		let previous_tx=tx_in.iter()
-        .map(|tx_id|self.electrum_rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap())
-        .collect::<Vec<Transaction>>();
+        .map(|tx_id|self.electrum_rpc_call.transaction_get(&tx_id.previous_output.txid).unwrap()).collect::<Vec<Transaction>>();
 
-       let unlock_and_send=UnlockAndSend::new(&self.schema, signer.clone());
+       let unlock_and_send=UnlockAndSend::new(self.schema, signer.clone());
        let tx_out=unlock_and_send.initialize_output(amount,history,change_pub_k,to_addr);
+
        let current_tx=Transaction{
             version: 0,
             lock_time: 0,
@@ -88,7 +83,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             output: tx_out,
         };
 
-        let input_vec=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx.clone(),broadcast_op );
+        let input_vec=self.schema.prv_tx_input(previous_tx.to_vec().clone(),current_tx.clone(),signing_fn );
        
         let mut xpub =BTreeMap::new();
 
@@ -100,7 +95,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
         output.bip32_derivation.insert(change_pub_k.public_key,(change_finger_p ,change_dp));
 
         // we have all the infomation for the partially signed transaction 
-        let mut psbt=PartiallySignedTransaction{
+        let psbt=PartiallySignedTransaction{
             unsigned_tx: current_tx.clone(),
             version: 1,
             xpub,
@@ -109,22 +104,7 @@ pub const NETWORK: bitcoin::Network = Network::Testnet;
             outputs: vec![output],
             inputs:input_vec
         };
-
-        let paritally_signed=||{
-            let complete =psbt.clone().finalize(&secp).unwrap();
-            dbg!(complete.clone().extract_tx());
-            return complete;
-        };
-
-        return match broadcast_op{
-            Broadcast_op::Finalize => paritally_signed() ,
-            Broadcast_op::None => dbg!(psbt),
-            Broadcast_op::Broadcast => {
-                let p_signed=paritally_signed();
-                self.electrum_rpc_call.transaction_broadcast(&p_signed.clone().extract_tx()).unwrap();
-                return p_signed;
-            },
-        };
+        return psbt;
     }
 
 }
@@ -165,6 +145,7 @@ pub enum Broadcast_op{
     Broadcast
 
 }
+
 
 // fn path<F>(change:F) 
 //         where F: FnOnce(Script) ->dyn UnlockPreviousUTXO{

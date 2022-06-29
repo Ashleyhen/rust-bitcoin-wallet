@@ -4,7 +4,7 @@ use bitcoin::{util::{bip32::{DerivationPath, ExtendedPubKey, ExtendedPrivKey, Ke
 use miniscript::ToPublicKey;
 
 
-use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend}, Broadcast_op};
+use super::{ClientWallet, AddressSchema,  NETWORK,  WalletKeys, utils::{UnlockAndSend}, Broadcast_op, SignTx};
 
 #[derive( Clone)]
 pub struct P2PWKh( pub  ClientWallet ); 
@@ -27,7 +27,7 @@ impl AddressSchema for P2PWKh{
         return 84;
     }
 
-    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction,broadcast_op:&Broadcast_op) -> Vec<Input> {
+    fn prv_tx_input(&self,previous_tx:Vec<Transaction>,current_tx:Transaction,broadcast_op:&dyn Fn(SignTx) -> Input) -> Vec<Input> {
 
         let wallet_keys=self.0.create_wallet(self.wallet_purpose(),self.0.recieve,self.0.change);
         let (signer_pub_k,(_, signer_dp))=wallet_keys.clone();
@@ -49,43 +49,12 @@ impl AddressSchema for P2PWKh{
                 let pub_key=signer_pub_k.public_key.to_public_key();
                 b_tree.insert(pub_key,sig);
             });
-            
-        if(broadcast_op.eq(&Broadcast_op::Finalize)){
-            
-        }
 
         input_tx.partial_sigs=b_tree;
         return input_tx;
         }).collect();
         return input_list;
         }
-
-       
-        
-        
-
-
-
-
-    // fn prv_psbt_input(&self,prev_transaction:&mut Transaction,old_input: &Input,i:usize,wallet_keys:&WalletKeys)->Input {
-
-    //     let (signer_pub_k,(_, signer_dp))=wallet_keys;
-    //     let secp=&self.0.secp;
-    //     let ext_prv=ExtendedPrivKey::new_master(NETWORK, &self.0.seed).unwrap().derive_priv(&secp, signer_dp).unwrap();
-        
-    //     let sighash=old_input.witness_utxo.as_ref().map(|tx|{
-    //         return SighashCache::new( prev_transaction).segwit_signature_hash(
-    //             i, &p2wpkh_script_code(&tx.script_pubkey), tx.value, EcdsaSighashType::All)
-    //     }).unwrap().unwrap();
- 
-    //     let mut b_tree=BTreeMap::new();
-    //     b_tree.insert(signer_pub_k.public_key.to_public_key(),EcdsaSig::sighash_all(secp.sign_ecdsa(&Message::from_slice(&sighash).unwrap(),&ext_prv.private_key)));
-    //     let mut new_input=old_input.clone();
-    //     new_input.partial_sigs=b_tree;
-    //     return new_input;
-    // }
-
-    
 
 }
 
