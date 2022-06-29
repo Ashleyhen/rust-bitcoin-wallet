@@ -1,14 +1,11 @@
-use bitcoin::{Transaction, Txid, Script};
-use electrum_client::{Error, ListUnspentRes, GetBalanceRes};
+use bitcoin::{Script, Transaction, Txid};
+use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
 use crate::btc_wallet::wallet_traits::ApiCall;
 
-
-
 struct TestRpc();
-impl ApiCall for TestRpc{
-    
-    fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid,Error> {
+impl ApiCall for TestRpc {
+    fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error> {
         todo!()
     }
 
@@ -20,11 +17,11 @@ impl ApiCall for TestRpc{
         todo!()
     }
 
-    fn script_get_balance(&self, script: &Script) -> Result<GetBalanceRes,Error> {
+    fn script_get_balance(&self, script: &Script) -> Result<GetBalanceRes, Error> {
         todo!()
     }
 
-    fn new()->Self {
+    fn new() -> Self {
         return TestRpc();
     }
 }
