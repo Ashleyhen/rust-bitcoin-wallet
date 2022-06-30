@@ -3,7 +3,6 @@ use miniscript::psbt::PsbtExt;
 
 use super::wallet_methods::ClientWallet;
 
-
 impl ClientWallet {
     pub fn finalize(
         &self,

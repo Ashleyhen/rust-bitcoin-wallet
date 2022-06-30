@@ -12,7 +12,10 @@ use bitcoin::{
 };
 use miniscript::ToPublicKey;
 
-use super::{AddressSchema,  SignTx, WalletKeys, wallet_methods::{ClientWallet, NETWORK}};
+use super::{
+    wallet_methods::{ClientWallet, NETWORK},
+    AddressSchema, SignTx, WalletKeys,
+};
 
 #[derive(Clone)]
 pub struct P2PWKh(pub ClientWallet);
