@@ -16,7 +16,10 @@ use bitcoin::{
 };
 use miniscript::{interpreter::KeySigPair, ToPublicKey};
 
-use super::{AddressSchema,  SignTx, WalletKeys, wallet_methods::{ClientWallet, NETWORK}};
+use super::{
+    wallet_methods::{ClientWallet, NETWORK},
+    AddressSchema, SignTx, WalletKeys,
+};
 
 #[derive(Clone)]
 pub struct P2TR(pub ClientWallet);
@@ -129,4 +132,5 @@ impl P2TR {
             .last()
             .unwrap();
     }
+
 }

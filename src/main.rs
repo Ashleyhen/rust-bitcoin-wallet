@@ -5,7 +5,8 @@ use btc_wallet::{
     lock::pub_key_lock,
     p2tr::P2TR,
     p2wpkh::P2PWKh,
-    wallet_traits::{AddressSchema, ApiCall}, wallet_methods::{Broadcast_op, ClientWithSchema},
+    wallet_methods::{Broadcast_op, ClientWithSchema},
+    wallet_traits::{AddressSchema, ApiCall},
 };
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
@@ -28,8 +29,7 @@ fn _test_transactionn() {
     // let aggregate = schema.aggregate(address_list);
 
     let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new());
-    client_with_schema.submit_psbt(to_addr.to_string(),Broadcast_op::Finalize );
-
+    client_with_schema.submit_psbt(to_addr.to_string(), Broadcast_op::Finalize);
 }
 
 // seed, vec<derivation path>

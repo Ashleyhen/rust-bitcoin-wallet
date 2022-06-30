@@ -1,10 +1,22 @@
-use std::{str::FromStr, sync::Arc, collections::BTreeMap};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc};
 
 use bdk::KeychainKind;
-use bitcoin::{Address, Transaction, psbt::{Input, PartiallySignedTransaction}, util::{bip32::{ExtendedPrivKey, ChildNumber, DerivationPath, ExtendedPubKey}, taproot::{TapLeafHash,LeafVersion::TapScript}}, XOnlyPublicKey, secp256k1::{constants, SecretKey, Secp256k1, rand::rngs::OsRng, All}, Network, OutPoint, Script, Witness, TxIn, TxOut};
+use bitcoin::{
+    psbt::{Input, PartiallySignedTransaction},
+    secp256k1::{constants, rand::rngs::OsRng, All, Secp256k1, SecretKey},
+    util::{
+        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
+        taproot::{LeafVersion::TapScript, TapLeafHash},
+    },
+    Address, Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+};
 use miniscript::ToPublicKey;
 
-use super::{ wallet_traits::{AddressSchema, ApiCall},  unlock::SignTx, WalletKeys};
+use super::{
+    unlock::SignTx,
+    wallet_traits::{AddressSchema, ApiCall},
+    WalletKeys,
+};
 
 #[derive(Clone)]
 pub struct ClientWallet {
@@ -104,8 +116,6 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
                     .unwrap()
             })
             .collect::<Vec<Transaction>>();
-
-        let total = history.iter().map(|f| f.value).sum::<u64>();
 
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
         let tx_out = locked_outputs;
