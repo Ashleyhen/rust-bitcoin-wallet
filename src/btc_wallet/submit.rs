@@ -1,7 +1,8 @@
 use bitcoin::{psbt::PartiallySignedTransaction, Transaction};
 use miniscript::psbt::PsbtExt;
 
-use super::ClientWallet;
+use super::wallet_methods::ClientWallet;
+
 
 impl ClientWallet {
     pub fn finalize(

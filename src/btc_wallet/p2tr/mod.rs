@@ -16,9 +16,7 @@ use bitcoin::{
 };
 use miniscript::{interpreter::KeySigPair, ToPublicKey};
 
-use super::{
-    utils::UnlockAndSend, AddressSchema, Broadcast_op, ClientWallet, SignTx, WalletKeys, NETWORK,
-};
+use super::{AddressSchema,  SignTx, WalletKeys, wallet_methods::{ClientWallet, NETWORK}};
 
 #[derive(Clone)]
 pub struct P2TR(pub ClientWallet);
@@ -44,7 +42,7 @@ impl AddressSchema for P2TR {
         &self,
         previous_tx: Vec<Transaction>,
         current_tx: Transaction,
-        signing_fn: &dyn Fn(SignTx) -> Input,
+        unlocking_fn: &dyn Fn(SignTx) -> Input,
     ) -> Vec<Input> {
         let secp = self.clone().0.secp;
         let wallet_key = self
@@ -80,7 +78,7 @@ impl AddressSchema for P2TR {
                             previous_tx.output.clone(),
                             secp.clone(),
                         );
-                        let mut new_input = signing_fn(sign_tx);
+                        let mut new_input = unlocking_fn(sign_tx);
 
                         new_input.witness_utxo = Some(utxo.clone());
                         let tap_leaf_hash_list =
@@ -94,26 +92,6 @@ impl AddressSchema for P2TR {
                         // tx_out;
                     })
                     .collect();
-
-                // let mut tap_key_origin=BTreeMap::new();
-
-                // tap_key_origin.insert
-                // (signer_pub_k.to_x_only_pub(),
-                // (tap_leaf_hash_list,(signer_finger_p.clone(),signer_dp.clone())));
-
-                // let tweaked_key_pair=ext_prv.to_keypair(&secp).tap_tweak(&secp,None).into_inner();
-                // let sig_hash=SighashCache::new(&mut current_tx.clone())
-                //           .taproot_key_spend_signature_hash( i, &Prevouts::All(&previous_tx.output), SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
-                // let msg=Message::from_slice(&sig_hash).unwrap();
-
-                // let signed_shnorr=secp.sign_schnorr(&msg, &tweaked_key_pair);
-
-                // let schnorr_sig=SchnorrSig{sig:signed_shnorr, hash_ty:SchnorrSighashType::AllPlusAnyoneCanPay};
-
-                // new_input.tap_key_sig=Some(schnorr_sig.clone());
-                // if(broadcast_op.eq(&Broadcast_op::Finalize)){
-                //   secp.verify_schnorr(&signed_shnorr, &msg, &XOnlyPublicKey::from_slice(&uxto.script_pubkey[2..]).unwrap()).is_ok();
-                // }
                 return input_list;
             })
             .collect();

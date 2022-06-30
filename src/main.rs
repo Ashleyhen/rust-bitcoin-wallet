@@ -2,12 +2,11 @@ use std::env;
 
 use btc_wallet::{
     input_data::electrum_rpc::ElectrumRpc,
+    lock::pub_key_lock,
     p2tr::P2TR,
     p2wpkh::P2PWKh,
-    wallet_traits::{AddressSchema, ApiCall},
-    Broadcast_op, ClientWithSchema,
+    wallet_traits::{AddressSchema, ApiCall}, wallet_methods::{Broadcast_op, ClientWithSchema},
 };
-use lightning::chain::{channelmonitor::ChannelMonitor, keysinterface::InMemorySigner};
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 
@@ -28,21 +27,9 @@ fn _test_transactionn() {
     let address_list = vec![to_addr.to_string(), tr_3.to_string()];
     // let aggregate = schema.aggregate(address_list);
 
-    let broad_cast = Broadcast_op::Finalize;
-    let electrum_rpc = ElectrumRpc::new();
     let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new());
-    client_with_schema.print_balance();
-    let psbt = client_with_schema.submit_tx(tr_3.to_string(), 100, &|s| s.tr_key_sign());
+    client_with_schema.submit_psbt(to_addr.to_string(),Broadcast_op::Finalize );
 
-    // finalize or broadcast based on (broad_cast)
-    schema.0.finalize(psbt, &|tx| match broad_cast {
-        Broadcast_op::Broadcast => {
-            dbg!(electrum_rpc.transaction_broadcast(tx).unwrap());
-        }
-        _ => {
-            dbg!(tx);
-        }
-    });
 }
 
 // seed, vec<derivation path>

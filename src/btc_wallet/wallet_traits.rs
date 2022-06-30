@@ -1,7 +1,8 @@
 use bitcoin::{psbt::Input, util::bip32::ExtendedPubKey, Address, Script, Transaction, Txid};
 use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
-use super::{Broadcast_op, ClientWallet, SignTx};
+use super::{wallet_methods::ClientWallet, unlock::SignTx};
+
 
 pub trait AddressSchema {
     fn map_ext_keys(&self, recieve: &ExtendedPubKey) -> Address;
@@ -12,7 +13,7 @@ pub trait AddressSchema {
         &self,
         previous_tx: Vec<Transaction>,
         current_input: Transaction,
-        signing_fn: &dyn Fn(SignTx) -> (Input),
+        unlocking_fn: &dyn Fn(SignTx) -> (Input),
     ) -> Vec<Input>;
 }
 

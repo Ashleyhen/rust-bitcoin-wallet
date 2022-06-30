@@ -12,9 +12,7 @@ use bitcoin::{
 };
 use miniscript::ToPublicKey;
 
-use super::{
-    utils::UnlockAndSend, AddressSchema, Broadcast_op, ClientWallet, SignTx, WalletKeys, NETWORK,
-};
+use super::{AddressSchema,  SignTx, WalletKeys, wallet_methods::{ClientWallet, NETWORK}};
 
 #[derive(Clone)]
 pub struct P2PWKh(pub ClientWallet);
@@ -40,7 +38,7 @@ impl AddressSchema for P2PWKh {
         &self,
         previous_tx: Vec<Transaction>,
         current_tx: Transaction,
-        signing_fn: &dyn Fn(SignTx) -> Input,
+        unlocking_fn: &dyn Fn(SignTx) -> Input,
     ) -> Vec<Input> {
         let wallet_keys =
             self.0
@@ -64,7 +62,7 @@ impl AddressSchema for P2PWKh {
                     previous_tx.output.clone(),
                     secp.clone(),
                 );
-                let mut input_tx = signing_fn(sign_tx);
+                let mut input_tx = unlocking_fn(sign_tx);
                 input_tx.non_witness_utxo = Some(previous_tx.clone());
                 return input_tx;
             })
