@@ -23,10 +23,7 @@ pub mod unlock;
 
 pub mod wallet_methods;
 impl<'a, S: AddressSchema> ClientWithSchema<'a, S, ElectrumRpc> {
-    pub fn submit_psbt(&self, to_addr: String, broad_cast_op: Broadcast_op) -> ()
-    where
-        S: AddressSchema,
-    {
+    pub fn submit_psbt(&self, to_addr: String, broad_cast_op: Broadcast_op) -> () {
         let electrum_rpc = ElectrumRpc::new();
         let psbt = self.submit_tx(
             &|s| s.tr_key_sign(),
@@ -35,8 +32,8 @@ impl<'a, S: AddressSchema> ClientWithSchema<'a, S, ElectrumRpc> {
                 100,
                 self.get_balance().confirmed,
                 self.change_addr().0,
-                to_addr.to_string(),
-            ),
+                    to_addr.to_string(),
+            )
         );
         self.schema
             .to_wallet()

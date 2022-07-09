@@ -117,8 +117,6 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             })
             .collect::<Vec<Transaction>>();
 
-        let total = history.iter().map(|f| f.value).sum::<u64>();
-
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
         let tx_out = locked_outputs;
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
