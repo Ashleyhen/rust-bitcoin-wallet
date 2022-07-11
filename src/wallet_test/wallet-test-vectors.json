@@ -4,7 +4,7 @@
         {
             "given": {
                 "internalPubkey": "d6889cb081036e0faefa3a35157ad71086b123b2b144b649798b494c300a961d",
-                "scriptTree": null
+                "scriptTree": []
             },
             "intermediary": {
                 "merkleRoot": null,
@@ -19,11 +19,13 @@
         {
             "given": {
                 "internalPubkey": "187791b6f712a8ea41c8ecdd0ee77fab3e85263b37e1ec18a3651926b3a6cf27",
-                "scriptTree": {
-                    "id": 0,
-                    "script": "20d85a959b0290bf19bb89ed43c916be835475d013da4b362117393e25a48229b8ac",
-                    "leafVersion": 192
-                }
+                "scriptTree": [
+                    {
+                        "id": 0,
+                        "script": "20d85a959b0290bf19bb89ed43c916be835475d013da4b362117393e25a48229b8ac",
+                        "leafVersion": 192
+                    }
+                ]
             },
             "intermediary": {
                 "leafHashes": [
@@ -44,11 +46,13 @@
         {
             "given": {
                 "internalPubkey": "93478e9488f956df2396be2ce6c5cced75f900dfa18e7dabd2428aae78451820",
-                "scriptTree": {
-                    "id": 0,
-                    "script": "20b617298552a72ade070667e86ca63b8f5789a9fe8731ef91202a91c9f3459007ac",
-                    "leafVersion": 192
-                }
+                "scriptTree": [
+                    {
+                        "id": 0,
+                        "script": "20b617298552a72ade070667e86ca63b8f5789a9fe8731ef91202a91c9f3459007ac",
+                        "leafVersion": 192
+                    }
+                ]
             },
             "intermediary": {
                 "leafHashes": [
@@ -143,18 +147,16 @@
                         "script": "2072ea6adcf1d371dea8fba1035a09f3d24ed5a059799bae114084130ee5898e69ac",
                         "leafVersion": 192
                     },
-                    [
-                        {
-                            "id": 1,
-                            "script": "202352d137f2f3ab38d1eaa976758873377fa5ebb817372c71e2c542313d4abda8ac",
-                            "leafVersion": 192
-                        },
-                        {
-                            "id": 2,
-                            "script": "207337c0dd4253cb86f2c43a2351aadd82cccb12a172cd120452b9bb8324f2186aac",
-                            "leafVersion": 192
-                        }
-                    ]
+                    {
+                        "id": 1,
+                        "script": "202352d137f2f3ab38d1eaa976758873377fa5ebb817372c71e2c542313d4abda8ac",
+                        "leafVersion": 192
+                    },
+                    {
+                        "id": 2,
+                        "script": "207337c0dd4253cb86f2c43a2351aadd82cccb12a172cd120452b9bb8324f2186aac",
+                        "leafVersion": 192
+                    }
                 ]
             },
             "intermediary": {
@@ -186,18 +188,16 @@
                         "script": "2071981521ad9fc9036687364118fb6ccd2035b96a423c59c5430e98310a11abe2ac",
                         "leafVersion": 192
                     },
-                    [
-                        {
-                            "id": 1,
-                            "script": "20d5094d2dbe9b76e2c245a2b89b6006888952e2faa6a149ae318d69e520617748ac",
-                            "leafVersion": 192
-                        },
-                        {
-                            "id": 2,
-                            "script": "20c440b462ad48c7a77f94cd4532d8f2119dcebbd7c9764557e62726419b08ad4cac",
-                            "leafVersion": 192
-                        }
-                    ]
+                    {
+                        "id": 1,
+                        "script": "20d5094d2dbe9b76e2c245a2b89b6006888952e2faa6a149ae318d69e520617748ac",
+                        "leafVersion": 192
+                    },
+                    {
+                        "id": 2,
+                        "script": "20c440b462ad48c7a77f94cd4532d8f2119dcebbd7c9764557e62726419b08ad4cac",
+                        "leafVersion": 192
+                    }
                 ]
             },
             "intermediary": {

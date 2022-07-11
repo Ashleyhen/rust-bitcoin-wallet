@@ -1,12 +1,7 @@
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
-    util::{
-        bip32::ExtendedPubKey,
-        taproot::{
-     TaprootBuilder,
-        },
-    },
-    Address, Script,  TxOut, XOnlyPublicKey,
+    util::{bip32::ExtendedPubKey, taproot::TaprootBuilder},
+    Address, Script, TxOut, XOnlyPublicKey,
 };
 use electrum_client::ListUnspentRes;
 use std::{borrow::BorrowMut, ops::Add, str::FromStr, sync::Arc};

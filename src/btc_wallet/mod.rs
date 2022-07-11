@@ -32,8 +32,8 @@ impl<'a, S: AddressSchema> ClientWithSchema<'a, S, ElectrumRpc> {
                 100,
                 self.get_balance().confirmed,
                 self.change_addr().0,
-                    to_addr.to_string(),
-            )
+                to_addr.to_string(),
+            ),
         );
         self.schema
             .to_wallet()

@@ -10,12 +10,14 @@ use btc_wallet::{
 };
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
+pub mod wallet_test;
 
 // pub mod client_node;
 // pub mod taproot_multi_sig;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    _test_transactionn();
+    // _test_transactionn();
+    wallet_test::printOutTest();
 }
 fn _test_transactionn() {
     // person 1
