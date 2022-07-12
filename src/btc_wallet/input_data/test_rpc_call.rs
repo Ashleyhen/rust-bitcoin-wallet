@@ -5,8 +5,8 @@ use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
 use crate::btc_wallet::wallet_traits::ApiCall;
 
-struct TestRpc(PartiallySignedTransaction);
-impl ApiCall for TestRpc{
+pub struct TestRpc(pub PartiallySignedTransaction);
+ impl ApiCall for TestRpc{
     fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error> {
         return Ok(tx.txid());
     }
@@ -22,7 +22,7 @@ impl ApiCall for TestRpc{
         };
     }
 
-    fn transaction_get(&self, _: &Txid) -> Result<Transaction, Error> {
+    fn transaction_get(&self, tx_id: &Txid) -> Result<Transaction, Error> {
         return Ok(self.0.clone().extract_tx());
     }
 
@@ -33,7 +33,7 @@ impl ApiCall for TestRpc{
 }
 
 impl TestRpc{
-    fn new(psbt:PartiallySignedTransaction) -> Self {
+    pub fn new(psbt:PartiallySignedTransaction) -> Self {
         return TestRpc(psbt);
     }
 }

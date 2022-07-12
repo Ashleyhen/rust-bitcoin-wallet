@@ -29,7 +29,7 @@ pub struct ClientWallet {
 #[derive(Clone)]
 pub struct ClientWithSchema<'a, S: AddressSchema, A: ApiCall> {
     pub schema: &'a S,
-    pub electrum_rpc_call: Arc<A>,
+    pub api_call: Arc<A>,
 }
 type Seed = [u8; constants::SECRET_KEY_SIZE];
 
@@ -39,14 +39,14 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
     pub fn new(schema: &S, api_call: A) -> ClientWithSchema<S, A> {
         return ClientWithSchema {
             schema,
-            electrum_rpc_call: Arc::new(api_call),
+            api_call: Arc::new(api_call),
         };
     }
 
     pub fn get_balance(&self) -> electrum_client::GetBalanceRes {
         let address = self.schema.map_ext_keys(&self.get_ext_pub_k());
         return self
-            .electrum_rpc_call
+            .api_call
             .script_get_balance(&address.script_pubkey())
             .unwrap();
     }
@@ -90,7 +90,7 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
         let signer_addr = self.schema.map_ext_keys(&signer_pub_k);
 
         let history = Arc::new(
-            self.electrum_rpc_call
+            self.api_call
                 .script_list_unspent(&signer_addr.script_pubkey())
                 .expect("address history call failed"),
         );
@@ -111,7 +111,7 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
         let previous_tx = tx_in
             .iter()
             .map(|tx_id| {
-                self.electrum_rpc_call
+                self.api_call
                     .transaction_get(&tx_id.previous_output.txid)
                     .unwrap()
             })
