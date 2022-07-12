@@ -21,5 +21,4 @@ pub trait ApiCall {
     fn script_list_unspent(&self, script: &Script) -> Result<Vec<ListUnspentRes>, Error>;
     fn transaction_get(&self, txid: &Txid) -> Result<Transaction, Error>;
     fn script_get_balance(&self, script: &Script) -> Result<GetBalanceRes, Error>;
-    fn new() -> Self;
 }

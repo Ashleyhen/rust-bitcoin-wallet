@@ -1,4 +1,4 @@
-use bitcoin::util::bip32::{ExtendedPubKey, KeySource};
+use bitcoin::{util::bip32::{ExtendedPubKey, KeySource}, Txid};
 
 // use crate::btc_wallet::utils::UnlockAndSend;
 
@@ -23,26 +23,27 @@ pub mod unlock;
 
 pub mod wallet_methods;
 impl<'a, S: AddressSchema> ClientWithSchema<'a, S, ElectrumRpc> {
-    pub fn submit_psbt(&self, to_addr: String, broad_cast_op: Broadcast_op) -> () {
+    pub fn submit_psbt(&self, to_addr: String, broad_cast_op: Broadcast_op) ->() {
         let electrum_rpc = ElectrumRpc::new();
         let psbt = self.submit_tx(
-            &|s| s.tr_key_sign(),
+            &|s| s.pub_key_unlock(),
             pub_key_lock(
                 self.schema,
-                100,
+                1000,
                 self.get_balance().confirmed,
                 self.change_addr().0,
                 to_addr.to_string(),
             ),
         );
-        self.schema
+          self.schema
             .to_wallet()
             .finalize(psbt, &|tx| match broad_cast_op {
                 Broadcast_op::Broadcast => {
-                    dbg!(electrum_rpc.transaction_broadcast(tx).unwrap());
+                return electrum_rpc.transaction_broadcast(tx).unwrap();
                 }
                 _ => {
                     dbg!(tx);
+                    return tx.txid();
                 }
             });
     }

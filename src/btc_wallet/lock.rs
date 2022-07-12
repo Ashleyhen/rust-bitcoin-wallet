@@ -3,10 +3,11 @@ use bitcoin::{
     util::{bip32::ExtendedPubKey, taproot::TaprootBuilder},
     Address, Script, TxOut, XOnlyPublicKey,
 };
-use electrum_client::ListUnspentRes;
-use std::{borrow::BorrowMut, ops::Add, str::FromStr, sync::Arc};
 
-use super::{wallet_methods::NETWORK, wallet_traits::AddressSchema};
+use std::{str::FromStr};
+use super::{wallet_traits::AddressSchema};
+
+
 
 pub fn pub_key_lock<'a, S>(
     schema: &'a S,

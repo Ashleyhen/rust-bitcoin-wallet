@@ -1,4 +1,4 @@
-use bitcoin::{psbt::PartiallySignedTransaction, Transaction};
+use bitcoin::{psbt::PartiallySignedTransaction, Transaction, Txid};
 use miniscript::psbt::PsbtExt;
 
 use super::wallet_methods::ClientWallet;
@@ -7,7 +7,7 @@ impl ClientWallet {
     pub fn finalize(
         &self,
         psbt: PartiallySignedTransaction,
-        broad_cast_fn: &dyn Fn(&Transaction) -> (),
+        broad_cast_fn: &dyn Fn(&Transaction) -> Txid,
     ) -> PartiallySignedTransaction {
         return psbt
             .clone()
