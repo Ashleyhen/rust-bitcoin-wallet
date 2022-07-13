@@ -1,4 +1,4 @@
-use bitcoin::{util::bip32::{ExtendedPubKey, KeySource}, Txid, psbt::PartiallySignedTransaction};
+use bitcoin::{util::bip32::{ExtendedPubKey, KeySource}, Txid, psbt::{PartiallySignedTransaction, Input}, TxOut};
 use miniscript::psbt::PsbtExt;
 
 // use crate::btc_wallet::utils::UnlockAndSend;
@@ -23,16 +23,11 @@ pub mod unlock;
 
 pub mod wallet_methods;
 impl<'a,'b, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
-    pub fn submit_psbt(&self, to_addr: String, broad_cast_op: Broadcast_op) ->PartiallySignedTransaction {
+    pub fn submit_psbt(&self, lock: Vec<TxOut>,unlock:&dyn Fn(SignTx) -> Input, broad_cast_op: Broadcast_op) ->PartiallySignedTransaction {
         let psbt = self.submit_tx(
-            &|s| s.pub_key_unlock(),
-            pub_key_lock(
-                self.schema,
-                1000,
-                self.get_balance().confirmed,
-                self.change_addr().0,
-                to_addr.to_string(),
-            ),
+            unlock,
+            lock
+            ,
         );
 
         return match broad_cast_op {
@@ -53,5 +48,15 @@ impl<'a,'b, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
                 psbt
             },
         }; 
+    }
+
+    pub fn get_pub_key_lock(&self, to_addr:String)->Vec<TxOut>{
+        return pub_key_lock(
+                self.schema,
+                1000,
+                self.get_balance().confirmed,
+                self.change_addr().0,
+                to_addr.to_string(),
+            )
     }
 }
