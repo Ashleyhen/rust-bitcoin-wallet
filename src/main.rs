@@ -27,17 +27,21 @@ fn test_transaction() {
 
     let tr_5 = "tb1p69eefuuvaalsdljjyqntnrrtc4yzpc038ujm3ppze8g6ljepskks2zzffj";
 
-    let address_list = vec![to_addr.to_string(), tr_3.to_string()];
+    // let address_list = vec![to_addr.to_string(), tr_3.to_string()];
+    // let aggregate = schema.aggregate(address_list);
+
 
     let schema = P2TR::new(Some(seed.to_string()), 0, 3);
-    let aggregate = schema.aggregate(address_list);
-    let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new());
-    let psbt=client_with_schema.submit_psbt(tr_5.to_string(), Broadcast_op::Finalize);
+    let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new()); ;
+    let psbt=client_with_schema.submit_psbt(
+        client_with_schema.get_pub_key_lock(tr_5.to_string())
+        ,&|unlock|unlock.pub_key_unlock(), Broadcast_op::Finalize);
 
     let schema_2 = P2TR::new(Some(seed.to_string()), 0, 4);
     let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));
+    let psbt=client_with_schema_2.submit_psbt(client_with_schema.get_pub_key_lock(tr_5.to_string()),
+     &|unlock|unlock.pub_key_unlock(),Broadcast_op::Finalize);
 
-    let psbt=client_with_schema_2.submit_psbt(tr_5.to_string(), Broadcast_op::Finalize);
 }
 
 // seed, vec<derivation path>
