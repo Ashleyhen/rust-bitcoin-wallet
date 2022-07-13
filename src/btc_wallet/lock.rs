@@ -4,10 +4,8 @@ use bitcoin::{
     Address, Script, TxOut, XOnlyPublicKey,
 };
 
-use std::{str::FromStr};
-use super::{wallet_traits::AddressSchema};
-
-
+use super::wallet_traits::AddressSchema;
+use std::str::FromStr;
 
 pub fn pub_key_lock<'a, S>(
     schema: &'a S,

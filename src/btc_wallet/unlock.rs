@@ -15,11 +15,11 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 pub struct SignTx {
-     extended_priv_k: ExtendedPrivKey,
-     index: usize,
-     current_tx: Transaction,
-     previous_tx: Vec<TxOut>,
-     secp: Secp256k1<All>,
+    extended_priv_k: ExtendedPrivKey,
+    index: usize,
+    current_tx: Transaction,
+    previous_tx: Vec<TxOut>,
+    secp: Secp256k1<All>,
 }
 
 impl SignTx {
@@ -96,7 +96,7 @@ impl SignTx {
     }
 }
 
- fn p2wpkh_script_code(script: &Script) -> Script {
+fn p2wpkh_script_code(script: &Script) -> Script {
     Builder::new()
         .push_opcode(opcodes::all::OP_DUP)
         .push_opcode(opcodes::all::OP_HASH160)
