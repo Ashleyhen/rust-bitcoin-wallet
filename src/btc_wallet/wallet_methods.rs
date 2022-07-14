@@ -6,11 +6,9 @@ use bitcoin::{
     secp256k1::{constants, rand::rngs::OsRng, All, Secp256k1, SecretKey},
     util::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
-        taproot::{LeafVersion::TapScript, TapLeafHash},
-    },
-    Address, Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+    }, Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness,
 };
-use miniscript::ToPublicKey;
+
 
 use super::{
     unlock::SignTx,

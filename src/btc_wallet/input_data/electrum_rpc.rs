@@ -24,11 +24,9 @@ impl ApiCall for ElectrumRpc {
     fn script_get_balance(&self, script: &Script) -> Result<GetBalanceRes, Error> {
         return self.0.script_get_balance(script);
     }
-
-  
 }
-impl ElectrumRpc{
-  pub fn new() -> Self {
+impl ElectrumRpc {
+    pub fn new() -> Self {
         return ElectrumRpc(
             Client::new("ssl://electrum.blockstream.info:60002")
                 .expect("client connection failed !!!"),

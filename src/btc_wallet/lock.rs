@@ -4,10 +4,8 @@ use bitcoin::{
     Address, Script, TxOut, XOnlyPublicKey,
 };
 
-use std::{str::FromStr};
-use super::{wallet_traits::AddressSchema};
-
-
+use super::{p2tr::P2TR, wallet_traits::AddressSchema};
+use std::str::FromStr;
 
 pub fn pub_key_lock<'a, S>(
     schema: &'a S,
@@ -47,16 +45,13 @@ fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
     };
 }
 
-pub fn multi_sig_lock<'a, S>(
-    schema: &'a S,
+pub fn multi_sig_lock(
+    schema: &P2TR,
     amount: u64,
     total: u64,
     change_addr: ExtendedPubKey,
     to_addr: Vec<String>,
-) -> Vec<TxOut>
-where
-    S: AddressSchema,
-{
+) -> Vec<TxOut> {
     let tip: u64 = 300;
 
     let wallet_keys = schema.to_wallet().create_wallet(

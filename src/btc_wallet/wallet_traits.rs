@@ -12,7 +12,7 @@ pub trait AddressSchema {
         &self,
         previous_tx: Vec<Transaction>,
         current_input: Transaction,
-        unlocking_fn: &dyn Fn(SignTx) -> (Input),
+        unlocking_fn: &dyn Fn(SignTx) -> Input,
     ) -> Vec<Input>;
 }
 

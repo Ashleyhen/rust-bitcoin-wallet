@@ -68,7 +68,8 @@ impl AddressSchema for P2TR {
                     .output
                     .clone()
                     .iter()
-                    .filter(|tx_out| { tx_out
+                    .filter(|tx_out| {
+                        tx_out
                             .script_pubkey
                             .eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())
                     })
@@ -77,8 +78,16 @@ impl AddressSchema for P2TR {
                             ext_prv,
                             i,
                             current_tx.clone(),
-                            previous_tx.output.iter()
-                            .filter(|tx|tx.script_pubkey.eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())).map(|f|f.clone()).collect::<Vec<TxOut>>().clone(),
+                            previous_tx
+                                .output
+                                .iter()
+                                .filter(|tx| {
+                                    tx.script_pubkey
+                                        .eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())
+                                })
+                                .map(|f| f.clone())
+                                .collect::<Vec<TxOut>>()
+                                .clone(),
                             secp.clone(),
                         );
                         let mut new_input = unlocking_fn(sign_tx);

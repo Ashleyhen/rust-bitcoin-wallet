@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, vec};
 
 use btc_wallet::{
     input_data::{electrum_rpc::ElectrumRpc, test_rpc_call::TestRpc},
@@ -16,7 +16,7 @@ pub mod wallet_test;
 // pub mod taproot_multi_sig;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-   test_transaction();
+    test_transaction();
     // wallet_test::printOutTest();
 }
 fn test_transaction() {
@@ -30,20 +30,22 @@ fn test_transaction() {
     // let address_list = vec![to_addr.to_string(), tr_3.to_string()];
     // let aggregate = schema.aggregate(address_list);
 
-
     let schema = P2TR::new(Some(seed.to_string()), 0, 3);
-    let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new()); ;
-    let psbt=client_with_schema.submit_psbt(
-        client_with_schema.get_pub_key_lock(tr_5.to_string())
-        ,&|unlock|unlock.pub_key_unlock(), Broadcast_op::Finalize);
+    let client_with_schema = ClientWithSchema::new(&schema, ElectrumRpc::new());
 
-    let schema_2 = P2TR::new(Some(seed.to_string()), 0, 4);
+    let psbt = client_with_schema.submit_psbt(
+        client_with_schema.get_pub_key_lock(tr_5.to_string(), 2000),
+        &|unlock| unlock.pub_key_unlock(),
+        Broadcast_op::Finalize,
+    );
+    let schema_2 = P2TR::new(Some(seed.to_string()), 0, 5);
     let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));
-    let psbt=client_with_schema_2.submit_psbt(client_with_schema.get_pub_key_lock(tr_5.to_string()),
-     &|unlock|unlock.pub_key_unlock(),Broadcast_op::Finalize);
-
+    let psbt = client_with_schema_2.submit_psbt(
+        client_with_schema_2.get_pub_key_lock(tr_5.to_string(), 1000),
+        &|unlock| unlock.pub_key_unlock(),
+        Broadcast_op::Finalize,
+    );
 }
-
 // seed, vec<derivation path>
 // p2wpkh 8
 // tr 1
