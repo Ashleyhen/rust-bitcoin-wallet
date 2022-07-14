@@ -8,7 +8,6 @@ use miniscript::psbt::PsbtExt;
 // use crate::btc_wallet::utils::UnlockAndSend;
 
 use self::{
-    input_data::electrum_rpc::ElectrumRpc,
     lock::pub_key_lock,
     p2tr::P2TR,
     unlock::SignTx,
@@ -66,10 +65,10 @@ impl<'a, A: ApiCall> ClientWithSchema<'a, P2TR, A> {
             to_addr.to_string(),
         );
     }
-    pub fn get_pub_multi_sig(&self, to_addr: Vec<String>) -> Vec<TxOut> {
+    pub fn get_pub_multi_sig(&self, to_addr: Vec<String>, amount: u64) -> Vec<TxOut> {
         return lock::multi_sig_lock(
             self.schema,
-            1000,
+            amount,
             self.get_balance().confirmed,
             self.change_addr().0,
             to_addr,

@@ -65,7 +65,7 @@ pub fn multi_sig_lock(
     let script = dynamic_builder(to_addr.iter().map(|addr| {
         XOnlyPublicKey::from_slice(&Address::from_str(&addr).unwrap().script_pubkey()[2..]).unwrap()
     }))
-    .push_int(2)
+    .push_int(1)
     .push_opcode(opcodes::all::OP_EQUAL)
     .into_script();
 
@@ -76,10 +76,9 @@ pub fn multi_sig_lock(
 
     let script_pub_k = Script::new_v1_p2tr(
         &schema.to_wallet().secp,
-        internal,
         trap.finalize(&schema.to_wallet().secp, internal)
             .unwrap()
-            .merkle_root(),
+            .internal_key(),None
     ); // TaprootMerkleBranch
 
     let send_tx = TxOut {
