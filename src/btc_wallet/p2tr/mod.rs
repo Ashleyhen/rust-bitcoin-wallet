@@ -63,48 +63,35 @@ impl AddressSchema for P2TR {
             .clone()
             .iter()
             .enumerate()
-            .flat_map(|(i, previous_tx)| {
-                let input_list: Vec<Input> = previous_tx
+            .flat_map(|(i, prev_tx)| {
+                let tx_out_list: Vec<TxOut> = prev_tx
                     .output
-                    .clone()
                     .iter()
                     .filter(|tx_out| {
                         tx_out
                             .script_pubkey
                             .eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())
                     })
+                    .map(|f| f.clone())
+                    .collect();
+
+                let inputs: Vec<Input> = tx_out_list
+                    .iter()
                     .map(|utxo| {
                         let sign_tx = SignTx::new(
                             ext_prv,
                             i,
                             current_tx.clone(),
-                            previous_tx
-                                .output
-                                .iter()
-                                .filter(|tx| {
-                                    tx.script_pubkey
-                                        .eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())
-                                })
-                                .map(|f| f.clone())
-                                .collect::<Vec<TxOut>>()
-                                .clone(),
+                            tx_out_list.to_vec(),
                             secp.clone(),
                         );
                         let mut new_input = unlocking_fn(sign_tx);
 
                         new_input.witness_utxo = Some(utxo.clone());
-                        let tap_leaf_hash_list =
-                            TapLeafHash::from_script(&utxo.script_pubkey, TapScript);
-                        // new_input.tap_key_origins=tap_key_origin;
-
-                        new_input.non_witness_utxo = Some(previous_tx.clone());
-                        new_input.tap_internal_key = Some(signer_pub_k.to_x_only_pub());
                         return new_input;
-
-                        // tx_out;
                     })
                     .collect();
-                return input_list;
+                return inputs;
             })
             .collect();
         return input_list;

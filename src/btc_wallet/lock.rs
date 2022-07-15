@@ -78,7 +78,8 @@ pub fn multi_sig_lock(
         &schema.to_wallet().secp,
         trap.finalize(&schema.to_wallet().secp, internal)
             .unwrap()
-            .internal_key(),None
+            .internal_key(),
+        None,
     ); // TaprootMerkleBranch
 
     let send_tx = TxOut {

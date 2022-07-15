@@ -4,11 +4,9 @@ use bdk::KeychainKind;
 use bitcoin::{
     psbt::{Input, PartiallySignedTransaction},
     secp256k1::{constants, rand::rngs::OsRng, All, Secp256k1, SecretKey},
-    util::{
-        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
-    }, Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness,
+    util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
+    Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness,
 };
-
 
 use super::{
     unlock::SignTx,
