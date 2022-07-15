@@ -6,7 +6,8 @@ use bitcoin::{
 };
 use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
-use crate::btc_wallet::wallet_traits::ApiCall;
+use super::ApiCall;
+
 
 pub struct TestRpc(pub PartiallySignedTransaction);
 impl ApiCall for TestRpc {

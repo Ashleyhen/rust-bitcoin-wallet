@@ -7,12 +7,12 @@ use miniscript::psbt::PsbtExt;
 
 // use crate::btc_wallet::utils::UnlockAndSend;
 
+use crate::btc_wallet::address_schema::AddressSchema;
+
 use self::{
     lock::pub_key_lock,
-    p2tr::P2TR,
     unlock::SignTx,
-    wallet_methods::{Broadcast_op, ClientWithSchema},
-    wallet_traits::{AddressSchema, ApiCall},
+    wallet_methods::{Broadcast_op, ClientWithSchema}, input_data::ApiCall, address_schema::p2tr::P2TR,
 };
 // pub mod input_data;
 pub mod input_data;
@@ -21,8 +21,7 @@ pub(crate) mod lock;
 pub mod wallet_traits;
 
 pub type WalletKeys = (ExtendedPubKey, KeySource);
-pub mod p2tr;
-pub mod p2wpkh;
+pub mod address_schema;
 pub mod unlock;
 pub mod wallet_methods;
 

@@ -10,8 +10,7 @@ use bitcoin::{
 
 use super::{
     unlock::SignTx,
-    wallet_traits::{AddressSchema, ApiCall},
-    WalletKeys,
+    WalletKeys, input_data::ApiCall, address_schema::AddressSchema,
 };
 
 #[derive(Clone)]

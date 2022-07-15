@@ -1,25 +1,12 @@
-use std::{borrow::Borrow, collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
-use bitcoin::{
-    blockdata::{opcodes, script::Builder},
-    psbt::Input,
-    schnorr::{TapTweak, TweakedPublicKey, UntweakedPublicKey},
-    secp256k1::{schnorr::Signature, schnorrsig::PublicKey, All, Message, Parity, Secp256k1},
-    util::{
-        address::Payload,
-        bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, KeySource},
-        sighash::{Prevouts, SighashCache},
-        taproot::{LeafVersion::TapScript, TapLeafHash},
-    },
-    Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
-    XOnlyPublicKey,
-};
-use miniscript::{interpreter::KeySigPair, ToPublicKey};
+use bitcoin::{Address, Transaction, psbt::Input, util::bip32::ExtendedPrivKey, TxOut, XOnlyPublicKey};
+use miniscript::ToPublicKey;
 
-use super::{
-    wallet_methods::{ClientWallet, NETWORK},
-    AddressSchema, SignTx, WalletKeys,
-};
+use crate::btc_wallet::{wallet_methods::{ClientWallet, NETWORK}, unlock::SignTx};
+
+use super::AddressSchema;
+
 
 #[derive(Clone)]
 pub struct P2TR(pub ClientWallet);
@@ -64,6 +51,7 @@ impl AddressSchema for P2TR {
             .iter()
             .enumerate()
             .flat_map(|(i, prev_tx)| {
+
                 let tx_out_list: Vec<TxOut> = prev_tx
                     .output
                     .iter()

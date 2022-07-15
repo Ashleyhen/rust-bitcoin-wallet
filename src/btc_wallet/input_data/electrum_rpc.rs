@@ -1,7 +1,8 @@
 use bitcoin::{Script, Transaction, Txid};
 use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
 
-use crate::btc_wallet::wallet_traits::ApiCall;
+use super::ApiCall;
+
 
 pub struct ElectrumRpc(pub Client);
 

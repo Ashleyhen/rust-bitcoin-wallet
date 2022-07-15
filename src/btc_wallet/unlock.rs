@@ -40,6 +40,7 @@ impl SignTx {
     }
 
     pub fn pub_key_unlock(&self) -> Input {
+        
         let tweaked_key_pair = self
             .extended_priv_k
             .to_keypair(&self.secp)

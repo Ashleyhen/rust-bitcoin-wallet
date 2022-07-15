@@ -1,12 +1,8 @@
 use std::{env, vec};
 
 use btc_wallet::{
-    input_data::{electrum_rpc::ElectrumRpc, test_rpc_call::TestRpc},
-    lock::pub_key_lock,
-    p2tr::P2TR,
-    p2wpkh::P2PWKh,
-    wallet_methods::{Broadcast_op, ClientWithSchema},
-    wallet_traits::{AddressSchema, ApiCall},
+    input_data::{electrum_rpc::ElectrumRpc},
+    wallet_methods::{Broadcast_op, ClientWithSchema}, address_schema::{p2tr::P2TR, AddressSchema},
 };
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;

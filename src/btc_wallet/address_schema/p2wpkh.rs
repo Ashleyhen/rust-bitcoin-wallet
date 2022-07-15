@@ -12,9 +12,10 @@ use bitcoin::{
 };
 use miniscript::ToPublicKey;
 
+use crate::btc_wallet::{wallet_methods::{ClientWallet, NETWORK}};
+
 use super::{
-    wallet_methods::{ClientWallet, NETWORK},
-    AddressSchema, SignTx, WalletKeys,
+    address_schema, SignTx, WalletKeys, AddressSchema, 
 };
 
 #[derive(Clone)]

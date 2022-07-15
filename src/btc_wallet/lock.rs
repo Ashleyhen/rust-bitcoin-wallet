@@ -4,7 +4,7 @@ use bitcoin::{
     Address, Script, TxOut, XOnlyPublicKey,
 };
 
-use super::{p2tr::P2TR, wallet_traits::AddressSchema};
+use super::{  address_schema::{p2tr::P2TR, AddressSchema}};
 use std::str::FromStr;
 
 pub fn pub_key_lock<'a, S>(
