@@ -38,7 +38,7 @@ impl ApiCall for TestRpc {
         };
     }
 
-    fn transaction_get(&self, tx_id: &Txid) -> Result<Transaction, Error> {
+    fn transaction_get(&self, _tx_id: &Txid) -> Result<Transaction, Error> {
         return Ok(self.0.clone().extract_tx());
     }
 

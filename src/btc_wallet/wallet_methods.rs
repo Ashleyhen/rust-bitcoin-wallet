@@ -114,11 +114,6 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
         let current_tx = vault.lock_key(self.schema, tx_in, self.get_balance().confirmed);
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
 
-        // let input_vec = self.schema.prv_tx_input(
-        //     previous_tx.to_vec().clone(),
-        //     current_tx.clone(),
-        //     unlocking_fn,
-        // );
         let input_vec = vault.unlock_key(previous_tx.to_vec().clone(), &current_tx);
 
         let mut xpub = BTreeMap::new();
