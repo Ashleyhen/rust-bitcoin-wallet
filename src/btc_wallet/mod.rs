@@ -7,32 +7,36 @@ use miniscript::psbt::PsbtExt;
 
 // use crate::btc_wallet::utils::UnlockAndSend;
 
-use crate::btc_wallet::address_schema::AddressSchema;
+use crate::btc_wallet::address_formats::AddressSchema;
 
 use self::{
-    lock::pub_key_lock,
-    unlock::SignTx,
-    wallet_methods::{Broadcast_op, ClientWithSchema}, input_data::ApiCall, address_schema::p2tr::P2TR,
+    input_data::ApiCall,
+    spending_path::{p2tr_key_path::P2TR, Vault},
+    wallet_methods::{Broadcast_op, ClientWithSchema},
 };
 // pub mod input_data;
 pub mod input_data;
 
-pub(crate) mod lock;
-pub mod wallet_traits;
-
+// pub(crate) mod lock;
+pub mod spending_path;
 pub type WalletKeys = (ExtendedPubKey, KeySource);
-pub mod address_schema;
-pub mod unlock;
+pub mod address_formats;
+// pub mod unlock;
 pub mod wallet_methods;
 
-impl<'a, A: ApiCall> ClientWithSchema<'a, P2TR, A> {
-    pub fn submit_psbt(
+impl<'a, A> ClientWithSchema<'a, P2TR, A>
+where
+    A: ApiCall,
+{
+    pub fn submit_psbt<'v, V>(
         &self,
-        lock: Vec<TxOut>,
-        unlock: &dyn Fn(SignTx) -> Input,
+        vault: &'v V,
         broad_cast_op: Broadcast_op,
-    ) -> PartiallySignedTransaction {
-        let psbt = self.submit_tx(unlock, lock);
+    ) -> PartiallySignedTransaction
+    where
+        V: Vault,
+    {
+        let psbt = self.submit_tx(vault);
 
         return match broad_cast_op {
             Broadcast_op::Finalize => {
@@ -53,24 +57,5 @@ impl<'a, A: ApiCall> ClientWithSchema<'a, P2TR, A> {
                 psbt
             }
         };
-    }
-
-    pub fn get_pub_key_lock(&self, to_addr: String, amount: u64) -> Vec<TxOut> {
-        return pub_key_lock(
-            self.schema,
-            amount,
-            self.get_balance().confirmed,
-            self.change_addr().0,
-            to_addr.to_string(),
-        );
-    }
-    pub fn get_pub_multi_sig(&self, to_addr: Vec<String>, amount: u64) -> Vec<TxOut> {
-        return lock::multi_sig_lock(
-            self.schema,
-            amount,
-            self.get_balance().confirmed,
-            self.change_addr().0,
-            to_addr,
-        );
     }
 }

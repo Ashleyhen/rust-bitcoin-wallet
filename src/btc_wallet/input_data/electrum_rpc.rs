@@ -3,7 +3,6 @@ use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
 
 use super::ApiCall;
 
-
 pub struct ElectrumRpc(pub Client);
 
 impl ApiCall for ElectrumRpc {

@@ -9,8 +9,7 @@ use bitcoin::{
 };
 
 use super::{
-    unlock::SignTx,
-    WalletKeys, input_data::ApiCall, address_schema::AddressSchema,
+    address_formats::AddressSchema, input_data::ApiCall, spending_path::Vault, WalletKeys,
 };
 
 #[derive(Clone)]
@@ -72,11 +71,10 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             wallet.change + 1,
         );
     }
-    pub fn submit_tx(
-        &self,
-        unlocking_fn: &dyn Fn(SignTx) -> Input,
-        locked_outputs: Vec<TxOut>,
-    ) -> PartiallySignedTransaction {
+    pub fn submit_tx<'b, V>(&self, vault: &'b V) -> PartiallySignedTransaction
+    where
+        V: Vault,
+    {
         let wallet = self.schema.to_wallet();
         let signer =
             wallet.create_wallet(self.schema.wallet_purpose(), wallet.recieve, wallet.change);
@@ -113,7 +111,7 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             .collect::<Vec<Transaction>>();
 
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
-        let tx_out = locked_outputs;
+        let tx_out = vault.lock_key(self.schema, self.get_balance().confirmed);
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
 
         let current_tx = Transaction {
@@ -123,11 +121,12 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             output: tx_out,
         };
 
-        let input_vec = self.schema.prv_tx_input(
-            previous_tx.to_vec().clone(),
-            current_tx.clone(),
-            unlocking_fn,
-        );
+        // let input_vec = self.schema.prv_tx_input(
+        //     previous_tx.to_vec().clone(),
+        //     current_tx.clone(),
+        //     unlocking_fn,
+        // );
+        let input_vec = vault.unlock_key(previous_tx.to_vec().clone(), &current_tx);
 
         let mut xpub = BTreeMap::new();
 

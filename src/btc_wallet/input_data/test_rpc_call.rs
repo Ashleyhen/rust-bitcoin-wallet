@@ -8,7 +8,6 @@ use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
 use super::ApiCall;
 
-
 pub struct TestRpc(pub PartiallySignedTransaction);
 impl ApiCall for TestRpc {
     fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error> {
