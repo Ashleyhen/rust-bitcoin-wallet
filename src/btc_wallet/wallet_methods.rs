@@ -111,15 +111,8 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             .collect::<Vec<Transaction>>();
 
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
-        let tx_out = vault.lock_key(self.schema, self.get_balance().confirmed);
+        let current_tx = vault.lock_key(self.schema, tx_in, self.get_balance().confirmed);
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
-
-        let current_tx = Transaction {
-            version: 0,
-            lock_time: 0,
-            input: tx_in,
-            output: tx_out,
-        };
 
         // let input_vec = self.schema.prv_tx_input(
         //     previous_tx.to_vec().clone(),
