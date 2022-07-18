@@ -9,10 +9,6 @@ use bitcoin::{
 use super::Vault;
 
 pub struct P2TR_Multisig {
-    // schema: &P2TR,
-    amount: u64,
-    //     total: u64,
-    //     change_addr: ExtendedPubKey,
     to_addr: Vec<String>,
 }
 fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
@@ -66,28 +62,15 @@ impl Vault for P2TR_Multisig {
         ); // TaprootMerkleBranch
 
         let send_tx = TxOut {
-            value: self.amount,
+            value: total-tip,
             script_pubkey: script_pub_k,
-        };
-
-        let tx_out = || {
-            if (total <= (self.amount + tip)) {
-                return vec![send_tx];
-            }
-
-            let change_tx = TxOut {
-                value: total - (self.amount + tip),
-                script_pubkey: schema.map_ext_keys(&change_address).script_pubkey(),
-            };
-
-            return vec![send_tx, change_tx];
         };
 
         return Transaction {
             version: 2,
             lock_time: 0,
             input: tx_in,
-            output: tx_out(),
+            output: vec![send_tx],
         };
     }
 }
