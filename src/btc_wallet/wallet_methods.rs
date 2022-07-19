@@ -111,9 +111,9 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             .collect::<Vec<Transaction>>();
 
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
-        let lock_list = vault.lock_key(self.schema,  self.get_balance().confirmed);
+        let lock_list = vault.lock_key(self.schema, self.get_balance().confirmed);
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
-        let current_tx=vault.extract_tx(&lock_list, tx_in);
+        let current_tx = vault.extract_tx(&lock_list, tx_in);
         let input_vec = vault.unlock_key(previous_tx.to_vec().clone(), &current_tx);
 
         let mut xpub = BTreeMap::new();
@@ -128,7 +128,7 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             xpub,
             proprietary: BTreeMap::new(),
             unknown: BTreeMap::new(),
-            outputs: lock_list.iter().map(|output|output.0.clone()).collect(),
+            outputs: lock_list.iter().map(|output| output.0.clone()).collect(),
             inputs: input_vec,
         };
         return psbt;

@@ -41,16 +41,17 @@ fn test_transaction() {
     client_with_schema.print_balance();
 
     let psbt = client_with_schema.submit_psbt(&schema, Broadcast_op::Finalize);
-    
-        let schema_2 =P2TR::new(ClientWallet::new(Some(seed.to_string()), 0, 4), 1000,&tr[0]);
 
-        let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));
+    let schema_2 = P2TR::new(
+        ClientWallet::new(Some(seed.to_string()), 0, 4),
+        1000,
+        &tr[0],
+    );
 
-        let psbt_2 = client_with_schema_2.submit_psbt(
-        &schema_2,
-            Broadcast_op::Finalize
-        );
-/*    */
+    let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));
+
+    let psbt_2 = client_with_schema_2.submit_psbt(&schema_2, Broadcast_op::Finalize);
+    /*    */
 
     // let schema_2 = P2TR::new(Some(seed.to_string()), 0, 5);
     // let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));

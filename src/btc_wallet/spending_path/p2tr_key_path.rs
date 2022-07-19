@@ -1,4 +1,4 @@
-use std::{sync::Arc, str::FromStr};
+use std::{str::FromStr, sync::Arc};
 
 use crate::btc_wallet::{
     address_formats::AddressSchema,
@@ -13,13 +13,11 @@ use bitcoin::{
         bip32::{ExtendedPrivKey, ExtendedPubKey},
         sighash::{Prevouts, SighashCache},
     },
-    EcdsaSig, EcdsaSighashType, PublicKey, SchnorrSig, SchnorrSighashType, Script, Transaction,
-    TxIn, TxOut, XOnlyPublicKey, Address,
+    Address, EcdsaSig, EcdsaSighashType, PublicKey, SchnorrSig, SchnorrSighashType, Script,
+    Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::{ Vault, standard_extraction, standard_lock};
-
-
+use super::{standard_extraction, standard_lock, Vault};
 
 #[derive(Clone)]
 pub struct P2TR {
@@ -72,7 +70,7 @@ impl Vault for P2TR {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self,schema: &'a S, total: u64) -> Vec<(Output,u64)>
+    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
     where
         S: AddressSchema,
     {
@@ -80,10 +78,10 @@ impl Vault for P2TR {
         let change_address = cw
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
-            
-    return standard_lock(schema, self.amount, total, change_address, &self.to_addr);
+
+        return standard_lock(schema, self.amount, total, change_address, &self.to_addr);
     }
-    }
+}
 
 impl P2TR {
     pub fn get_client_wallet(&self) -> ClientWallet {
@@ -127,12 +125,16 @@ impl P2TR {
         return input;
     }
 
-pub fn extract_tx(&self,output_list:Vec<(Output,u64)>, tx_in: Vec<TxIn>){
-    output_list.iter().map(|(output, value)|{
-    return TxOut{ value: *value, script_pubkey:Script::new_v1_p2tr(&self.client_wallet.secp, output.tap_internal_key.unwrap(), None)} ;
-    });
+    pub fn extract_tx(&self, output_list: Vec<(Output, u64)>, tx_in: Vec<TxIn>) {
+        output_list.iter().map(|(output, value)| {
+            return TxOut {
+                value: *value,
+                script_pubkey: Script::new_v1_p2tr(
+                    &self.client_wallet.secp,
+                    output.tap_internal_key.unwrap(),
+                    None,
+                ),
+            };
+        });
+    }
 }
-
-}
-
-

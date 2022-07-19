@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
-    psbt::{Input, PartiallySignedTransaction, Output},
+    psbt::{Input, Output, PartiallySignedTransaction},
     util::{bip32::ExtendedPubKey, taproot::TaprootBuilder},
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
@@ -29,24 +29,9 @@ impl Vault for P2TR_Multisig {
         todo!()
     }
 
-  
-
-    
-
-    fn lock_key<'a, S>(&self, schema: &'a S,  total: u64) -> Vec<(Output,u64)>
+    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
     where
-        S: AddressSchema {
-        todo!()
-    }
-}
-impl P2TR_Multisig {
-    pub fn new(to_addr: Vec<String>, psbt: Option<PartiallySignedTransaction>) -> Self {
-        return P2TR_Multisig { to_addr, psbt };
-    }
-
-    fn create_tx<'a, S>(&self, schema: &'a S, tx_in: Vec<TxIn>, total: u64) -> Transaction
-    where
-        S: crate::btc_wallet::address_formats::AddressSchema,
+        S: AddressSchema,
     {
         let tip: u64 = 300;
         let script = dynamic_builder(self.to_addr.iter().map(|addr| {
@@ -71,16 +56,15 @@ impl P2TR_Multisig {
             None,
         ); // TaprootMerkleBranch
 
-        let send_tx = TxOut {
-            value: total - tip,
-            script_pubkey: script_pub_k,
-        };
+        let mut output = Output::default();
 
-        return Transaction {
-            version: 2,
-            lock_time: 0,
-            input: tx_in,
-            output: vec![send_tx],
-        };
+        output.witness_script = Some(script_pub_k);
+        return vec![(output, total - tip)];
+    }
+}
+
+impl P2TR_Multisig {
+    pub fn new(to_addr: Vec<String>, psbt: Option<PartiallySignedTransaction>) -> Self {
+        return P2TR_Multisig { to_addr, psbt };
     }
 }

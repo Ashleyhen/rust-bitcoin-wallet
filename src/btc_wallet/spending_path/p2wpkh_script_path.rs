@@ -14,8 +14,7 @@ use crate::btc_wallet::{
     wallet_methods::{ClientWallet, NETWORK},
 };
 
-use super::{Vault, standard_lock, standard_extraction};
-
+use super::{standard_extraction, standard_lock, Vault};
 
 #[derive(Clone)]
 pub struct P2PWKh {
@@ -58,7 +57,7 @@ impl Vault for P2PWKh {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output,u64)>
+    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
     where
         S: AddressSchema,
     {
@@ -67,10 +66,7 @@ impl Vault for P2PWKh {
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
         return standard_lock(schema, self.amount, total, extend_pub_k, &self.to_addr);
-        
     }
-
-  
 }
 impl P2PWKh {
     pub fn new(client_wallet: ClientWallet, amount: u64, to_addr: String) -> Self {
