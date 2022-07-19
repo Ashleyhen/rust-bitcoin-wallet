@@ -111,9 +111,9 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
             .collect::<Vec<Transaction>>();
 
         // let unlock_and_send = UnlockAndSend::new(self.schema, signer.clone());
-        let current_tx = vault.lock_key(self.schema, tx_in, self.get_balance().confirmed);
+        let lock_list = vault.lock_key(self.schema,  self.get_balance().confirmed);
         // let tx_out = unlock_and_send.pub_key_lock(amount, total, change_pub_k, to_addr);
-
+        let current_tx=vault.extract_tx(&lock_list, tx_in);
         let input_vec = vault.unlock_key(previous_tx.to_vec().clone(), &current_tx);
 
         let mut xpub = BTreeMap::new();
@@ -124,11 +124,11 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
         // we have all the infomation for the partially signed transaction
         let psbt = PartiallySignedTransaction {
             unsigned_tx: current_tx.clone(),
-            version: 1,
+            version: 2,
             xpub,
             proprietary: BTreeMap::new(),
             unknown: BTreeMap::new(),
-            outputs: vec![],
+            outputs: lock_list.iter().map(|output|output.0.clone()).collect(),
             inputs: input_vec,
         };
         return psbt;

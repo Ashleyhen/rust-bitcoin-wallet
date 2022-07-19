@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, str::FromStr};
 
 use crate::btc_wallet::{
     address_formats::AddressSchema,
@@ -6,18 +6,20 @@ use crate::btc_wallet::{
 };
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
-    psbt::Input,
+    psbt::{Input, Output},
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1},
     util::{
-        bip32::ExtendedPrivKey,
+        bip32::{ExtendedPrivKey, ExtendedPubKey},
         sighash::{Prevouts, SighashCache},
     },
     EcdsaSig, EcdsaSighashType, PublicKey, SchnorrSig, SchnorrSighashType, Script, Transaction,
-    TxIn, TxOut,
+    TxIn, TxOut, XOnlyPublicKey, Address,
 };
 
-use super::{pub_key_lock, Vault};
+use super::{ Vault, standard_extraction, standard_lock};
+
+
 
 #[derive(Clone)]
 pub struct P2TR {
@@ -70,7 +72,7 @@ impl Vault for P2TR {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S, tx_input: Vec<TxIn>, total: u64) -> Transaction
+    fn lock_key<'a, S>(&self,schema: &'a S, total: u64) -> Vec<(Output,u64)>
     where
         S: AddressSchema,
     {
@@ -78,15 +80,11 @@ impl Vault for P2TR {
         let change_address = cw
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
-        let tx_out = pub_key_lock(schema, self.amount, total, change_address, &self.to_addr);
-        return Transaction {
-            version: 2,
-            lock_time: 0,
-            input: tx_input,
-            output: tx_out,
-        };
+            
+    return standard_lock(schema, self.amount, total, change_address, &self.to_addr);
     }
-}
+    }
+
 impl P2TR {
     pub fn get_client_wallet(&self) -> ClientWallet {
         return self.client_wallet.clone();
@@ -128,4 +126,13 @@ impl P2TR {
         input.tap_key_sig = Some(schnorr_sig);
         return input;
     }
+
+pub fn extract_tx(&self,output_list:Vec<(Output,u64)>, tx_in: Vec<TxIn>){
+    output_list.iter().map(|(output, value)|{
+    return TxOut{ value: *value, script_pubkey:Script::new_v1_p2tr(&self.client_wallet.secp, output.tap_internal_key.unwrap(), None)} ;
+    });
 }
+
+}
+
+

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
-    psbt::Input,
+    psbt::{Input, Output},
     secp256k1::{All, Message, Secp256k1},
     util::{bip32::ExtendedPrivKey, sighash::SighashCache},
     EcdsaSig, EcdsaSighashType, PublicKey, Script, Transaction, TxIn, TxOut,
@@ -14,7 +14,8 @@ use crate::btc_wallet::{
     wallet_methods::{ClientWallet, NETWORK},
 };
 
-use super::{pub_key_lock, Vault};
+use super::{Vault, standard_lock, standard_extraction};
+
 
 #[derive(Clone)]
 pub struct P2PWKh {
@@ -57,7 +58,7 @@ impl Vault for P2PWKh {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S, tx_in: Vec<TxIn>, total: u64) -> Transaction
+    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output,u64)>
     where
         S: AddressSchema,
     {
@@ -65,15 +66,11 @@ impl Vault for P2PWKh {
         let extend_pub_k = cw
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
-        let tx_out = pub_key_lock(schema, self.amount, total, extend_pub_k, &self.to_addr);
-
-        return Transaction {
-            version: 2,
-            lock_time: 0,
-            input: tx_in,
-            output: tx_out,
-        };
+        return standard_lock(schema, self.amount, total, extend_pub_k, &self.to_addr);
+        
     }
+
+  
 }
 impl P2PWKh {
     pub fn new(client_wallet: ClientWallet, amount: u64, to_addr: String) -> Self {
