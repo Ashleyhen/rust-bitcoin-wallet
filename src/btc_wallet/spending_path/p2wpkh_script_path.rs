@@ -14,7 +14,7 @@ use crate::btc_wallet::{
     wallet_methods::{ClientWallet, NETWORK},
 };
 
-use super::{standard_extraction, standard_lock, Vault};
+use super::{ standard_lock, Vault, standard_create_tx};
 
 #[derive(Clone)]
 pub struct P2PWKh {
@@ -24,6 +24,21 @@ pub struct P2PWKh {
 }
 
 impl Vault for P2PWKh {
+    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
+        return standard_create_tx(self.amount, output_list, tx_in, total);
+    }
+
+    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    where
+        S: AddressSchema,
+    {
+        let cw = schema.to_wallet();
+        let extend_pub_k = cw
+            .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
+            .0;
+        return standard_lock(schema, extend_pub_k, &self.to_addr);
+    }
+
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
         let wallet_keys = self.client_wallet.create_wallet(
             self.wallet_purpose(),
@@ -55,17 +70,6 @@ impl Vault for P2PWKh {
             })
             .collect();
         return input_list;
-    }
-
-    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
-    where
-        S: AddressSchema,
-    {
-        let cw = schema.to_wallet();
-        let extend_pub_k = cw
-            .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
-            .0;
-        return standard_lock(schema, self.amount, total, extend_pub_k, &self.to_addr);
     }
 }
 impl P2PWKh {

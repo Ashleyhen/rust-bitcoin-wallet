@@ -23,7 +23,7 @@ impl AddressSchema for P2PWKh {
     fn map_ext_keys(&self, recieve: &ExtendedPubKey) -> bitcoin::Address {
         return Address::p2wpkh(&recieve.public_key.to_public_key(), NETWORK).unwrap();
     }
-    
+
     fn to_wallet(&self) -> ClientWallet {
         return self.client_wallet.clone();
     }
@@ -31,5 +31,4 @@ impl AddressSchema for P2PWKh {
     fn wallet_purpose(&self) -> u32 {
         return 84;
     }
-
 }

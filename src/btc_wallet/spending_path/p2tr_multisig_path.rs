@@ -29,7 +29,27 @@ impl Vault for P2TR_Multisig {
         todo!()
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
+    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    where
+        S: AddressSchema,
+    {
+        return self
+            .psbt.as_ref()
+            .map(|f| f.outputs.clone())
+            .unwrap_or(self.create_lock(schema));
+    }
+
+    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
+        todo!()
+    }
+}
+
+impl P2TR_Multisig {
+    pub fn new(to_addr: Vec<String>, psbt: Option<PartiallySignedTransaction>) -> Self {
+        return P2TR_Multisig { to_addr, psbt };
+    }
+
+    fn create_lock<'a, S>(&self, schema: &'a S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -59,12 +79,6 @@ impl Vault for P2TR_Multisig {
         let mut output = Output::default();
 
         output.witness_script = Some(script_pub_k);
-        return vec![(output, total - tip)];
-    }
-}
-
-impl P2TR_Multisig {
-    pub fn new(to_addr: Vec<String>, psbt: Option<PartiallySignedTransaction>) -> Self {
-        return P2TR_Multisig { to_addr, psbt };
+        return vec![output];
     }
 }

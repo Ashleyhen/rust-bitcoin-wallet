@@ -17,7 +17,7 @@ use bitcoin::{
     Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::{standard_extraction, standard_lock, Vault};
+use super::{ standard_lock, Vault, standard_create_tx};
 
 #[derive(Clone)]
 pub struct P2TR {
@@ -70,7 +70,7 @@ impl Vault for P2TR {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S, total: u64) -> Vec<(Output, u64)>
+    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -79,7 +79,11 @@ impl Vault for P2TR {
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
 
-        return standard_lock(schema, self.amount, total, change_address, &self.to_addr);
+        return standard_lock(schema,  change_address, &self.to_addr);
+    }
+
+    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
+        return standard_create_tx(self.amount, output_list, tx_in, total);
     }
 }
 

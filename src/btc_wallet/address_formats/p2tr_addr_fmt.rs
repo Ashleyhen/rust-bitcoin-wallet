@@ -29,5 +29,4 @@ impl AddressSchema for P2TR {
     fn wallet_purpose(&self) -> u32 {
         return 341;
     }
-    
 }
