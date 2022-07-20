@@ -11,9 +11,11 @@ use crate::btc_wallet::{address_formats::AddressSchema, constants::TIP};
 
 use super::Vault;
 
-pub struct P2TR_Multisig {
+struct P2trMultisig<'a, T: Vault + ?Sized> {
     to_addr: Vec<String>,
     psbt: Option<PartiallySignedTransaction>,
+    diff_lock: Option<&'a T>,
+    diff_unlock: Option<&'a T>,
 }
 fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
     return match iter.next() {
@@ -23,13 +25,34 @@ fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
         None => Builder::new(),
     };
 }
+// <'a,T:Vault> P2trMultisig<'a,T>
+impl<'a, T: Vault> Vault for P2trMultisig<'a, T> {
+    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
+        let tx_input = tx_in.clone();
+        let check_psbt = || self.psbt.clone().map(|f| f.extract_tx());
 
-impl Vault for P2TR_Multisig {
-    fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        todo!()
+        let create_new_tx = Box::new(move || {
+            let tx_out = TxOut {
+                value: total - TIP,
+                script_pubkey: output_list.get(0).unwrap().clone().witness_script.unwrap(),
+            };
+            return Transaction {
+                version: 2,
+                lock_time: 0,
+                input: tx_input,
+                output: vec![tx_out],
+            };
+        });
+
+        return self
+            .clone()
+            .diff_unlock
+            .map(|f| f.create_tx(output_list, tx_in, total))
+            .or_else(check_psbt)
+            .unwrap_or_else(create_new_tx);
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn lock_key<'b, S>(&self, schema: &'b S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -40,32 +63,27 @@ impl Vault for P2TR_Multisig {
             .unwrap_or(self.create_lock(schema));
     }
 
-    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
-        return self
-            .psbt
-            .clone()
-            .map(|f| f.extract_tx())
-            .unwrap_or_else(|| {
-                let tx_out = TxOut {
-                    value: total - TIP,
-                    script_pubkey: output_list.get(0).unwrap().clone().witness_script.unwrap(),
-                };
-                return Transaction {
-                    version: 2,
-                    lock_time: 0,
-                    input: tx_in,
-                    output: vec![tx_out],
-                };
-            });
+    fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
+        todo!()
     }
 }
 
-impl P2TR_Multisig {
-    pub fn new(to_addr: Vec<String>, psbt: Option<PartiallySignedTransaction>) -> Self {
-        return P2TR_Multisig { to_addr, psbt };
+impl<'a, T: Vault> P2trMultisig<'a, T> {
+    pub fn new(
+        to_addr: Vec<String>,
+        psbt: Option<PartiallySignedTransaction>,
+        diff_lock: Option<&'a T>,
+        diff_unlock: Option<&'a T>,
+    ) -> Self {
+        return P2trMultisig {
+            to_addr,
+            psbt,
+            diff_lock,
+            diff_unlock,
+        };
     }
 
-    fn create_lock<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn create_lock<'b, S>(&self, schema: &'b S) -> Vec<Output>
     where
         S: AddressSchema,
     {

@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "bdk"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec2c4c49915b82a2576bc7dee83d2f274387904b79305e6ae8b622daa0b282c1"
+checksum = "5a0becbf5a97855daca6717ff920c52a779cebf655b23ae1427e5366d2661e82"
 dependencies = [
  "async-trait",
  "bdk-macros",
@@ -176,6 +176,12 @@ dependencies = [
  "cfg-if",
  "once_cell",
 ]
+
+[[package]]
+name = "either"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "electrum-client"
@@ -719,6 +725,7 @@ dependencies = [
  "bdk",
  "bincode",
  "bitcoin",
+ "either",
  "electrum-client",
  "lightning",
  "lightning-persister",
