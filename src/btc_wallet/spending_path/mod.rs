@@ -14,6 +14,7 @@ pub const CHANGE: usize = 1;
 pub mod p2tr_key_path;
 mod p2tr_multisig_path;
 pub mod p2wpkh_script_path;
+pub mod vault_adaptor;
 pub trait Vault {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction;
     fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
