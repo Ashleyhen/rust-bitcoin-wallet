@@ -13,8 +13,7 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 use crate::btc_wallet::{
-    spending_path::p2wpkh_script_path::P2PWKh,
-    wallet_methods::{ClientWallet, NETWORK},
+    constants::NETWORK, spending_path::p2wpkh_script_path::P2PWKh, wallet_methods::ClientWallet,
 };
 
 use super::{address_formats, AddressSchema};

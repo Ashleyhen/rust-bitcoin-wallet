@@ -21,6 +21,7 @@ pub mod input_data;
 pub mod spending_path;
 pub type WalletKeys = (ExtendedPubKey, KeySource);
 pub mod address_formats;
+pub mod constants;
 // pub mod unlock;
 pub mod wallet_methods;
 

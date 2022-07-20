@@ -9,7 +9,11 @@ use bitcoin::{
 };
 
 use super::{
-    address_formats::AddressSchema, input_data::ApiCall, spending_path::Vault, WalletKeys,
+    address_formats::AddressSchema,
+    constants::{Seed, NETWORK},
+    input_data::ApiCall,
+    spending_path::Vault,
+    WalletKeys,
 };
 
 #[derive(Clone)]
@@ -25,9 +29,6 @@ pub struct ClientWithSchema<'a, S: AddressSchema, A: ApiCall> {
     pub schema: &'a S,
     pub api_call: Arc<A>,
 }
-type Seed = [u8; constants::SECRET_KEY_SIZE];
-
-pub const NETWORK: bitcoin::Network = Network::Testnet;
 
 impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
     pub fn new(schema: &S, api_call: A) -> ClientWithSchema<S, A> {

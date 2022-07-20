@@ -6,8 +6,7 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 use crate::btc_wallet::{
-    spending_path::p2tr_key_path::P2TR,
-    wallet_methods::{ClientWallet, NETWORK},
+    constants::NETWORK, spending_path::p2tr_key_path::P2TR, wallet_methods::ClientWallet,
 };
 
 use super::AddressSchema;

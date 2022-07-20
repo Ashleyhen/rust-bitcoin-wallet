@@ -10,11 +10,10 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 use crate::btc_wallet::{
-    address_formats::AddressSchema,
-    wallet_methods::{ClientWallet, NETWORK},
+    address_formats::AddressSchema, constants::NETWORK, wallet_methods::ClientWallet,
 };
 
-use super::{ standard_lock, Vault, standard_create_tx};
+use super::{standard_create_tx, standard_lock, Vault};
 
 #[derive(Clone)]
 pub struct P2PWKh {

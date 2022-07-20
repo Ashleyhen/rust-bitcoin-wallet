@@ -34,7 +34,8 @@ impl Vault for P2TR_Multisig {
         S: AddressSchema,
     {
         return self
-            .psbt.as_ref()
+            .psbt
+            .as_ref()
             .map(|f| f.outputs.clone())
             .unwrap_or(self.create_lock(schema));
     }

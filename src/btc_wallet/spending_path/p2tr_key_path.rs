@@ -1,8 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use crate::btc_wallet::{
-    address_formats::AddressSchema,
-    wallet_methods::{ClientWallet, NETWORK},
+    address_formats::AddressSchema, constants::NETWORK, wallet_methods::ClientWallet,
 };
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
@@ -17,7 +16,7 @@ use bitcoin::{
     Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::{ standard_lock, Vault, standard_create_tx};
+use super::{standard_create_tx, standard_lock, Vault};
 
 #[derive(Clone)]
 pub struct P2TR {
@@ -79,7 +78,7 @@ impl Vault for P2TR {
             .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
             .0;
 
-        return standard_lock(schema,  change_address, &self.to_addr);
+        return standard_lock(schema, change_address, &self.to_addr);
     }
 
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
@@ -127,18 +126,5 @@ impl P2TR {
         let mut input = Input::default();
         input.tap_key_sig = Some(schnorr_sig);
         return input;
-    }
-
-    pub fn extract_tx(&self, output_list: Vec<(Output, u64)>, tx_in: Vec<TxIn>) {
-        output_list.iter().map(|(output, value)| {
-            return TxOut {
-                value: *value,
-                script_pubkey: Script::new_v1_p2tr(
-                    &self.client_wallet.secp,
-                    output.tap_internal_key.unwrap(),
-                    None,
-                ),
-            };
-        });
     }
 }

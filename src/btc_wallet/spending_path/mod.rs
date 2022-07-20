@@ -6,7 +6,12 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::{address_formats::AddressSchema, wallet_methods::NETWORK};
+use super::{
+    address_formats::AddressSchema,
+};
+
+pub const RECEIVER: usize = 0;
+pub const CHANGE: usize = 1;
 
 pub mod p2tr_key_path;
 mod p2tr_multisig_path;
@@ -19,19 +24,24 @@ pub trait Vault {
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input>;
 }
 
-fn standard_create_tx(amount: u64, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
+fn standard_create_tx(
+    amount: u64,
+    output_list: &Vec<Output>,
+    tx_in: Vec<TxIn>,
+    total: u64,
+) -> Transaction {
     let tip = 300;
     let tx_out_list = || {
         let tx_out = TxOut {
             value: amount,
-            script_pubkey: output_list[0].clone().witness_script.unwrap(),
+            script_pubkey: output_list[RECEIVER].clone().witness_script.unwrap(),
         };
         if (total - amount) > tip {
-            return vec![ 
+            return vec![
                 tx_out,
                 TxOut {
                     value: total - amount,
-                    script_pubkey: output_list[1].clone().witness_script.unwrap(),
+                    script_pubkey: output_list[CHANGE].clone().witness_script.unwrap(),
                 },
             ];
         }
@@ -52,7 +62,6 @@ pub fn standard_lock<'a, S>(
 where
     S: AddressSchema,
 {
-
     let output_fn = |script: Script| -> Output {
         let mut output = Output::default();
         output.witness_script = Some(script);
