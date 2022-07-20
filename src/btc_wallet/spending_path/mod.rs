@@ -6,9 +6,7 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::{
-    address_formats::AddressSchema,
-};
+use super::address_formats::AddressSchema;
 
 pub const RECEIVER: usize = 0;
 pub const CHANGE: usize = 1;

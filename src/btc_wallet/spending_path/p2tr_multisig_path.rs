@@ -2,12 +2,12 @@ use std::str::FromStr;
 
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
-    psbt::{Input, Output, PartiallySignedTransaction},
+    psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     util::{bip32::ExtendedPubKey, taproot::TaprootBuilder},
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use crate::btc_wallet::address_formats::AddressSchema;
+use crate::btc_wallet::{address_formats::AddressSchema, constants::TIP};
 
 use super::Vault;
 
@@ -41,7 +41,22 @@ impl Vault for P2TR_Multisig {
     }
 
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
-        todo!()
+        return self
+            .psbt
+            .clone()
+            .map(|f| f.extract_tx())
+            .unwrap_or_else(|| {
+                let tx_out = TxOut {
+                    value: total - TIP,
+                    script_pubkey: output_list.get(0).unwrap().clone().witness_script.unwrap(),
+                };
+                return Transaction {
+                    version: 2,
+                    lock_time: 0,
+                    input: tx_in,
+                    output: vec![tx_out],
+                };
+            });
     }
 }
 
@@ -54,7 +69,6 @@ impl P2TR_Multisig {
     where
         S: AddressSchema,
     {
-        let tip: u64 = 300;
         let script = dynamic_builder(self.to_addr.iter().map(|addr| {
             XOnlyPublicKey::from_slice(&Address::from_str(&addr).unwrap().script_pubkey()[2..])
                 .unwrap()
@@ -63,22 +77,24 @@ impl P2TR_Multisig {
         .push_opcode(opcodes::all::OP_EQUAL)
         .into_script();
 
-        let trap = TaprootBuilder::new().add_leaf(0, script).unwrap();
+        let tap_builder = TaprootBuilder::new().add_leaf(0, script).unwrap();
         let internal = XOnlyPublicKey::from_slice(
             &Address::from_str(&self.to_addr[0]).unwrap().script_pubkey()[2..],
         )
         .unwrap();
-
         let script_pub_k = Script::new_v1_p2tr(
             &schema.to_wallet().secp,
-            trap.finalize(&schema.to_wallet().secp, internal)
+            tap_builder
+                .clone()
+                .finalize(&schema.to_wallet().secp, internal)
                 .unwrap()
                 .internal_key(),
             None,
         ); // TaprootMerkleBranch
 
         let mut output = Output::default();
-
+        output.tap_tree = Some(TapTree::from_builder(tap_builder).unwrap());
+        output.tap_internal_key = Some(internal);
         output.witness_script = Some(script_pub_k);
         return vec![output];
     }
