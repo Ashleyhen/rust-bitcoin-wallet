@@ -2,7 +2,7 @@ use std::{env, vec};
 
 use btc_wallet::{
     input_data::{electrum_rpc::ElectrumRpc, test_rpc_call::TestRpc},
-    spending_path::p2tr_key_path::P2TR,
+    spending_path::{p2tr_key_path::P2TR, p2tr_multisig_path::P2trMultisig, vault_adaptor::VaultAdapter},
     wallet_methods::{Broadcast_op, ClientWallet, ClientWithSchema},
 };
 // use taproot_multi_sig::WalletInfo;
@@ -48,10 +48,15 @@ fn test_transaction() {
         &tr[0],
     );
 
+    let multi_sig = P2trMultisig::new(ClientWallet::new(Some(seed.to_string()), 0, 4),tr[3..].to_vec(), None);
+
+
+    let adapter=VaultAdapter::new(&schema, &multi_sig);
     let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));
 
     let psbt_2 = client_with_schema_2.submit_psbt(&schema_2, Broadcast_op::Finalize);
-    /*    */
+
+
 
     // let schema_2 = P2TR::new(Some(seed.to_string()), 0, 5);
     // let client_with_schema_2 = ClientWithSchema::new(&schema_2, TestRpc::new(psbt));

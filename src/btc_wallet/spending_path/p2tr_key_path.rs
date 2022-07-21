@@ -20,7 +20,7 @@ use super::{standard_create_tx, standard_lock, Vault};
 
 #[derive(Clone)]
 pub struct P2TR {
-    client_wallet: ClientWallet,
+    pub client_wallet: ClientWallet,
     amount: u64,
     to_addr: String,
 }

@@ -12,7 +12,7 @@ pub const RECEIVER: usize = 0;
 pub const CHANGE: usize = 1;
 
 pub mod p2tr_key_path;
-mod p2tr_multisig_path;
+pub mod p2tr_multisig_path;
 pub mod p2wpkh_script_path;
 pub mod vault_adaptor;
 pub trait Vault {
