@@ -148,16 +148,12 @@ impl ClientWallet {
     }
 }
 
-// #[derive(Clone)]
 pub enum BroadcastOp<'a> {
     Finalize,
     None,
     Broadcast(Box<dyn Fn(Transaction)->Txid+'a>),
 }
 
-// fn path<F>(change:F)
-//         where F: FnOnce(Script) ->dyn UnlockPreviousUTXO{
 
-// }
 
 // multi sig
