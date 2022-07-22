@@ -1,7 +1,6 @@
 use bitcoin::{
-    psbt::{Input, PartiallySignedTransaction},
+    psbt::{ PartiallySignedTransaction},
     util::bip32::{ExtendedPubKey, KeySource},
-    TxOut, Txid,
 };
 use miniscript::psbt::PsbtExt;
 
@@ -10,8 +9,8 @@ use miniscript::psbt::PsbtExt;
 use crate::btc_wallet::address_formats::AddressSchema;
 
 use self::{
-    input_data::ApiCall,
-    wallet_methods::{Broadcast_op, ClientWithSchema}, address_formats::p2tr_addr_fmt::P2TR, spending_path::Vault,
+    input_data::{ApiCall, RpcCall},
+    wallet_methods::{BroadcastOp, ClientWithSchema}, address_formats::p2tr_addr_fmt::P2TR, spending_path::Vault,
 };
 // pub mod input_data;
 pub mod input_data;
@@ -26,12 +25,12 @@ pub mod wallet_methods;
 
 impl<'a, A> ClientWithSchema<'a, P2TR, A>
 where
-    A: ApiCall,
+    A: RpcCall,
 {
     pub fn submit_psbt<'v, V>(
         &self,
         vault: &'v V,
-        broad_cast_op: Broadcast_op,
+        broad_cast_op: BroadcastOp,
     ) -> PartiallySignedTransaction
     where
         V: Vault,
@@ -39,20 +38,18 @@ where
         let psbt = self.submit_tx(vault);
 
         return match broad_cast_op {
-            Broadcast_op::Finalize => {
+            BroadcastOp::Finalize => {
                 let complete = psbt.finalize(&self.schema.to_wallet().secp).unwrap();
                 dbg!(complete.clone().extract_tx());
                 complete
             }
-            Broadcast_op::Broadcast => {
+            BroadcastOp::Broadcast(transaction_broadcast) => {
                 let complete = psbt.finalize(&self.schema.to_wallet().secp).unwrap();
-                self.api_call
-                    .transaction_broadcast(&complete.clone().extract_tx())
-                    .unwrap();
+                    transaction_broadcast(complete.clone().extract_tx());
                 dbg!(complete.clone().extract_tx());
                 complete
             }
-            Broadcast_op::None => {
+            BroadcastOp::None => {
                 dbg!(psbt.clone());
                 psbt
             }

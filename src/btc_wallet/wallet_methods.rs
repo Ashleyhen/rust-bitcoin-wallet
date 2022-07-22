@@ -5,13 +5,13 @@ use bitcoin::{
     psbt::{Input, PartiallySignedTransaction},
     secp256k1::{constants, rand::rngs::OsRng, All, Secp256k1, SecretKey},
     util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
-    Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness,
+    Network, OutPoint, Script, Transaction, TxIn, TxOut, Witness, Txid,
 };
 
 use super::{
     address_formats::AddressSchema,
     constants::{Seed, NETWORK},
-    input_data::ApiCall,
+    input_data::{ApiCall, RpcCall},
     spending_path::Vault,
     WalletKeys,
 };
@@ -25,12 +25,12 @@ pub struct ClientWallet {
 }
 
 #[derive(Clone)]
-pub struct ClientWithSchema<'a, S: AddressSchema, A: ApiCall> {
+pub struct ClientWithSchema<'a, S: AddressSchema, A:RpcCall> {
     pub schema: &'a S,
     pub api_call: Arc<A>,
 }
 
-impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
+impl<'a, S: AddressSchema, A: RpcCall> ClientWithSchema<'a, S, A> {
     pub fn new(schema: &S, api_call: A) -> ClientWithSchema<S, A> {
         return ClientWithSchema {
             schema,
@@ -42,11 +42,11 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
         let address = self.schema.map_ext_keys(&self.get_ext_pub_k());
         return self
             .api_call
-            .script_get_balance(&address.script_pubkey())
+            .script_get_balance()
             .unwrap();
     }
 
-    pub fn get_ext_pub_k(&self) -> ExtendedPubKey {
+    fn get_ext_pub_k(&self) -> ExtendedPubKey {
         let wallet = self.schema.to_wallet();
         let (ext_pub, _) = self.schema.to_wallet().create_wallet(
             self.schema.wallet_purpose(),
@@ -83,33 +83,9 @@ impl<'a, S: AddressSchema, A: ApiCall> ClientWithSchema<'a, S, A> {
 
         let signer_addr = self.schema.map_ext_keys(&signer_pub_k);
 
-        let history = Arc::new(
-            self.api_call
-                .script_list_unspent(&signer_addr.script_pubkey())
-                .expect("address history call failed"),
-        );
-
-        let tx_in = history
-            .clone()
-            .iter()
-            .map(|tx| {
-                return TxIn {
-                    previous_output: OutPoint::new(tx.tx_hash, tx.tx_pos.try_into().unwrap()),
-                    script_sig: Script::new(), // The scriptSig must be exactly empty or the validation fails (native witness program)
-                    sequence: 0xFFFFFFFF,
-                    witness: Witness::default(),
-                };
-            })
-            .collect::<Vec<TxIn>>();
-
-        let previous_tx = tx_in
-            .iter()
-            .map(|tx_id| {
-                self.api_call
-                    .transaction_get(&tx_id.previous_output.txid)
-                    .unwrap()
-            })
-            .collect::<Vec<Transaction>>();
+        
+        let (tx_in, previous_tx)=self.api_call.contract_source();
+        
 
         let lock_list = vault.lock_key(self.schema);
         let current_tx = vault.create_tx(&lock_list, tx_in, self.get_balance().confirmed);
@@ -172,11 +148,11 @@ impl ClientWallet {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
-pub enum Broadcast_op {
+// #[derive(Clone)]
+pub enum BroadcastOp<'a> {
     Finalize,
     None,
-    Broadcast,
+    Broadcast(Box<dyn Fn(Transaction)->Txid+'a>),
 }
 
 // fn path<F>(change:F)
