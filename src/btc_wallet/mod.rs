@@ -11,8 +11,7 @@ use crate::btc_wallet::address_formats::AddressSchema;
 
 use self::{
     input_data::ApiCall,
-    spending_path::{p2tr_key_path::P2TR, Vault},
-    wallet_methods::{Broadcast_op, ClientWithSchema},
+    wallet_methods::{Broadcast_op, ClientWithSchema}, address_formats::p2tr_addr_fmt::P2TR, spending_path::Vault,
 };
 // pub mod input_data;
 pub mod input_data;

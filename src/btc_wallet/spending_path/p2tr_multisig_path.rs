@@ -5,21 +5,21 @@ use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     util::{
         bip32::ExtendedPubKey,
-        taproot::{TapLeafHash, TaprootBuilder},
+        taproot::{TaprootBuilder},
     },
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
 use crate::btc_wallet::{
-    address_formats::AddressSchema, constants::TIP, wallet_methods::ClientWallet,
+    address_formats::{AddressSchema, p2tr_addr_fmt::P2TR}, constants::TIP, wallet_methods::ClientWallet,
 };
 
 use super::Vault;
 
-pub struct P2trMultisig {
-    pub client_wallet: ClientWallet,
+pub struct P2trMultisig<'a,'b> {
+    pub p2tr: &'a P2TR,
     to_addr: Vec<String>,
-    psbt: Option<PartiallySignedTransaction>,
+    psbt: Option<&'b PartiallySignedTransaction>,
 }
 fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
     return match iter.next() {
@@ -30,17 +30,17 @@ fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
     };
 }
 
-impl Vault for P2trMultisig {
+impl <'a,'b> Vault for P2trMultisig<'a,'b> {
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
         let psbt = self.psbt.clone().unwrap();
         psbt.outputs.iter().for_each(|f| {
             // f.tap_tree.unwrap().script_leaves().for_each(|f|f.script().instructions())
             f.tap_internal_key;
         });
-        return psbt.inputs;
+        return psbt.clone().inputs;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -55,7 +55,7 @@ impl Vault for P2trMultisig {
         return self
             .psbt
             .clone()
-            .map(|f| f.extract_tx())
+            .map(|f| f.clone().extract_tx())
             .unwrap_or_else(|| {
                 let tx_out = TxOut {
                     value: total - TIP,
@@ -71,33 +71,27 @@ impl Vault for P2trMultisig {
     }
 }
 
-impl P2trMultisig {
+impl <'a,'b>P2trMultisig<'a, 'b> {
 
-     pub fn get_client_wallet(&self) -> ClientWallet {
-        return self.client_wallet.clone();
-    }
-    
     fn get_ext_pub_key(&self) -> ExtendedPubKey {
-        let cw = self.to_wallet();
-        return self
-            .to_wallet()
-            .create_wallet(self.wallet_purpose(), cw.recieve, cw.change)
-            .0;
+        let tr = self.p2tr;
+        let cw=tr.to_wallet();
+        return cw.create_wallet(tr.wallet_purpose(), cw.recieve, cw.change).0;
     }
 
     pub fn new(
-        client_wallet: ClientWallet,
+        p2tr: &'a P2TR,
         to_addr: Vec<String>,
-        psbt: Option<PartiallySignedTransaction>,
+        psbt: Option<&'b PartiallySignedTransaction>,
     ) -> Self {
         return P2trMultisig {
-            client_wallet,
+            p2tr,
             to_addr,
             psbt,
         };
     }
 
-    fn create_lock<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn create_lock<'s, S>(&self, schema: &'s S) -> Vec<Output>
     where
         S: AddressSchema,
     {

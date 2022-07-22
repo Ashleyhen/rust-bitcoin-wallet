@@ -1,35 +1,34 @@
 use std::{str::FromStr, sync::Arc};
 
 use crate::btc_wallet::{
-    address_formats::AddressSchema, constants::NETWORK, wallet_methods::ClientWallet,
+    address_formats::{AddressSchema, p2tr_addr_fmt::P2TR}, constants::NETWORK, wallet_methods::ClientWallet,
 };
 use bitcoin::{
-    blockdata::{opcodes, script::Builder},
     psbt::{Input, Output},
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::{ExtendedPrivKey, ExtendedPubKey},
         sighash::{Prevouts, SighashCache},
-    },
-    Address, EcdsaSig, EcdsaSighashType, PublicKey, SchnorrSig, SchnorrSighashType, Script,
-    Transaction, TxIn, TxOut, XOnlyPublicKey,
+    }, SchnorrSig, SchnorrSighashType, Script,
+    Transaction, TxIn, TxOut
 };
 
 use super::{standard_create_tx, standard_lock, Vault};
 
 #[derive(Clone)]
-pub struct P2TR {
-    pub client_wallet: ClientWallet,
+pub struct P2TRVault<'a> {
+    p2tr: &'a P2TR,
     amount: u64,
     to_addr: String,
 }
 
-impl Vault for P2TR {
+impl<'a> Vault for P2TRVault<'a> {
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        let cw = self.client_wallet.clone();
-        let secp = cw.secp.clone();
-        let wallet_key = cw.create_wallet(self.wallet_purpose(), cw.recieve, cw.change);
+        let schema=self.p2tr;
+        let cw= &schema.to_wallet();
+        let secp = &cw.secp;
+        let wallet_key = cw.create_wallet(schema.wallet_purpose(), cw.recieve, cw.change);
 
         let (signer_pub_k, (signer_finger_p, signer_dp)) = wallet_key.clone();
 
@@ -49,7 +48,7 @@ impl Vault for P2TR {
                     .filter(|tx_out| {
                         tx_out
                             .script_pubkey
-                            .eq(&self.map_ext_keys(&signer_pub_k).script_pubkey())
+                            .eq(&schema.map_ext_keys(&signer_pub_k).script_pubkey())
                     })
                     .map(|f| f.clone())
                     .collect();
@@ -69,7 +68,7 @@ impl Vault for P2TR {
         return input_list;
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -86,13 +85,10 @@ impl Vault for P2TR {
     }
 }
 
-impl P2TR {
-    pub fn get_client_wallet(&self) -> ClientWallet {
-        return self.client_wallet.clone();
-    }
-    pub fn new(client_wallet: ClientWallet, amount: u64, to_addr: &String) -> Self {
-        return P2TR {
-            client_wallet,
+impl<'a> P2TRVault<'a> {
+    pub fn new(p2tr: &'a P2TR, amount: u64, to_addr: &String) -> Self {
+        return P2TRVault {
+            p2tr,
             amount,
             to_addr: to_addr.to_string(),
         };
@@ -105,7 +101,7 @@ impl P2TR {
         prev_txout: Vec<TxOut>,
         extended_priv_k: ExtendedPrivKey,
     ) -> Input {
-        let cw = self.client_wallet.clone();
+        let cw = self.p2tr.to_wallet();
         let tweaked_key_pair = extended_priv_k
             .to_keypair(&cw.secp)
             .tap_tweak(&cw.secp, None)

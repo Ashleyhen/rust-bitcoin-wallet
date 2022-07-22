@@ -10,24 +10,24 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 use crate::btc_wallet::{
-    address_formats::AddressSchema, constants::NETWORK, wallet_methods::ClientWallet,
+    address_formats::{AddressSchema, p2wpkh_addr_fmt::P2WPKH}, constants::NETWORK, wallet_methods::ClientWallet,
 };
 
 use super::{standard_create_tx, standard_lock, Vault};
 
 #[derive(Clone)]
-pub struct P2PWKh {
-    pub client_wallet: ClientWallet,
+pub struct P2WPKHVault<'a> {
+    p2wpkh: &'a P2WPKH,
     amount: u64,
     to_addr: String,
 }
 
-impl Vault for P2PWKh {
+impl <'a>Vault for P2WPKHVault<'a> {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
         return standard_create_tx(self.amount, output_list, tx_in, total);
     }
 
-    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
+    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
     where
         S: AddressSchema,
     {
@@ -39,14 +39,16 @@ impl Vault for P2PWKh {
     }
 
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        let wallet_keys = self.client_wallet.create_wallet(
-            self.wallet_purpose(),
-            self.client_wallet.recieve,
-            self.client_wallet.change,
+
+        let cw=self.p2wpkh.get_client_wallet();
+        let wallet_keys = self.p2wpkh.to_wallet().create_wallet(
+            self.p2wpkh.wallet_purpose(),
+            self.p2wpkh.get_client_wallet().recieve,
+            self.p2wpkh.get_client_wallet().change,
         );
         let (signer_pub_k, (_, signer_dp)) = wallet_keys.clone();
-        let secp = &self.client_wallet.secp;
-        let ext_prv = ExtendedPrivKey::new_master(NETWORK, &self.client_wallet.seed)
+        let secp = self.p2wpkh.to_wallet().secp;
+        let ext_prv = ExtendedPrivKey::new_master(NETWORK, &cw.seed)
             .unwrap()
             .derive_priv(&secp, &signer_dp)
             .unwrap();
@@ -57,7 +59,7 @@ impl Vault for P2PWKh {
             .enumerate()
             .map(|(i, previous_tx)| {
                 let mut input_tx = self.p2wpkh_script_sign(
-                    self.wallet_purpose(),
+                    self.p2wpkh.wallet_purpose(),
                     i,
                     current_tx.clone(),
                     previous_tx.output.clone(),
@@ -71,10 +73,10 @@ impl Vault for P2PWKh {
         return input_list;
     }
 }
-impl P2PWKh {
-    pub fn new(client_wallet: ClientWallet, amount: u64, to_addr: String) -> Self {
-        return P2PWKh {
-            client_wallet,
+impl<'a> P2WPKHVault<'a> {
+    pub fn new(p2wpkh: &'a P2WPKH, amount: u64, to_addr: String) -> Self {
+        return P2WPKHVault {
+            p2wpkh,
             amount,
             to_addr,
         };
@@ -89,8 +91,8 @@ impl P2PWKh {
         secp: Secp256k1<All>,
         extended_priv_k: ExtendedPrivKey,
     ) -> Input {
-        let cw = self.client_wallet.clone();
-        let extend_pub_k = cw.create_wallet(purpose, cw.recieve, cw.change).0;
+        let cw = self.p2wpkh.clone();
+        let extend_pub_k = self.p2wpkh.get_ext_pub_key();
 
         let mut input = Input::default();
         let b_tree: BTreeMap<PublicKey, EcdsaSig> = previous_tx
@@ -107,9 +109,9 @@ impl P2PWKh {
                     .unwrap();
                 let msg = Message::from_slice(&sig_hash).unwrap();
                 let sig =
-                    EcdsaSig::sighash_all(cw.secp.sign_ecdsa(&msg, &extended_priv_k.private_key));
+                    EcdsaSig::sighash_all(cw.to_wallet().secp.sign_ecdsa(&msg, &extended_priv_k.private_key));
                 let pub_key = extended_priv_k
-                    .to_keypair(&cw.secp)
+                    .to_keypair(&cw.to_wallet().secp)
                     .public_key()
                     .to_public_key();
                 return (pub_key, sig);
