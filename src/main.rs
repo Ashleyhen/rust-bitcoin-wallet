@@ -1,5 +1,6 @@
 use std::{env, vec};
 
+use bitcoin::util::taproot::ControlBlock;
 use btc_wallet::{
     input_data::{electrum_rpc::{ElectrumRpc, ElectrumCall}, test_rpc_call::{TestRpc, TestCall}},
     spending_path::{
@@ -35,7 +36,6 @@ fn test_transaction() {
     // let schema = P2TR::new(Some(seed.to_string()), 0, 3);
     let p2tr=P2TR::new( Some(seed.to_string()), 0, 3);
     let p2tr_vault= P2TRVault::new(&p2tr, 2000, &tr[4]);
-    ;
     let client_with_schema = ClientWithSchema::new(&p2tr,ElectrumCall::new(&p2tr));
     client_with_schema.print_balance();
     let psbt = client_with_schema.submit_psbt(&p2tr_vault, BroadcastOp::Finalize);
@@ -44,7 +44,18 @@ fn test_transaction() {
     let script_vault = P2trMultisig::new( &tr_script, tr[3..].to_vec(), None);
     let adapter = VaultAdapter::new(&script_vault, &p2tr_vault);
     let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script,&psbt));
-    let psbt=client_with_schema_2.submit_psbt(&adapter,BroadcastOp::Finalize);
+    let psbt_2=client_with_schema_2.submit_psbt(&adapter,BroadcastOp::Finalize);
+
+
+    let tr_script=P2TR::new( Some(seed.to_string()), 0, 4);
+    let script_vault = P2trMultisig::new( &tr_script, tr[3..].to_vec(), Some(&psbt_2));
+    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script,&psbt));
+    let psbt=client_with_schema_2.submit_psbt(&script_vault,BroadcastOp::None);
+
+
+
+    // ControlBlock
+
 
 }
 // seed, vec<derivation path>

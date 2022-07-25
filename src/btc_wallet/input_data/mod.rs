@@ -5,9 +5,8 @@ use electrum_client::{Error, GetBalanceRes};
 
 pub mod electrum_rpc;
 pub mod test_rpc_call;
-use electrum_client::{Client, ElectrumApi, ListUnspentRes};
+use electrum_client::{ListUnspentRes};
 
-use super::address_formats::AddressSchema;
 pub trait ApiCall {
     fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error>;
     fn script_list_unspent(&self, script: &Script) -> Result<Vec<ListUnspentRes>, Error>;

@@ -32,21 +32,16 @@ impl <'a>Vault for P2WPKHVault<'a> {
         S: AddressSchema,
     {
         let cw = schema.to_wallet();
-        let extend_pub_k = cw
-            .create_wallet(schema.wallet_purpose(), cw.recieve, cw.change + 1)
-            .0;
+        let extend_pub_k = schema.get_ext_pub_key();
         return standard_lock(schema, extend_pub_k, &self.to_addr);
     }
 
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
 
         let cw=self.p2wpkh.get_client_wallet();
-        let wallet_keys = self.p2wpkh.to_wallet().create_wallet(
-            self.p2wpkh.wallet_purpose(),
-            self.p2wpkh.get_client_wallet().recieve,
-            self.p2wpkh.get_client_wallet().change,
-        );
-        let (signer_pub_k, (_, signer_dp)) = wallet_keys.clone();
+        let signer_pub_k =self.p2wpkh.get_client_wallet();
+        let signer_dp=self.p2wpkh.get_derivation_p();
+        
         let secp = self.p2wpkh.to_wallet().secp;
         let ext_prv = ExtendedPrivKey::new_master(NETWORK, &cw.seed)
             .unwrap()

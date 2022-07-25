@@ -45,6 +45,8 @@ pub struct ElectrumCall<'a, A: AddressSchema> {
 
 impl<'a, A: AddressSchema> RpcCall for ElectrumCall<'a, A> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
+        let cw=self.address.to_wallet();
+
         let signer_pub_k = self.address.get_ext_pub_key();
         let signer_addr = self.address.map_ext_keys(&signer_pub_k);
 

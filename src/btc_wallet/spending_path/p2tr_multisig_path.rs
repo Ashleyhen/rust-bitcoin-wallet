@@ -11,7 +11,7 @@ use bitcoin::{
 };
 
 use crate::btc_wallet::{
-    address_formats::{AddressSchema, p2tr_addr_fmt::P2TR}, constants::TIP, wallet_methods::ClientWallet,
+    address_formats::{AddressSchema, p2tr_addr_fmt::P2TR}, constants::TIP,
 };
 
 use super::Vault;
@@ -33,9 +33,21 @@ fn dynamic_builder(mut iter: impl Iterator<Item = XOnlyPublicKey>) -> Builder {
 impl <'a,'b> Vault for P2trMultisig<'a,'b> {
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
         let psbt = self.psbt.clone().unwrap();
-        psbt.outputs.iter().for_each(|f| {
+        psbt.outputs.iter().for_each(|script| {
+            let t=previous.iter().enumerate()
+            .map(|(size, tx)| tx.output.iter()
+                .filter(|s|s.script_pubkey.eq(script.clone().witness_script.get_or_insert(Script::new())))
+                .map(|tx_out|{
+
+                    
+                    return tx_out.clone();
+                })
+                .collect::<Vec<TxOut>>()
+            );
+            
+            // script.
             // f.tap_tree.unwrap().script_leaves().for_each(|f|f.script().instructions())
-            f.tap_internal_key;
+            script.tap_internal_key;
         });
         return psbt.clone().inputs;
     }
@@ -72,12 +84,6 @@ impl <'a,'b> Vault for P2trMultisig<'a,'b> {
 }
 
 impl <'a,'b>P2trMultisig<'a, 'b> {
-
-    fn get_ext_pub_key(&self) -> ExtendedPubKey {
-        let tr = self.p2tr;
-        let cw=tr.to_wallet();
-        return cw.create_wallet(tr.wallet_purpose(), cw.recieve, cw.change).0;
-    }
 
     pub fn new(
         p2tr: &'a P2TR,
