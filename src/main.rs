@@ -2,11 +2,16 @@ use std::{env, vec};
 
 use bitcoin::util::taproot::ControlBlock;
 use btc_wallet::{
-    input_data::{electrum_rpc::{ElectrumRpc, ElectrumCall}, test_rpc_call::{TestRpc, TestCall}},
-    spending_path::{
-        p2tr_key_path::{ P2TRVault}, p2tr_multisig_path::P2trMultisig, vault_adaptor::VaultAdapter, Vault,
+    address_formats::p2tr_addr_fmt::P2TR,
+    input_data::{
+        electrum_rpc::{ElectrumCall, ElectrumRpc},
+        test_rpc_call::{TestCall, TestRpc},
     },
-    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema}, address_formats::p2tr_addr_fmt::P2TR,
+    spending_path::{
+        p2tr_key_path::P2TRVault, p2tr_multisig_path::P2trMultisig, vault_adaptor::VaultAdapter,
+        Vault,
+    },
+    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
@@ -34,29 +39,24 @@ fn test_transaction() {
     // let aggregate = schema.aggregate(address_list);
 
     // let schema = P2TR::new(Some(seed.to_string()), 0, 3);
-    let p2tr=P2TR::new( Some(seed.to_string()), 0, 3);
-    let p2tr_vault= P2TRVault::new(&p2tr, 2000, &tr[4]);
-    let client_with_schema = ClientWithSchema::new(&p2tr,ElectrumCall::new(&p2tr));
+    let p2tr = P2TR::new(Some(seed.to_string()), 0, 3);
+    let p2tr_vault = P2TRVault::new(&p2tr, 2000, &tr[4]);
+    let client_with_schema = ClientWithSchema::new(&p2tr, ElectrumCall::new(&p2tr));
     client_with_schema.print_balance();
     let psbt = client_with_schema.submit_psbt(&p2tr_vault, BroadcastOp::Finalize);
 
-    let tr_script=P2TR::new( Some(seed.to_string()), 0, 4);
-    let script_vault = P2trMultisig::new( &tr_script, tr[3..].to_vec(), None);
+    let tr_script = P2TR::new(Some(seed.to_string()), 0, 4);
+    let script_vault = P2trMultisig::new(&tr_script, tr[3..].to_vec(), None);
     let adapter = VaultAdapter::new(&script_vault, &p2tr_vault);
-    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script,&psbt));
-    let psbt_2=client_with_schema_2.submit_psbt(&adapter,BroadcastOp::Finalize);
+    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script, &psbt));
+    let psbt_2 = client_with_schema_2.submit_psbt(&adapter, BroadcastOp::Finalize);
 
-
-    let tr_script=P2TR::new( Some(seed.to_string()), 0, 4);
-    let script_vault = P2trMultisig::new( &tr_script, tr[3..].to_vec(), Some(&psbt_2));
-    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script,&psbt));
-    let psbt=client_with_schema_2.submit_psbt(&script_vault,BroadcastOp::None);
-
-
+    let tr_script = P2TR::new(Some(seed.to_string()), 0, 3);
+    let script_vault_2 = P2trMultisig::new(&tr_script, tr[3..].to_vec(), Some(&psbt_2));
+    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script, &psbt));
+    let psbt = client_with_schema_2.submit_psbt(&script_vault_2, BroadcastOp::None);
 
     // ControlBlock
-
-
 }
 // seed, vec<derivation path>
 // p2wpkh 8

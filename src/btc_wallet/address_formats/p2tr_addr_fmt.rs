@@ -1,8 +1,7 @@
 use bitcoin::{util::bip32::ExtendedPubKey, Address};
 
 use crate::btc_wallet::{
-    constants::NETWORK,
-    spending_path::{p2tr_multisig_path::P2trMultisig},
+    constants::NETWORK, spending_path::p2tr_multisig_path::P2trMultisig,
     wallet_methods::ClientWallet,
 };
 
@@ -10,7 +9,6 @@ use super::AddressSchema;
 
 #[derive(Clone)]
 pub struct P2TR(ClientWallet);
-
 
 impl AddressSchema for P2TR {
     fn map_ext_keys(&self, recieve: &ExtendedPubKey) -> Address {
@@ -31,11 +29,11 @@ impl AddressSchema for P2TR {
     }
 }
 
-impl P2TR{
+impl P2TR {
     pub fn get_client_wallet(&self) -> ClientWallet {
         return self.0.clone();
     }
-    pub fn new(secret_seed:Option<String>, recieve: u32, change:u32)->Self{
-        return P2TR(ClientWallet::new(secret_seed, recieve, change))
+    pub fn new(secret_seed: Option<String>, recieve: u32, change: u32) -> Self {
+        return P2TR(ClientWallet::new(secret_seed, recieve, change));
     }
 }

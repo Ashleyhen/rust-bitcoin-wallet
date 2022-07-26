@@ -1,4 +1,7 @@
-use bitcoin::{util::bip32::{ExtendedPubKey, ExtendedPrivKey, DerivationPath}, Address};
+use bitcoin::{
+    util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey},
+    Address,
+};
 
 use super::wallet_methods::ClientWallet;
 
@@ -16,13 +19,16 @@ pub trait AddressSchema {
         return self.to_wallet().derive_pub_k(self.get_ext_prv_k());
     }
 
-    fn get_derivation_p(&self)->DerivationPath{
+    fn get_derivation_p(&self) -> DerivationPath {
         let cw = self.to_wallet();
-        return self.to_wallet().derive_derivation_path(self.wallet_purpose(), cw.recieve,cw.change);
+        return self.to_wallet().derive_derivation_path(
+            self.wallet_purpose(),
+            cw.recieve,
+            cw.change,
+        );
     }
 
-    fn get_ext_prv_k(&self)->ExtendedPrivKey{
+    fn get_ext_prv_k(&self) -> ExtendedPrivKey {
         return self.to_wallet().derive_ext_priv_k(&self.get_derivation_p());
     }
-
 }

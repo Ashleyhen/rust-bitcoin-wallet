@@ -1,15 +1,12 @@
 use bitcoin::{util::bip32::ExtendedPubKey, Address};
 use miniscript::ToPublicKey;
 
-use crate::btc_wallet::{
-    constants::NETWORK, wallet_methods::ClientWallet,
-};
+use crate::btc_wallet::{constants::NETWORK, wallet_methods::ClientWallet};
 
 use super::AddressSchema;
 
 #[derive(Clone)]
 pub struct P2WPKH(ClientWallet);
-
 
 impl AddressSchema for P2WPKH {
     fn map_ext_keys(&self, recieve: &ExtendedPubKey) -> Address {
@@ -24,13 +21,12 @@ impl AddressSchema for P2WPKH {
         return 84;
     }
 }
-impl P2WPKH{
-
+impl P2WPKH {
     pub fn get_client_wallet(&self) -> ClientWallet {
         return self.0.clone();
     }
 
-    pub fn new(secret_seed:Option<String>, recieve: u32, change:u32)->Self{
-        return P2WPKH(ClientWallet::new(secret_seed, recieve, change))
+    pub fn new(secret_seed: Option<String>, recieve: u32, change: u32) -> Self {
+        return P2WPKH(ClientWallet::new(secret_seed, recieve, change));
     }
 }

@@ -5,7 +5,7 @@ use electrum_client::{Error, GetBalanceRes};
 
 pub mod electrum_rpc;
 pub mod test_rpc_call;
-use electrum_client::{ListUnspentRes};
+use electrum_client::ListUnspentRes;
 
 pub trait ApiCall {
     fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error>;
@@ -16,5 +16,4 @@ pub trait ApiCall {
 pub trait RpcCall {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>);
     fn script_get_balance(&self) -> Result<GetBalanceRes, Error>;
-    
 }

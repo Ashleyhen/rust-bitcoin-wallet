@@ -1,5 +1,5 @@
 use bitcoin::{
-    psbt::{ PartiallySignedTransaction},
+    psbt::PartiallySignedTransaction,
     util::bip32::{ExtendedPubKey, KeySource},
 };
 use miniscript::psbt::PsbtExt;
@@ -9,16 +9,18 @@ use miniscript::psbt::PsbtExt;
 use crate::btc_wallet::address_formats::AddressSchema;
 
 use self::{
+    address_formats::p2tr_addr_fmt::P2TR,
     input_data::{ApiCall, RpcCall},
-    wallet_methods::{BroadcastOp, ClientWithSchema}, address_formats::p2tr_addr_fmt::P2TR, spending_path::Vault,
+    spending_path::Vault,
+    wallet_methods::{BroadcastOp, ClientWithSchema},
 };
 // pub mod input_data;
 pub mod input_data;
 
 // pub(crate) mod lock;
-pub mod spending_path;
 pub mod address_formats;
 pub mod constants;
+pub mod spending_path;
 // pub mod unlock;
 pub mod wallet_methods;
 
@@ -44,7 +46,7 @@ where
             }
             BroadcastOp::Broadcast(transaction_broadcast) => {
                 let complete = psbt.finalize(&self.schema.to_wallet().secp).unwrap();
-                    transaction_broadcast(complete.clone().extract_tx());
+                transaction_broadcast(complete.clone().extract_tx());
                 dbg!(complete.clone().extract_tx());
                 complete
             }

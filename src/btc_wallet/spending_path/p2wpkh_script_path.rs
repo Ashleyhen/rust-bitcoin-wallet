@@ -10,7 +10,9 @@ use bitcoin::{
 use miniscript::ToPublicKey;
 
 use crate::btc_wallet::{
-    address_formats::{AddressSchema, p2wpkh_addr_fmt::P2WPKH}, constants::NETWORK, wallet_methods::ClientWallet,
+    address_formats::{p2wpkh_addr_fmt::P2WPKH, AddressSchema},
+    constants::NETWORK,
+    wallet_methods::ClientWallet,
 };
 
 use super::{standard_create_tx, standard_lock, Vault};
@@ -22,7 +24,7 @@ pub struct P2WPKHVault<'a> {
     to_addr: String,
 }
 
-impl <'a>Vault for P2WPKHVault<'a> {
+impl<'a> Vault for P2WPKHVault<'a> {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
         return standard_create_tx(self.amount, output_list, tx_in, total);
     }
@@ -37,11 +39,10 @@ impl <'a>Vault for P2WPKHVault<'a> {
     }
 
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
+        let cw = self.p2wpkh.get_client_wallet();
+        let signer_pub_k = self.p2wpkh.get_client_wallet();
+        let signer_dp = self.p2wpkh.get_derivation_p();
 
-        let cw=self.p2wpkh.get_client_wallet();
-        let signer_pub_k =self.p2wpkh.get_client_wallet();
-        let signer_dp=self.p2wpkh.get_derivation_p();
-        
         let secp = self.p2wpkh.to_wallet().secp;
         let ext_prv = ExtendedPrivKey::new_master(NETWORK, &cw.seed)
             .unwrap()
@@ -103,8 +104,11 @@ impl<'a> P2WPKHVault<'a> {
                     )
                     .unwrap();
                 let msg = Message::from_slice(&sig_hash).unwrap();
-                let sig =
-                    EcdsaSig::sighash_all(cw.to_wallet().secp.sign_ecdsa(&msg, &extended_priv_k.private_key));
+                let sig = EcdsaSig::sighash_all(
+                    cw.to_wallet()
+                        .secp
+                        .sign_ecdsa(&msg, &extended_priv_k.private_key),
+                );
                 let pub_key = extended_priv_k
                     .to_keypair(&cw.to_wallet().secp)
                     .public_key()

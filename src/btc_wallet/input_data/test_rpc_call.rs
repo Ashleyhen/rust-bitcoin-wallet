@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction},
-    Script, Transaction, Txid, TxIn,
+    Script, Transaction, TxIn, Txid,
 };
 use electrum_client::{Error, GetBalanceRes, ListUnspentRes};
 
@@ -12,7 +12,7 @@ use crate::btc_wallet::address_formats::AddressSchema;
 use super::{ApiCall, RpcCall};
 
 pub struct TestRpc<'a>(&'a PartiallySignedTransaction);
-impl <'a>ApiCall for TestRpc<'a> {
+impl<'a> ApiCall for TestRpc<'a> {
     fn transaction_broadcast(&self, tx: &Transaction) -> Result<Txid, Error> {
         return Ok(tx.txid());
     }
@@ -62,25 +62,23 @@ impl <'a>ApiCall for TestRpc<'a> {
     }
 }
 
-impl <'a>TestRpc<'a>{
+impl<'a> TestRpc<'a> {
     pub fn new(psbt: &'a PartiallySignedTransaction) -> Self {
         return TestRpc(psbt);
     }
 }
 
-pub struct TestCall<'p,'a,A> {
+pub struct TestCall<'p, 'a, A> {
     psbt: &'p PartiallySignedTransaction,
-    address:&'a A
+    address: &'a A,
 }
- impl<'p,'a,A:AddressSchema> RpcCall for TestCall<'p,'a,A> {
-
+impl<'p, 'a, A: AddressSchema> RpcCall for TestCall<'p, 'a, A> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
-        let tx=self.psbt.clone().extract_tx().clone();
+        let tx = self.psbt.clone().extract_tx().clone();
         return (tx.clone().input, vec![tx]);
     }
 
-    fn script_get_balance(&self) -> Result<GetBalanceRes, Error> 
-    {
+    fn script_get_balance(&self) -> Result<GetBalanceRes, Error> {
         let value = self
             .psbt
             .clone()
@@ -88,7 +86,8 @@ pub struct TestCall<'p,'a,A> {
             .output
             .iter()
             .filter(|t| {
-                t.script_pubkey.eq(&self.address
+                t.script_pubkey.eq(&self
+                    .address
                     .map_ext_keys(&self.address.get_ext_pub_key())
                     .script_pubkey())
             })
@@ -101,10 +100,11 @@ pub struct TestCall<'p,'a,A> {
     }
 }
 
-impl<'p,'a, A> TestCall<'p, 'a, A> {
-    pub fn new( address:&'a A,psbt: &'p PartiallySignedTransaction) -> Self
-   where A: AddressSchema 
+impl<'p, 'a, A> TestCall<'p, 'a, A> {
+    pub fn new(address: &'a A, psbt: &'p PartiallySignedTransaction) -> Self
+    where
+        A: AddressSchema,
     {
-        return TestCall {address, psbt  };
+        return TestCall { address, psbt };
     }
 }

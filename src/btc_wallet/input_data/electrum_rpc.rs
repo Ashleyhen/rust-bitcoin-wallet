@@ -45,8 +45,7 @@ pub struct ElectrumCall<'a, A: AddressSchema> {
 
 impl<'a, A: AddressSchema> RpcCall for ElectrumCall<'a, A> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
-        let cw=self.address.to_wallet();
-
+        let cw = self.address.to_wallet();
         let signer_pub_k = self.address.get_ext_pub_key();
         let signer_addr = self.address.map_ext_keys(&signer_pub_k);
 
@@ -80,7 +79,7 @@ impl<'a, A: AddressSchema> RpcCall for ElectrumCall<'a, A> {
         return (tx_in, previous_tx);
     }
 
-    fn script_get_balance(&self) -> Result<GetBalanceRes, Error>  {
+    fn script_get_balance(&self) -> Result<GetBalanceRes, Error> {
         return self.client.script_get_balance(
             &self
                 .address
@@ -99,10 +98,9 @@ impl<'a, A: AddressSchema> ElectrumCall<'a, A> {
         };
     }
 
-    pub fn transaction_broadcast(&self)->BroadcastOp{
-         return BroadcastOp::Broadcast(Box::new( |tx: Transaction|{
+    pub fn transaction_broadcast(&self) -> BroadcastOp {
+        return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
             self.client.transaction_broadcast(&tx).unwrap().clone()
-         }));
+        }));
     }
-
 }

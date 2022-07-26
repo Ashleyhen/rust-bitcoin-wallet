@@ -1,18 +1,16 @@
 use std::{str::FromStr, sync::Arc};
 
-use crate::btc_wallet::{
-    address_formats::{AddressSchema, p2tr_addr_fmt::P2TR},
-};
+use crate::btc_wallet::address_formats::{p2tr_addr_fmt::P2TR, AddressSchema};
 use crate::btc_wallet::constants::NETWORK;
 use bitcoin::{
     psbt::{Input, Output},
     schnorr::TapTweak,
-    secp256k1::{Message},
+    secp256k1::Message,
     util::{
-        bip32::{ExtendedPrivKey},
+        bip32::ExtendedPrivKey,
         sighash::{Prevouts, SighashCache},
-    }, SchnorrSig, SchnorrSighashType,
-    Transaction, TxIn, TxOut
+    },
+    SchnorrSig, SchnorrSighashType, Transaction, TxIn, TxOut,
 };
 
 use super::{standard_create_tx, standard_lock, Vault};
@@ -26,9 +24,8 @@ pub struct P2TRVault<'a> {
 
 impl<'a> Vault for P2TRVault<'a> {
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        let schema=self.p2tr;
-        let cw= &schema.to_wallet();
-        let secp = &cw.secp;
+        let schema = self.p2tr;
+        let cw = &schema.to_wallet();
         let signer_pub_k = schema.get_ext_pub_key();
         let ext_prv = schema.get_ext_prv_k();
         let input_list: Vec<Input> = previous_tx
@@ -67,8 +64,12 @@ impl<'a> Vault for P2TRVault<'a> {
         S: AddressSchema,
     {
         let cw = schema.to_wallet();
-        
-       let change_address = cw.derive_pub_k(cw.derive_ext_priv_k(&cw.derive_derivation_path(schema.wallet_purpose(), cw.recieve, cw.change + 1)));
+
+        let change_address = cw.derive_pub_k(cw.derive_ext_priv_k(&cw.derive_derivation_path(
+            schema.wallet_purpose(),
+            cw.recieve,
+            cw.change + 1,
+        )));
 
         return standard_lock(schema, change_address, &self.to_addr);
     }
