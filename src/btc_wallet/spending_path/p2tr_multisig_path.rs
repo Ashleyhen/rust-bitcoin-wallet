@@ -8,9 +8,13 @@ use bitcoin::{
     util::{
         bip32::ExtendedPubKey,
         sighash::{Prevouts, SighashCache},
-        taproot::{LeafVersion, TapLeafHash, TapLeafTag, TapSighashHash, TaprootBuilder},
+        taproot::{
+            LeafVersion, TapLeafHash, TapLeafTag, TapSighashHash, TaprootBuilder,
+            TaprootMerkleBranch,
+        },
     },
-    Address, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    Address, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxMerkleNode, TxOut,
+    XOnlyPublicKey,
 };
 use electrum_client::GetMerkleRes;
 
@@ -93,6 +97,30 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
                                 let mut input = Input::default();
                                 // input.tap_merkle_root=self.get_script()
                                 // input.tap_script_sigs = Some(schnorr_sig);
+
+                                input.tap_merkle_root = output
+                                    .tap_tree
+                                    .clone()
+                                    .unwrap()
+                                    .into_builder()
+                                    .finalize(&cw.secp, self.p2tr.get_ext_pub_key().to_x_only_pub())
+                                    .map(|op| op.merkle_root())
+                                    .ok()
+                                    .flatten();
+                                let x_only_knows_pub_k =
+                                    self.p2tr.get_ext_pub_key().to_x_only_pub();
+                                let tap_leaf_hash = TapLeafHash::from_script(
+                                    &Script::new_v1_p2tr(
+                                        &cw.secp,
+                                        self.p2tr.get_ext_pub_key().to_x_only_pub(),
+                                        None,
+                                    ),
+                                    LeafVersion::TapScript,
+                                );
+                                let mut b_tree_map = BTreeMap::new();
+                                b_tree_map.insert((x_only_knows_pub_k, tap_leaf_hash), schnorr_sig);
+
+                                input.tap_script_sigs = b_tree_map;
                                 input.witness_utxo = Some(tx_out.clone());
                                 return input.clone();
                             })
@@ -152,16 +180,20 @@ impl<'a, 'b> P2trMultisig<'a, 'b> {
     where
         S: AddressSchema,
     {
-        let script = self.get_script();
-
-        let tap_leaf = TapLeafHash::from_script(&script, LeafVersion::TapScript);
-        let tap_builder = TaprootBuilder::new().add_leaf(0, script).unwrap();
+        let musig_script = self.get_script();
+        let cw = schema.to_wallet();
         let internal = schema.get_ext_pub_key().to_x_only_pub();
+        let single_script = Script::new_v1_p2tr(&cw.secp, internal, None);
+        let tap_builder = TaprootBuilder::new()
+            // .add_leaf(0, musig_script.clone()).unwrap();
+            .add_leaf(0, single_script.clone())
+            .unwrap();
+
         let script_pub_k = Script::new_v1_p2tr(
             &schema.to_wallet().secp,
             tap_builder
                 .clone()
-                .finalize(&schema.to_wallet().secp, internal)
+                .finalize(&schema.to_wallet().secp, internal) // tweak
                 .unwrap()
                 .internal_key(),
             None,
@@ -172,13 +204,18 @@ impl<'a, 'b> P2trMultisig<'a, 'b> {
         taproot_origin.insert(
             internal,
             (
-                vec![tap_leaf].to_vec(),
+                vec![
+                    // TapLeafHash::from_script(&musig_script,LeafVersion::TapScript),
+                    TapLeafHash::from_script(&single_script, LeafVersion::TapScript),
+                ]
+                .to_vec(),
                 (
                     self.p2tr.get_ext_pub_key().fingerprint(),
                     self.p2tr.get_derivation_p(),
                 ),
             ),
         );
+        // tap_builder.has_hidden_nodes()
         output.tap_tree = Some(TapTree::from_builder(tap_builder).unwrap());
         output.tap_internal_key = Some(internal);
         output.witness_script = Some(script_pub_k);
