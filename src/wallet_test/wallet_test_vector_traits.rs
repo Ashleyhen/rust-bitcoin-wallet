@@ -4,13 +4,19 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WalletTestVectors {
-    pub version: i64,
+    pub version: u64,
     #[serde(
         rename = "scriptPubKey",
         skip_serializing_if = "Vec::is_empty",
         default
     )]
     pub script_pub_key: Vec<ScriptPubKey>,
+#[serde(
+        rename = "keyPathSpending",
+        skip_serializing_if = "Vec::is_empty",
+        default
+    )]
+    pub key_spending_path:Vec<KeyPathSpending>
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -22,10 +28,10 @@ pub struct ScriptPubKey {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ScriptTree {
-    pub id: i64,
+    pub id: u64,
     pub script: String,
     #[serde(rename = "leafVersion")]
-    pub leaf_version: i64,
+    pub leaf_version: u64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -60,15 +66,15 @@ pub struct Intermediary {
     pub tweaked_privkey: Option<String>,
     #[serde(rename = "tweakedPubkey")]
     pub tweaked_pubkey: Option<String>,
-    pub tweak: String,
+    pub tweak: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Expected {
     #[serde(rename = "scriptPubKey")]
-    pub script_pub_key: String,
+    pub script_pub_key: Option<String>,
     #[serde(rename = "bip350Address")]
-    pub bip350address: String,
+    pub bip350address: Option<String>,
     #[serde(
         rename = "scriptPathControlBlocks",
         skip_serializing_if = "Vec::is_empty",
@@ -97,7 +103,7 @@ pub struct KeyPathSpending {
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Given {
     #[serde(rename = "hashType")]
-    pub hash_type: Option<i64>,
+    pub hash_type: Option<u64>,
     #[serde(rename = "internalPrivkey")]
     pub internal_privkey: Option<String>,
     #[serde(rename = "internalPubkey")]
@@ -109,7 +115,7 @@ pub struct Given {
     #[serde(rename = "scriptTree", skip_serializing_if = "Vec::is_empty", default)]
     pub script_tree: Vec<ScriptTree>,
     #[serde(rename = "txinIndex")]
-    pub txin_index: Option<i64>,
+    pub txin_index: Option<u64>,
     #[serde(rename = "utxosSpent", skip_serializing_if = "Vec::is_empty", default)]
     pub utxos_spent: Vec<UtxosSpent>,
 }
@@ -119,7 +125,7 @@ pub struct UtxosSpent {
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     #[serde(rename = "amountSats")]
-    pub amount_sats: i64,
+    pub amount_sats: u64,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

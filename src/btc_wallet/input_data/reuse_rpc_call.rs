@@ -68,11 +68,11 @@ impl<'a> TestRpc<'a> {
     }
 }
 
-pub struct TestCall<'p, 'a, A> {
+pub struct ReUseCall<'p, 'a, A> {
     psbt: &'p PartiallySignedTransaction,
     address: &'a A,
 }
-impl<'p, 'a, A: AddressSchema> RpcCall for TestCall<'p, 'a, A> {
+impl<'p, 'a, A: AddressSchema> RpcCall for ReUseCall<'p, 'a, A> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
         let tx = self.psbt.clone().extract_tx().clone();
         return (tx.clone().input, vec![tx]);
@@ -100,11 +100,11 @@ impl<'p, 'a, A: AddressSchema> RpcCall for TestCall<'p, 'a, A> {
     }
 }
 
-impl<'p, 'a, A> TestCall<'p, 'a, A> {
+impl<'p, 'a, A> ReUseCall<'p, 'a, A> {
     pub fn new(address: &'a A, psbt: &'p PartiallySignedTransaction) -> Self
     where
         A: AddressSchema,
     {
-        return TestCall { address, psbt };
+        return ReUseCall { address, psbt };
     }
 }

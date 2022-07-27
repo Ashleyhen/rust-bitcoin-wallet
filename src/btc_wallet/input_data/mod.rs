@@ -4,7 +4,8 @@ use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
 use electrum_client::{Error, GetBalanceRes};
 
 pub mod electrum_rpc;
-pub mod test_rpc_call;
+pub mod reuse_rpc_call;
+// pub mod json_input;
 use electrum_client::ListUnspentRes;
 
 pub trait ApiCall {

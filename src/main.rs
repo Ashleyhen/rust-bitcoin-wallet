@@ -5,7 +5,7 @@ use btc_wallet::{
     address_formats::p2tr_addr_fmt::P2TR,
     input_data::{
         electrum_rpc::{ElectrumCall, ElectrumRpc},
-        test_rpc_call::{TestCall, TestRpc},
+        reuse_rpc_call::{ReUseCall, TestRpc},
     },
     spending_path::{
         p2tr_key_path::P2TRVault, p2tr_multisig_path::P2trMultisig, vault_adaptor::VaultAdapter,
@@ -13,6 +13,7 @@ use btc_wallet::{
     },
     wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
+use wallet_test::wallet_test_vector_traits::WalletTestVectors;
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 pub mod wallet_test;
@@ -21,8 +22,9 @@ pub mod wallet_test;
 // pub mod taproot_multi_sig;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    test_transaction();
-    // wallet_test::printOutTest();
+    // test_transaction();
+    let wallet_test_vectors=WalletTestVectors::load_test();
+    wallet_test_vectors.test();
 }
 fn test_transaction() {
     // person 1
@@ -48,12 +50,12 @@ fn test_transaction() {
     let tr_script = P2TR::new(Some(seed.to_string()), 0, 0);
     let script_vault = P2trMultisig::new(&tr_script, tr[3..].to_vec(), None);
     let adapter = VaultAdapter::new(&script_vault, &p2tr_vault);
-    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script, &psbt));
+    let client_with_schema_2 = ClientWithSchema::new(&tr_script, ReUseCall::new(&tr_script, &psbt));
     let psbt_2 = client_with_schema_2.submit_psbt(&adapter, BroadcastOp::Finalize);
 
     let tr_script = P2TR::new(Some(seed.to_string()), 0, 0);
     let script_vault_2 = P2trMultisig::new(&tr_script, tr[3..].to_vec(), Some(&psbt_2));
-    let client_with_schema_2 = ClientWithSchema::new(&tr_script, TestCall::new(&tr_script, &psbt));
+    let client_with_schema_2 = ClientWithSchema::new(&tr_script, ReUseCall::new(&tr_script, &psbt));
     let psbt = client_with_schema_2.submit_psbt(&script_vault_2, BroadcastOp::Finalize);
 
     // ControlBlock

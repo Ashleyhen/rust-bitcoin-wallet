@@ -3,14 +3,14 @@ use std::{collections::BTreeMap, str::FromStr};
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
-    schnorr::TapTweak,
-    secp256k1::Message,
+    schnorr::{TapTweak, UntweakedPublicKey},
+    secp256k1::{Message, Parity},
     util::{
         bip32::ExtendedPubKey,
         sighash::{Prevouts, SighashCache},
         taproot::{
             LeafVersion, TapLeafHash, TapLeafTag, TapSighashHash, TaprootBuilder,
-            TaprootMerkleBranch,
+            TaprootMerkleBranch, ControlBlock,
         },
     },
     Address, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxMerkleNode, TxOut,
@@ -98,7 +98,7 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
                                 // input.tap_merkle_root=self.get_script()
                                 // input.tap_script_sigs = Some(schnorr_sig);
 
-                                input.tap_merkle_root = output
+                                let merkle_root= output
                                     .tap_tree
                                     .clone()
                                     .unwrap()
@@ -109,17 +109,31 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
                                     .flatten();
                                 let x_only_knows_pub_k =
                                     self.p2tr.get_ext_pub_key().to_x_only_pub();
+
+                                let single_script=Script::new_v1_p2tr( &cw.secp, self.p2tr.get_ext_pub_key().to_x_only_pub(), None,);
                                 let tap_leaf_hash = TapLeafHash::from_script(
-                                    &Script::new_v1_p2tr(
-                                        &cw.secp,
-                                        self.p2tr.get_ext_pub_key().to_x_only_pub(),
-                                        None,
-                                    ),
+                                    &single_script,
                                     LeafVersion::TapScript,
                                 );
                                 let mut b_tree_map = BTreeMap::new();
                                 b_tree_map.insert((x_only_knows_pub_k, tap_leaf_hash), schnorr_sig);
 
+                                ;
+                                let control_block=ControlBlock{
+                                    leaf_version: LeafVersion::TapScript,
+                                    output_key_parity: Parity::Odd,
+                                    internal_key: UntweakedPublicKey::from_keypair(&self.p2tr.get_ext_prv_k().to_keypair(&cw.secp)),
+                                    // internal_key: x_only_knows_pub_k,
+                                    merkle_branch:TaprootMerkleBranch::from_slice(&merkle_root.unwrap()).unwrap(),
+                                } ;
+                                
+
+                                
+                                let mut b_tree_control=BTreeMap::new();
+                                b_tree_control.insert(control_block, (single_script,LeafVersion::TapScript));
+                                
+                                input.tap_scripts=b_tree_control;
+                                input.tap_merkle_root =merkle_root;
                                 input.tap_script_sigs = b_tree_map;
                                 input.witness_utxo = Some(tx_out.clone());
                                 return input.clone();
