@@ -25,6 +25,7 @@ fn main() {
     // test_transaction();
     let wallet_test_vectors=WalletTestVectors::load_test();
     wallet_test_vectors.test();
+    // wallet_test_vectors.test();
 }
 fn test_transaction() {
     // person 1

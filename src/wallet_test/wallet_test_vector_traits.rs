@@ -34,6 +34,7 @@ pub struct ScriptTree {
     pub leaf_version: u64,
 }
 
+// TODO
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Intermediary {
     #[serde(rename = "hashAmounts")]
@@ -100,10 +101,11 @@ pub struct KeyPathSpending {
     pub auxiliary: Auxiliary,
 }
 
+// TODO
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Given {
     #[serde(rename = "hashType")]
-    pub hash_type: Option<u64>,
+    pub hash_type: Option<u8>,
     #[serde(rename = "internalPrivkey")]
     pub internal_privkey: Option<String>,
     #[serde(rename = "internalPubkey")]
@@ -121,7 +123,7 @@ pub struct Given {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct UtxosSpent {
+pub struct UtxosSpent { 
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     #[serde(rename = "amountSats")]
@@ -135,6 +137,7 @@ pub struct InputSpending {
     pub expected: Expected,
 }
 
+// TODO
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Auxiliary {
     #[serde(rename = "fullySignedTx")]
