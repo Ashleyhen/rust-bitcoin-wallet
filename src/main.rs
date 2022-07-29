@@ -13,7 +13,7 @@ use btc_wallet::{
     },
     wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
-use wallet_test::wallet_test_vector_traits::WalletTestVectors;
+use wallet_test::{wallet_test_vector_traits::WalletTestVectors, tapscript_example_with_tap::Test};
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 pub mod wallet_test;
@@ -23,8 +23,9 @@ pub mod wallet_test;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // test_transaction();
-    let wallet_test_vectors=WalletTestVectors::load_test();
-    wallet_test_vectors.test();
+    // let wallet_test_vectors = WalletTestVectors::load_test();
+    // wallet_test_vectors.test();
+    Test()
     // wallet_test_vectors.test();
 }
 fn test_transaction() {
