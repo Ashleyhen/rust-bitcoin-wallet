@@ -98,6 +98,7 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
                                 // input.tap_merkle_root=self.get_script()
                                 // input.tap_script_sigs = Some(schnorr_sig);
 
+                                
                                 let merkle_root= output
                                     .tap_tree
                                     .clone()

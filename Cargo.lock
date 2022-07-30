@@ -91,7 +91,7 @@ checksum = "05bba324e6baf655b882df672453dbbc527bc938cadd27750ae510aaccc3a66a"
 dependencies = [
  "base64-compat",
  "bech32",
- "bitcoin_hashes",
+ "bitcoin_hashes 0.10.0",
  "secp256k1",
  "serde",
 ]
@@ -104,6 +104,12 @@ checksum = "006cc91e1a1d99819bc5b8214be3555c1f0611b169f527a1fdc54ed1f2b745b0"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 
 [[package]]
 name = "bitflags"
@@ -725,6 +731,7 @@ dependencies = [
  "bdk",
  "bincode",
  "bitcoin",
+ "bitcoin_hashes 0.11.0",
  "either",
  "electrum-client",
  "lightning",

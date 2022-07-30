@@ -1,4 +1,5 @@
 pub mod wallet_test_vector_traits;
+pub(crate) mod tapscript_example_with_tap;
 use std::{
     fs::{self, File},
     io::{BufRead, BufReader},

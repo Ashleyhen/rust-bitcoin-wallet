@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use bitcoin::{util::{bip32::ExtendedPrivKey, taproot::{TapLeafHash, TaprootBuilder, TaprootMerkleBranch, NodeInfo, TaprootSpendInfo, TapBranchTag, TapBranchHash}}, PrivateKey, secp256k1::{SecretKey, Secp256k1}, KeyPair, hashes::{hex::FromHex, sha256, Hash}, Script, blockdata::{script::Builder, opcodes::all}, Address, schnorr::{TweakedKeyPair, TapTweak}, Transaction, psbt::serialize::Deserialize};
+use bitcoin::{util::{bip32::ExtendedPrivKey, taproot::{TapLeafHash, TaprootBuilder, TaprootMerkleBranch, NodeInfo, TaprootSpendInfo, TapBranchTag, TapBranchHash, TapSighashHash}, sighash::{SighashCache, Prevouts}}, PrivateKey, secp256k1::{SecretKey, Secp256k1}, KeyPair, hashes::{hex::FromHex, sha256, Hash}, Script, blockdata::{script::Builder, opcodes::all}, Address, schnorr::{TweakedKeyPair, TapTweak, TweakedPublicKey, UntweakedKeyPair}, Transaction, psbt::serialize::Deserialize, SchnorrSighashType};
 use bitcoin::util::taproot::LeafVersion::TapScript;
 
 pub fn Test(){
@@ -45,13 +45,23 @@ use bitcoin_hashes::Hash;
                 sha256::Hash::from_inner(alice_branch.into_inner()),
                 sha256::Hash::from_inner(bob_branch.into_inner())
                 );
-			
-				let address =Address::p2tr(&secp,internal.public_key(),Some(branch), bitcoin::Network::Regtest);
+
+			let spending=TaprootSpendInfo::new_key_spend(&secp,internal.public_key(), Some(branch));
+			let address = Address::p2tr_tweaked(spending.output_key(), bitcoin::Network::Regtest);
+
 				dbg!(address.to_string());
 
 
-	let tx=Transaction::deserialize(&Vec::from_hex("020000000171f2f89c07c3b58c7b0cf3654ba049d28bbcc76b7298f41c17e7b1a3149040ec0000000000ffffffff01905f010000000000160014ceb2d28afdcad1ae0fc2cf81cb929ba29e83468200000000")
+	let mut tx=Transaction::deserialize(&Vec::from_hex("020000000171f2f89c07c3b58c7b0cf3654ba049d28bbcc76b7298f41c17e7b1a3149040ec0000000000ffffffff01905f010000000000160014ceb2d28afdcad1ae0fc2cf81cb929ba29e83468200000000")
 	.unwrap()).unwrap();
+ let sighash =SighashCache::new(&mut tx.clone())
+            .taproot_key_spend_signature_hash(
+                0,
+                &Prevouts::All(&tx.output),
+                SchnorrSighashType::AllPlusAnyoneCanPay,
+            )
+            .unwrap();
+
 	dbg!(tx);
 	/* 
 	bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c
