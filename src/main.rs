@@ -13,7 +13,7 @@ use btc_wallet::{
     },
     wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
-use wallet_test::{wallet_test_vector_traits::WalletTestVectors, tapscript_example_with_tap::Test};
+use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 pub mod wallet_test;

@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WalletTestVectors {
     pub version: u64,
@@ -12,12 +11,12 @@ pub struct WalletTestVectors {
         default
     )]
     pub script_pub_key: Vec<ScriptPubKey>,
-#[serde(
+    #[serde(
         rename = "keyPathSpending",
         skip_serializing_if = "Vec::is_empty",
         default
     )]
-    pub key_spending_path:Vec<KeyPathSpending>
+    pub key_spending_path: Vec<KeyPathSpending>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -124,7 +123,7 @@ pub struct Given {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct UtxosSpent { 
+pub struct UtxosSpent {
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: String,
     #[serde(rename = "amountSats")]
