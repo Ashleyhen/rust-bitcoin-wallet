@@ -108,16 +108,19 @@ let sighash_sig=SighashCache::new(&mut tx.clone()).taproot_script_spend_signatur
 
 
 
-let control =ControlBlock{ leaf_version: LeafVersion::TapScript, output_key_parity: Parity::Odd, internal_key: XOnlyPublicKey::from_slice( &alice_leaf).unwrap(), merkle_branch:TaprootMerkleBranch::from_slice(&branch).unwrap() };
+let actual_control =ControlBlock{ leaf_version: LeafVersion::TapScript, output_key_parity: Parity::Odd, internal_key: internal.public_key(), merkle_branch:TaprootMerkleBranch::from_slice(&alice_leaf).unwrap() };
+
+let expected_control= ControlBlock::from_slice(&Vec::from_hex("c1f30544d6009c8d8d94f5d030b2e844b1a3ca036255161c479db1cca5b374dd1cc81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9").unwrap()).unwrap();
+
+dbg!(expected_control);
+dbg!(actual_control.clone());
 
 
-
-
-let a=control.verify_taproot_commitment(&secp, internal.public_key(), &bob_script);
+let res=actual_control.verify_taproot_commitment(&secp, spending.public_key(), &bob_script);
 dbg!(internal.public_key().to_hex());
 
 dbg!(bob_script.to_hex());
-dbg!(a);
+dbg!(res);
 }
 
 pub fn input_tx()->Transaction{
