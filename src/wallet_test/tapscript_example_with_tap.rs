@@ -4,11 +4,10 @@ use std::{ops::Add, str::FromStr};
 use bincode::config::LittleEndian;
 use bitcoin::bech32::FromBase32;
 use bitcoin::hashes::hex;
-use bitcoin::psbt::Input;
-use bitcoin::util::taproot::{ControlBlock, LeafVersion};
-use bitcoin::{SchnorrSig, Network, XOnlyPublicKey};
-use bitcoin::secp256k1::{Message, Signature, Parity};
+use bitcoin::psbt::{Input, TapTree};
+use bitcoin::secp256k1::{Message, Parity, Signature};
 use bitcoin::util::taproot::LeafVersion::TapScript;
+use bitcoin::util::taproot::{ControlBlock, LeafVersion};
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::{hex::FromHex, sha256, Hash},
@@ -26,6 +25,7 @@ use bitcoin::{
     Address, KeyPair, OutPoint, PrivateKey, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
     Txid, Witness,
 };
+use bitcoin::{Network, SchnorrSig, XOnlyPublicKey};
 use bitcoin_hashes::hex::ToHex;
 
 pub fn Test() {
@@ -72,23 +72,29 @@ pub fn Test() {
 
     let alice_branch = TapBranchHash::from_inner(alice_leaf.into_inner());
     let bob_branch = TapBranchHash::from_inner(bob_leaf.into_inner());
+
     let branch = TapBranchHash::from_node_hashes(
         sha256::Hash::from_inner(alice_branch.into_inner()),
         sha256::Hash::from_inner(bob_branch.into_inner()),
     );
 
+
     let tweak_key_pair = internal.tap_tweak(&secp, Some(branch)).into_inner();
 
-    let address = Address::p2tr(&secp,internal.public_key(),Some(branch) ,bitcoin::Network::Regtest);
+    let address = Address::p2tr(
+        &secp,
+        internal.public_key(),
+        Some(branch),
+        bitcoin::Network::Regtest,
+    );
 
     dbg!(address.to_string());
-	
-    dbg!(tweak_key_pair.display_secret() );
 
-    let tx=tx_as_hash();
+    dbg!(tweak_key_pair.display_secret());
 
+    let tx = tx_as_hash();
 
-// Key signing
+    // Key signing
 
     let sighash_key = SighashCache::new(&mut tx.clone())
         .taproot_key_spend_signature_hash(
@@ -98,47 +104,55 @@ pub fn Test() {
         )
         .unwrap();
 
-		let msg=Message::from_slice(&sighash_key).unwrap();
+    let msg = Message::from_slice(&sighash_key).unwrap();
 
-		let signature=secp.sign_schnorr(&msg,&internal);
+    let signature = secp.sign_schnorr(&msg, &internal);
 
-	let shnorr_sig=SchnorrSig{ sig: signature, hash_ty:SchnorrSighashType::Default };
-	
-// script signing 
-;
-let sighash_sig=SighashCache::new(&mut tx.clone()).taproot_script_spend_signature_hash(0, &Prevouts::All(&tx.output), bob_leaf, SchnorrSighashType::Default).unwrap();
+    let shnorr_sig = SchnorrSig {
+        sig: signature,
+        hash_ty: SchnorrSighashType::Default,
+    };
+    // script signing
+    let sighash_sig = SighashCache::new(&mut tx.clone())
+        .taproot_script_spend_signature_hash(
+            0,
+            &Prevouts::All(&tx.output),
+            bob_leaf,
+            SchnorrSighashType::Default,
+        )
+        .unwrap();
 
+    let actual_control = ControlBlock {
+        leaf_version: LeafVersion::TapScript,
+        output_key_parity: Parity::Odd,
+        internal_key: internal.public_key(),
+        merkle_branch: TaprootMerkleBranch::from_slice(&alice_leaf).unwrap(),
+    };
 
+    let expected_control= ControlBlock::from_slice(&Vec::from_hex("c1f30544d6009c8d8d94f5d030b2e844b1a3ca036255161c479db1cca5b374dd1cc81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9").unwrap()).unwrap();
 
-let actual_control =ControlBlock{ leaf_version: LeafVersion::TapScript, output_key_parity: Parity::Odd, internal_key: internal.public_key(), merkle_branch:TaprootMerkleBranch::from_slice(&alice_leaf).unwrap() };
+    dbg!(expected_control);
+    dbg!(actual_control.clone());
 
-let expected_control= ControlBlock::from_slice(&Vec::from_hex("c1f30544d6009c8d8d94f5d030b2e844b1a3ca036255161c479db1cca5b374dd1cc81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9").unwrap()).unwrap();
+    let res =
+        actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
+    dbg!(internal.public_key().to_hex());
 
-dbg!(expected_control);
-dbg!(actual_control.clone());
+    dbg!(bob_script.to_hex());
+    dbg!(res);
 
+    let mut input = Input::default();
+    // input.tap_scripts
+    let mut bTreeMap = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
+    bTreeMap.insert(actual_control, (bob_script.clone(), LeafVersion::TapScript));
 
-let res=actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
-dbg!(internal.public_key().to_hex());
+    input.tap_scripts = bTreeMap;
+    input.tap_internal_key = Some(internal.public_key());
 
-
-dbg!(bob_script.to_hex());
-dbg!(res);
-
-let mut input=Input::default();
-// input.tap_scripts
-let mut bTreeMap=BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
-bTreeMap.insert(actual_control, (bob_script.clone(),LeafVersion::TapScript));
-
-
-input.tap_scripts=bTreeMap;
-input.tap_internal_key=Some(internal.public_key());
-
-input.tap_merkle_root=Some(branch);
-
+    input.tap_merkle_root = Some(branch);
 }
 
-pub fn input_tx()->Transaction{
+pub fn input_tx() -> Transaction {
     return Transaction {
         version: 2,
         lock_time: 0,
@@ -176,9 +190,9 @@ pub fn input_tx()->Transaction{
         ],
     };
 }
-pub fn tx_as_hash()->Transaction{
+pub fn tx_as_hash() -> Transaction {
     return Transaction::deserialize(&Vec::from_hex("020000000171f2f89c07c3b58c7b0cf3654ba049d28bbcc76b7298f41c17e7b1a3149040ec0000000000ffffffff01905f010000000000160014ceb2d28afdcad1ae0fc2cf81cb929ba29e83468200000000").unwrap()).unwrap();
 }
-pub fn tx_as_input_hash()->Transaction{
+pub fn tx_as_input_hash() -> Transaction {
     return Transaction::deserialize(&Vec::from_hex("020000000001010aa633878f200c80fc8ec88f13f746e5870be7373ad5d78d22e14a402d6c6fc20000000000feffffff02a086010000000000225120a5ba0871796eb49fb4caa6bf78e675b9455e2d66e751676420f8381d5dda8951c759f405000000001600147bf84e78c81b9fed7a47b9251d95b13d6ebac14102473044022017de23798d7a01946744421fbb79a48556da809a9ffdb729f6e5983051480991022052460a5082749422804ad2a25e6f8335d5cf31f69799cece4a1ccc0256d5010701210257e0052b0ec6736ee13392940b7932571ce91659f71e899210b8daaf6f17027500000000").unwrap()).unwrap();
 }

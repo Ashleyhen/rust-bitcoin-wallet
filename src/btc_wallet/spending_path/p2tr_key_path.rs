@@ -25,7 +25,6 @@ pub struct P2TRVault<'a> {
 impl<'a> Vault for P2TRVault<'a> {
     fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
         let schema = self.p2tr;
-        let cw = &schema.to_wallet();
         let signer_pub_k = schema.get_ext_pub_key();
         let ext_prv = schema.get_ext_prv_k();
         let input_list: Vec<Input> = previous_tx
@@ -59,9 +58,7 @@ impl<'a> Vault for P2TRVault<'a> {
         return input_list;
     }
 
-    fn lock_key(&self) -> Vec<Output>
-    {
-        
+    fn lock_key(&self) -> Vec<Output> {
         let cw = self.p2tr.to_wallet();
 
         let change_address = cw.derive_pub_k(cw.derive_ext_priv_k(&cw.derive_derivation_path(

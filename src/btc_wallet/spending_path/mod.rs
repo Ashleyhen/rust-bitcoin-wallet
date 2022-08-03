@@ -6,16 +6,16 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::address_formats::AddressSchema;
+use super::{address_formats::AddressSchema, constants::TIP};
 
 pub const RECEIVER: usize = 0;
 pub const CHANGE: usize = 1;
 
+pub mod mutlisig_path;
 pub mod p2tr_key_path;
 pub mod p2tr_multisig_path;
 pub mod p2wpkh_script_path;
 pub mod vault_adaptor;
-pub mod mutlisig_path;
 pub trait Vault {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction;
     fn lock_key(&self) -> Vec<Output>;
@@ -28,13 +28,12 @@ fn standard_create_tx(
     tx_in: Vec<TxIn>,
     total: u64,
 ) -> Transaction {
-    let tip = 300;
     let tx_out_list = || {
         let tx_out = TxOut {
             value: amount,
             script_pubkey: output_list[RECEIVER].clone().witness_script.unwrap(),
         };
-        if (total - amount) > tip {
+        if (total - amount) > TIP {
             return vec![
                 tx_out,
                 TxOut {

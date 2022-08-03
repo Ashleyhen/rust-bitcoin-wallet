@@ -152,8 +152,7 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
         // return psbt.clone().inputs;
     }
 
-    fn lock_key(&self) -> Vec<Output>
-    {
+    fn lock_key(&self) -> Vec<Output> {
         return self
             .psbt
             .as_ref()

@@ -29,8 +29,7 @@ impl<'a> Vault for P2WPKHVault<'a> {
         return standard_create_tx(self.amount, output_list, tx_in, total);
     }
 
-    fn lock_key(&self) -> Vec<Output>
-    {
+    fn lock_key(&self) -> Vec<Output> {
         let cw = self.p2wpkh.to_wallet();
         let extend_pub_k = self.p2wpkh.get_ext_pub_key();
         return standard_lock(self.p2wpkh, extend_pub_k, &self.to_addr);

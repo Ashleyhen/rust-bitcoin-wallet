@@ -3,7 +3,6 @@ use bitcoin::{
     Transaction, TxIn,
 };
 
-
 use super::Vault;
 
 pub struct VaultAdapter<'l, 'u, L: Vault, U: Vault> {
@@ -16,8 +15,7 @@ impl<'l, 'u, L: Vault, U: Vault> Vault for VaultAdapter<'l, 'u, L, U> {
         return self.lock.create_tx(output_list, tx_in, total);
     }
 
-    fn lock_key(&self) -> Vec<Output>
-    {
+    fn lock_key(&self) -> Vec<Output> {
         return self.lock.lock_key();
     }
 
