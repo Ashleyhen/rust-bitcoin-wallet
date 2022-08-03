@@ -59,19 +59,18 @@ impl<'a> Vault for P2TRVault<'a> {
         return input_list;
     }
 
-    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
-    where
-        S: AddressSchema,
+    fn lock_key(&self) -> Vec<Output>
     {
-        let cw = schema.to_wallet();
+        
+        let cw = self.p2tr.to_wallet();
 
         let change_address = cw.derive_pub_k(cw.derive_ext_priv_k(&cw.derive_derivation_path(
-            schema.wallet_purpose(),
+            self.p2tr.wallet_purpose(),
             cw.recieve,
             cw.change + 1,
         )));
 
-        return standard_lock(schema, change_address, &self.to_addr);
+        return standard_lock(self.p2tr, change_address, &self.to_addr);
     }
 
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {

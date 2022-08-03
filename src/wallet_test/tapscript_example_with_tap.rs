@@ -1,8 +1,10 @@
+use std::collections::BTreeMap;
 use std::{ops::Add, str::FromStr};
 
 use bincode::config::LittleEndian;
 use bitcoin::bech32::FromBase32;
 use bitcoin::hashes::hex;
+use bitcoin::psbt::Input;
 use bitcoin::util::taproot::{ControlBlock, LeafVersion};
 use bitcoin::{SchnorrSig, Network, XOnlyPublicKey};
 use bitcoin::secp256k1::{Message, Signature, Parity};
@@ -75,13 +77,13 @@ pub fn Test() {
         sha256::Hash::from_inner(bob_branch.into_inner()),
     );
 
-    let spending = internal.tap_tweak(&secp, Some(branch)).into_inner();
+    let tweak_key_pair = internal.tap_tweak(&secp, Some(branch)).into_inner();
 
     let address = Address::p2tr(&secp,internal.public_key(),Some(branch) ,bitcoin::Network::Regtest);
 
     dbg!(address.to_string());
 	
-    dbg!(spending.display_secret() );
+    dbg!(tweak_key_pair.display_secret() );
 
     let tx=tx_as_hash();
 
@@ -116,11 +118,24 @@ dbg!(expected_control);
 dbg!(actual_control.clone());
 
 
-let res=actual_control.verify_taproot_commitment(&secp, spending.public_key(), &bob_script);
+let res=actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
 dbg!(internal.public_key().to_hex());
+
 
 dbg!(bob_script.to_hex());
 dbg!(res);
+
+let mut input=Input::default();
+// input.tap_scripts
+let mut bTreeMap=BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
+bTreeMap.insert(actual_control, (bob_script.clone(),LeafVersion::TapScript));
+
+
+input.tap_scripts=bTreeMap;
+input.tap_internal_key=Some(internal.public_key());
+
+input.tap_merkle_root=Some(branch);
+
 }
 
 pub fn input_tx()->Transaction{

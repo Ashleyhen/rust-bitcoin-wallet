@@ -3,7 +3,6 @@ use bitcoin::{
     Transaction, TxIn,
 };
 
-use crate::btc_wallet::address_formats::AddressSchema;
 
 use super::Vault;
 
@@ -17,11 +16,9 @@ impl<'l, 'u, L: Vault, U: Vault> Vault for VaultAdapter<'l, 'u, L, U> {
         return self.lock.create_tx(output_list, tx_in, total);
     }
 
-    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
-    where
-        S: AddressSchema,
+    fn lock_key(&self) -> Vec<Output>
     {
-        return self.lock.lock_key(schema);
+        return self.lock.lock_key();
     }
 
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {

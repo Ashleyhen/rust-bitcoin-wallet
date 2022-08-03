@@ -152,15 +152,13 @@ impl<'a, 'b> Vault for P2trMultisig<'a, 'b> {
         // return psbt.clone().inputs;
     }
 
-    fn lock_key<'s, S>(&self, schema: &'s S) -> Vec<Output>
-    where
-        S: AddressSchema,
+    fn lock_key(&self) -> Vec<Output>
     {
         return self
             .psbt
             .as_ref()
             .map(|f| f.outputs.clone())
-            .unwrap_or(self.create_lock(schema));
+            .unwrap_or(self.create_lock(self.p2tr));
     }
 
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {

@@ -15,11 +15,10 @@ pub mod p2tr_key_path;
 pub mod p2tr_multisig_path;
 pub mod p2wpkh_script_path;
 pub mod vault_adaptor;
+pub mod mutlisig_path;
 pub trait Vault {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction;
-    fn lock_key<'a, S>(&self, schema: &'a S) -> Vec<Output>
-    where
-        S: AddressSchema;
+    fn lock_key(&self) -> Vec<Output>;
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input>;
 }
 
