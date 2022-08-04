@@ -27,6 +27,7 @@ use bitcoin::{
 };
 use bitcoin::{Network, SchnorrSig, XOnlyPublicKey};
 use bitcoin_hashes::hex::ToHex;
+use miniscript::ToPublicKey;
 
 pub fn Test() {
     use bitcoin_hashes::Hash;
@@ -55,7 +56,7 @@ pub fn Test() {
 
     println!("preimage {}", preimage_hash.to_string());
 
-    let script_alice = Script::from_hex(
+    let alice_script = Script::from_hex(
         "029000b275209997a497d964fc1a62885b05a51166a65a90df00492c8d7cf61d6accf54803beac",
     )
     .unwrap();
@@ -67,7 +68,7 @@ pub fn Test() {
         .push_x_only_key(&bob.public_key())
         .push_opcode(all::OP_CHECKSIG)
         .into_script();
-    let alice_leaf = TapLeafHash::from_script(&script_alice, TapScript);
+    let alice_leaf = TapLeafHash::from_script(&alice_script, TapScript);
     let bob_leaf = TapLeafHash::from_script(&bob_script, TapScript);
 
     let alice_branch = TapBranchHash::from_inner(alice_leaf.into_inner());
@@ -78,9 +79,20 @@ pub fn Test() {
         sha256::Hash::from_inner(bob_branch.into_inner()),
     );
 
+    // let builder=TaprootBuilder::new().add_leaf(1, bob_script.clone()).unwrap().add_leaf(1, alice_script.clone()).unwrap() ;
+    let builder =
+        TaprootBuilder::with_huffman_tree(vec![(1, bob_script.clone()), (1, alice_script.clone())])
+            .unwrap();
+
+    let tap_tree = TapTree::from_builder(builder).unwrap();
+    let tap_info = tap_tree
+        .into_builder()
+        .finalize(&secp, internal.public_key())
+        .unwrap();
 
     let tweak_key_pair = internal.tap_tweak(&secp, Some(branch)).into_inner();
-
+    dbg!(tweak_key_pair.public_key());
+    dbg!(tap_info.output_key());
     let address = Address::p2tr(
         &secp,
         internal.public_key(),
