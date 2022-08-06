@@ -36,16 +36,16 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
         tx_in: Vec<TxIn>,
         total: u64,
     ) -> bitcoin::Transaction {
-		let outputs=self.optional_psbt.map(|o|o.outputs.clone()).unwrap_or(output_list.to_vec());
+		// let outputs=self.output_list.map(|o|o.outputs.clone()).unwrap_or(output_list.to_vec());
         // TODO fix filter 
         let value=self.optional_psbt.map(|f|
             f.clone().extract_tx().output.iter().map(|a|a.value).sum::<u64>()
         ).unwrap_or_else(||total - TIP);
 
-            let tweak_pub_k=outputs
+            let tweak_pub_k=output_list
             .iter()
             .map(|out_put| {
-				if (out_put.tap_key_origins.len()==1){
+				if (output_list[0].tap_key_origins.len()==1){
 					return self.script.clone();
 				}
                 let secp = self.p2tr.to_wallet().secp;
@@ -60,7 +60,9 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
                     sha256::Hash::from_inner(tap_leaf_hash[0].into_inner()),
                     sha256::Hash::from_inner(tap_leaf_hash[1].into_inner()),
                 );
-                return Script::new_v1_p2tr(&secp, out_put.tap_internal_key.unwrap(), Some(branch));
+let script=Script::new_v1_p2tr(&secp, out_put.tap_internal_key.unwrap(), Some(branch));
+            dbg!(script.clone());
+                return script;
             })
             .collect::<Vec<Script>>();
         return Transaction {
@@ -108,6 +110,9 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
                     )
                     .public_key(),
                 );
+            
+                dbg!(tap_key_origins.clone());
+
                 result.tap_key_origins = tap_key_origins;
                 return result;
             })
@@ -124,11 +129,8 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
             |p|p.0.ne(&self.p2tr.get_ext_pub_key().public_key.to_x_only_pubkey()))
             .flat_map(|(x_only,(tap_leaf,_))|tap_leaf.clone()).
             collect();
-
-            // dbg!(leaf_list);
-        // output.tap_key_origins.iter().map(|f|)
         if(leaf_list.is_empty()){
-            return self.optional_psbt.unwrap().inputs.clone();
+            return self.optional_psbt.clone().unwrap().inputs.clone();
         }
 
         let actual_control = ControlBlock {
@@ -142,13 +144,16 @@ let mut bTreeMap = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
 
     let mut input=Input::default();
     input.tap_scripts=bTreeMap;
-    input.witness_utxo=Some(previous[0].clone().output[0].clone());
+
+   let tx=self.optional_psbt.unwrap().clone().extract_tx().clone().output[0].clone();
+    dbg!(tx.clone());
+    input.witness_utxo=Some(tx);
 
 
         dbg!(TapLeafHash::from_script(self.script,LeafVersion::TapScript));
         let res = actual_control.verify_taproot_commitment(&self.p2tr.to_wallet().secp, output.tap_internal_key.unwrap().to_x_only_pubkey(), &self.script);
         dbg!(res);
-        return self.optional_psbt.unwrap().inputs.clone();
+        return vec![input];
     }
 
 }
