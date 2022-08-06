@@ -42,32 +42,39 @@ fn test_transaction() {
 
     let addr:Vec<P2TR>=(0..4).map(|c|P2TR::new(Some(seed.to_string()), 0, c)).collect();
     
-    let three_vault = P2TRVault::new(&addr[3], 2000, &tr[0]);
+    let tr_vault = P2TRVault::new(&addr[3], 2000, &tr[0]);
 
-    let client_with_schema = ClientWithSchema::new(&addr[3], ElectrumCall::new(&addr[3]));
-    client_with_schema.print_balance();
-    let psbt = client_with_schema.submit_psbt(&three_vault, BroadcastOp::Finalize);
+    // let client_with_schema = ClientWithSchema::new(&addr[3], ElectrumCall::new(&addr[3]));
+    // client_with_schema.print_balance();
+    // let psbt = client_with_schema.submit_psbt(&three_vault, BroadcastOp::Finalize);
 
-    let alice_script = addr[3].alice_script(addr[3].get_ext_pub_key().to_x_only_pub());
-    let script_vault = MultiSigPath::new(&addr[0], None, &alice_script);
-    let adapter = VaultAdapter::new(&script_vault, &three_vault);
+    let sender=3;
+    let alice=0;
+    let bob=1;
+    let reciever=2;
     
-    let signer_schema_1 = ClientWithSchema::new(&addr[0], ReUseCall::new(Some(&addr[0]),&psbt));
-    let mutisig_signed_tx = signer_schema_1.submit_psbt(&adapter, BroadcastOp::None);
+    let alice_script = addr[sender].alice_script(addr[sender].get_ext_pub_key().to_x_only_pub());
+    let alice_vault = MultiSigPath::new(&addr[alice], None, &alice_script);
+    let tr_to_alice = VaultAdapter::new(&alice_vault, &tr_vault);
+    
+    let alice_wallet = ClientWithSchema::new(&addr[alice], ElectrumCall::new(&addr[sender]));
+    let alice_psbt = alice_wallet.submit_psbt(&tr_to_alice, BroadcastOp::None);
 
     // let bob_script=P2TR::bob_script(&p2tr.get_ext_pub_key().to_x_only_pub());
 
-    let bob_script=P2TR::bob_script(&addr[1].get_ext_pub_key().to_x_only_pub());
-    let script_vault = MultiSigPath::new(&addr[1],Some(&mutisig_signed_tx), &bob_script);
-    let signer_schema_2 = ClientWithSchema::new(&addr[0],
-         ReUseCall::new(Some(&addr[1]), &psbt));
-    let mutisig_signed_tx_2 = signer_schema_2.submit_psbt(&script_vault, BroadcastOp::None);
+    let bob_script=P2TR::bob_script(&addr[bob].get_ext_pub_key().to_x_only_pub());
 
-    let result_vault = P2TRVault::new(&addr[1], 1000, &tr[0]);
+    let a_and_b_vault = MultiSigPath::new(&addr[bob],Some(&alice_psbt), &bob_script);
 
-    let final_vault = MultiSigPath::new(&addr[1], Some(&mutisig_signed_tx_2), &bob_script);
-    let final_adapter = VaultAdapter::new(&result_vault,&final_vault );
-    let signer_schema_1 = ClientWithSchema::new(&addr[3], ReUseCall::<P2TR>::new(None, &mutisig_signed_tx_2));
+    let bob_wallet = ClientWithSchema::new(&addr[bob],
+         ReUseCall::new(Some(&addr[sender]), &alice_psbt));
+    let mutisig_signed_tx = bob_wallet.submit_psbt(&a_and_b_vault, BroadcastOp::None);
+
+    let result_vault = P2TRVault::new(&addr[reciever], 1000, &tr[alice]);
+
+    let bob_vault = MultiSigPath::new(&addr[bob], Some(&mutisig_signed_tx), &bob_script);
+    let final_adapter = VaultAdapter::new(&result_vault,&bob_vault );
+    let signer_schema_1 = ClientWithSchema::new(&addr[sender], ReUseCall::<P2TR>::new(None, &mutisig_signed_tx));
     let mutisig_signed_tx = signer_schema_1.submit_psbt(&final_adapter, BroadcastOp::Finalize);
 
 
