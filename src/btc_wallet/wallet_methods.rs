@@ -63,8 +63,6 @@ impl<'a, S: AddressSchema, A: RpcCall> ClientWithSchema<'a, S, A> {
         );
         let ext_pub_k = self.schema.get_ext_pub_key();
 
-        let signer_addr = self.schema.map_ext_keys(&ext_pub_k);
-
         let (tx_in, previous_tx) = self.api_call.contract_source();
 
         let lock_list = vault.lock_key();

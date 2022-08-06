@@ -637,7 +637,7 @@ GenericTransactionSignatureChecker::CheckSchnorrSignature(64 len sig, 32 len pub
 SignatureHashSchnorr(in_pos=0, hash_type=00)
 - tapscript sighash
 - schnorr sighash = 365f488843abf6dd2451d0b8697c5a154a030d6dab23df1918a90b911a563a73
-  pubkey.VerifySchnorrSignature(sig=54d5ee309be92f531d62449d8ef82b216f1e5b6229aaef918a78c26ce6dd66d57c523202b4650302667723f63dd5a87b2370ada51e08de0eccb27a80450ff9bf, sighash=365f488843abf6dd2451d0b8697c5a154a030d6dab23df1918a90b911a563a73):
+  pubkey.VerifySchnorrSignature(sig=54d5ee309be92f531d62449d8ef82b216f1e5b6229aaef918a78c26ce6dd66d57c523202b4650302667723f63dd5&a87b2370ada51e08de0eccb27a80450ff9bf, sighash=365f488843abf6dd2451d0b8697c5a154a030d6dab23df1918a90b911a563a73):
   result: success
 		<> POP  stack
 		<> POP  stack

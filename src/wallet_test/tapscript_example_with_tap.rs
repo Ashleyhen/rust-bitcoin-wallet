@@ -134,6 +134,7 @@ pub fn Test() {
         )
         .unwrap();
 
+        // SighashCache::new(&mut tx.clone()).taproot_signature_hash(input_index, prevouts,None, leaf_hash_code_separator, sighash_type);
     let actual_control = ControlBlock {
         leaf_version: LeafVersion::TapScript,
         output_key_parity: Parity::Odd,
@@ -141,17 +142,8 @@ pub fn Test() {
         merkle_branch: TaprootMerkleBranch::from_slice(&alice_leaf).unwrap(),
     };
 
-    let expected_control= ControlBlock::from_slice(&Vec::from_hex("c1f30544d6009c8d8d94f5d030b2e844b1a3ca036255161c479db1cca5b374dd1cc81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9").unwrap()).unwrap();
-
-    dbg!(expected_control);
-    dbg!(actual_control.clone());
-
-    let res =
-        actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
-    dbg!(internal.public_key().to_hex());
 
     dbg!(bob_script.to_hex());
-    dbg!(res);
 
     let mut input = Input::default();
     // input.tap_scripts

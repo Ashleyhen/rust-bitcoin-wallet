@@ -70,7 +70,7 @@ impl<'a> TestRpc<'a> {
 
 pub struct ReUseCall<'p, 'a, A> {
     psbt: &'p PartiallySignedTransaction,
-    address: &'a A,
+    address: Option<&'a A>,
 }
 impl<'p, 'a, A: AddressSchema> RpcCall for ReUseCall<'p, 'a, A> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
@@ -87,9 +87,10 @@ impl<'p, 'a, A: AddressSchema> RpcCall for ReUseCall<'p, 'a, A> {
             .iter()
             .filter(|t| {
                 t.script_pubkey.eq(&self
-                    .address
-                    .map_ext_keys(&self.address.get_ext_pub_key())
-                    .script_pubkey())
+                    .address.map(|addr|
+                        addr.map_ext_keys(&addr.get_ext_pub_key())
+                    .script_pubkey()).unwrap_or(self.psbt.clone().extract_tx().output[0].clone().script_pubkey)
+                    )
             })
             .map(|f| f.value)
             .sum::<u64>();
@@ -101,7 +102,7 @@ impl<'p, 'a, A: AddressSchema> RpcCall for ReUseCall<'p, 'a, A> {
 }
 
 impl<'p, 'a, A> ReUseCall<'p, 'a, A> {
-    pub fn new(address: &'a A, psbt: &'p PartiallySignedTransaction) -> Self
+    pub fn new(address:  Option<&'a A>, psbt: &'p PartiallySignedTransaction) -> Self
     where
         A: AddressSchema,
     {
