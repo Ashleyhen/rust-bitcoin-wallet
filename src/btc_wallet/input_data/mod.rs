@@ -5,6 +5,7 @@ use electrum_client::{Error, GetBalanceRes};
 
 pub mod electrum_rpc;
 pub mod reuse_rpc_call;
+pub mod tapscript_ex_input;
 // pub mod json_input;
 use electrum_client::ListUnspentRes;
 
