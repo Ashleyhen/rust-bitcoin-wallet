@@ -101,7 +101,7 @@ pub fn Test() {
     );
 
     dbg!(address.to_string());
-
+dbg!(tweak_key_pair.public_key());
     dbg!(tweak_key_pair.display_secret());
 
     let tx = tx_as_hash();
@@ -133,7 +133,7 @@ pub fn Test() {
             SchnorrSighashType::Default,
         )
         .unwrap();
-
+        
     let actual_control = ControlBlock {
         leaf_version: LeafVersion::TapScript,
         output_key_parity: Parity::Odd,
@@ -146,11 +146,16 @@ pub fn Test() {
     dbg!(expected_control);
     dbg!(actual_control.clone());
 
+    let script=Script::new_v1_p2tr(&secp, internal.public_key(), Some(branch));
+
+    // dbg!(script);
+    dbg!(tweak_key_pair.public_key().clone());
+    dbg!(bob_script.clone());
     let res =
         actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
-    dbg!(internal.public_key().to_hex());
+    // dbg!(tweak_key_pair.public_key());
 
-    dbg!(bob_script.to_hex());
+    // dbg!(bob_script.to_hex());
     dbg!(res);
 
     let mut input = Input::default();
