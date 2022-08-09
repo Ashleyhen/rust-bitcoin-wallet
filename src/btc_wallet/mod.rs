@@ -40,6 +40,7 @@ where
 
         return match broad_cast_op {
             BroadcastOp::Finalize => {
+                dbg!(psbt.clone());
                 let complete = psbt.finalize(&self.schema.to_wallet().secp).unwrap();
                 dbg!(complete.clone().extract_tx());
                 complete

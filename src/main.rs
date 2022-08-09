@@ -71,7 +71,11 @@ pub fn control_block_test() {
     //     .into_script();
 
 
-
+//     OP_SHA256
+// 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333
+// OP_EQUALVERIFY
+// 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10
+// OP_CHECKSIG
     let internal_seed = seeds[2].to_string();
     let alice_schema = ClientWithSchema::new(&alice_addr, TapscriptExInput::new());
     let alice_vault = MultiSigPath::new(&alice_addr, None, Some(&internal_seed), &alice_script);
@@ -79,14 +83,23 @@ pub fn control_block_test() {
     let alice_tx_part = alice_schema.submit_psbt(&alice_vault, BroadcastOp::None);
 
     let bob_schema = ClientWithSchema::new(&bob_addr, TapscriptExInput::new());
+
     let bob_vault = MultiSigPath::new(
         &bob_addr,
         Some(&alice_tx_part),
         Some(&internal_seed),
         &bob_script,
     );
-    let bob_tx_part = bob_schema.submit_psbt(&bob_vault, BroadcastOp::Finalize);
+    let bob_tx_part = bob_schema.submit_psbt(&bob_vault, BroadcastOp::None);
 
+    let p2tr=P2TR::new(Some("1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094".to_string()), 0, 0);
+    let tr_vault = P2TRVault::new(&p2tr, 2000, &"tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz".to_string());
+    let adapter=VaultAdapter::new(&tr_vault,&bob_vault);
+
+    let spender_schema = ClientWithSchema::new(&p2tr, ReUseCall::<P2TR>::new(None,&bob_tx_part));
+
+
+    let bob_tx_part = spender_schema.submit_psbt(&adapter, BroadcastOp::Finalize);
     // let result_vault = P2TRVault::new(&addr[reciever], 1000, &tr[alice]);
     // let tr_to_alice = VaultAdapter::new(&alice_vault, &bob_vault);
 }

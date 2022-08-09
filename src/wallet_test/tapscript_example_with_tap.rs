@@ -133,7 +133,7 @@ dbg!(tweak_key_pair.public_key());
             SchnorrSighashType::Default,
         )
         .unwrap();
-        
+
     let actual_control = ControlBlock {
         leaf_version: LeafVersion::TapScript,
         output_key_parity: Parity::Odd,
