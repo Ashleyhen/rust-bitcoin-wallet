@@ -5,15 +5,15 @@ use bitcoin::{
     hashes::{sha256, Hash, hex::FromHex},
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     schnorr::TapTweak,
-    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey},
+    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey, Message},
     util::{
         bip32::{DerivationPath, Fingerprint},
         taproot::{
             ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapLeafTag, TaprootBuilder,
             TaprootMerkleBranch, TaprootSpendInfo,
-        },
+        }, bip143::SigHashCache, sighash::{SighashCache, Prevouts},
     },
-    KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey, SchnorrSig, Address,
 };
 use miniscript::ToPublicKey;
 
@@ -144,7 +144,11 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
                     })
                     .flat_map(|(_, (tap_leaf, _))| tap_leaf.clone())
                     .collect();
-                if leaf_list.is_empty() {
+
+                if psbt.outputs.is_empty() {
+                    return psbt.inputs.clone();
+                }
+                if psbt.outputs[0].tap_key_origins.len() < 2 {
                     return psbt.inputs.clone();
                 }
 
@@ -169,23 +173,51 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
             //         ],
             //     ),
             // }
-                let test_script=Builder::new().push_slice(&preimage).into_script();
-                let mut b_tree_map = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
+                // let mut b_tree_map = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
 
-                b_tree_map.insert(
-                    actual_control.clone(),
-                    (self.script.clone(), LeafVersion::TapScript),
-                );
+                
+
+
 
                 let mut input = Input::default();
-                input.tap_scripts = b_tree_map;
+                // input.tap_scripts = b_tree_map;
+dbg!(actual_control.clone());
+// dbg!(self.script.clone().script_hash());
+let actual_script="a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac";
+;
+                input.tap_scripts.insert(
+                    actual_control.clone(),
+                    (Script::from_hex(actual_script).unwrap(), LeafVersion::TapScript),
+                );
+                // input.sha256_preimages.insert(sha256::Hash::hash(&preimage), preimage);
 
-                let tx = psbt
-                    .clone()
-                    .extract_tx()
-                    .clone()
-                    .output[0]
-                    .clone();
+                   
+
+// Address::p2tr(&secp,output.tap_internal_key.unwrap(), merkle_root, bitcoin::Network::Testnet);
+
+// Address::p2tr_tweaked(output_key, bitcoin::Network::Testnet);
+let filter_script=Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c").unwrap().script_pubkey();
+let tap_key_origin=psbt.outputs[0].tap_key_origins.clone();
+let (tap_hash,_)=tap_key_origin.get(&self.p2tr.get_ext_pub_key().to_x_only_pub()).unwrap();
+        let sig_hash = SighashCache::new(&mut current_tx.clone())
+        .taproot_script_spend_signature_hash(0, &Prevouts::All(
+            &previous[0].output.iter().filter(|p|p.script_pubkey.eq(&filter_script)).map(|f|f.clone()).collect::<Vec<TxOut>>()
+        ), tap_hash[0], bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay).unwrap();
+
+        let msg=Message::from_slice(&sig_hash).unwrap();
+let key_pair=KeyPair::from_secret_key(&secp,SecretKey::from_slice(&self.p2tr.get_client_wallet().seed).unwrap());
+dbg!(key_pair.public_key());
+
+        let tweaked_key_pair = key_pair 
+        // .to_keypair(&secp)
+            .tap_tweak(&secp, None)
+            .into_inner();
+            let sig =secp.sign_schnorr(&msg,&tweaked_key_pair);
+            
+            let schnorr_sig=SchnorrSig{ sig, hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay };
+
+            dbg!(tap_hash[0]);
+                    // input.tap_script_sigs.insert((key_pair.public_key(),tap_hash[0]),schnorr_sig);
                 // [src/wallet_test/tapscript_example_with_tap.rs:153] bob_script.clone() = Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)
 // [src/wallet_test/tapscript_example_with_tap.rs:159] res = true
                 let x_only=XOnlyPublicKey::from_slice(&previous[0].output[0].clone().script_pubkey[2..]).unwrap();
@@ -193,9 +225,10 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
                 dbg!(self.script);
                 let res=actual_control.verify_taproot_commitment(&secp, x_only, self.script);
 // dbg!(self.script);
-            dbg!(res);
+            // dbg!(previous[0].output[0]);
                 // script = Script(OP_PUSHNUM_1 OP_PUSHBYTES_32 a5ba0871796eb49fb4caa6bf78e675b9455e2d66e751676420f8381d5dda8951)
                 input.witness_utxo = Some(previous[0].output[0].clone());
+
 
                 dbg!(TapLeafHash::from_script(
                     self.script,

@@ -21,6 +21,8 @@ use btc_wallet::{
 };
 use either::Either;
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
+
+use crate::btc_wallet::input_data::tapscript_ex_input::get_signed_tx;
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 pub mod wallet_test;
@@ -61,14 +63,14 @@ pub fn control_block_test() {
 
     let pair=KeyPair::from_secret_key(&bob_addr.to_wallet().secp, SecretKey::from_str(seeds[bob_seed]).unwrap());
 
-    let bob_script=Script::from_hex("a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac").unwrap();
-    // let bob_script = Builder::new()
-    //     .push_opcode(all::OP_SHA256)
-    //     .push_slice(&preimage_hash)
-    //     .push_opcode(all::OP_EQUALVERIFY)
-    //     .push_x_only_key(&pair.public_key())
-    //     .push_opcode(all::OP_CHECKSIG)
-    //     .into_script();
+    // let bob_script=Script::from_hex("a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac").unwrap();
+    let bob_script = Builder::new()
+        .push_opcode(all::OP_SHA256)
+        .push_slice(&preimage_hash)
+        .push_opcode(all::OP_EQUALVERIFY)
+        .push_x_only_key(&pair.public_key())
+        .push_opcode(all::OP_CHECKSIG)
+        .into_script();
 
 
 //     OP_SHA256
@@ -76,6 +78,8 @@ pub fn control_block_test() {
 // OP_EQUALVERIFY
 // 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10
 // OP_CHECKSIG
+// let tap_script=;
+    dbg!(get_signed_tx());
     let internal_seed = seeds[2].to_string();
     let alice_schema = ClientWithSchema::new(&alice_addr, TapscriptExInput::new());
     let alice_vault = MultiSigPath::new(&alice_addr, None, Some(&internal_seed), &alice_script);
@@ -90,13 +94,34 @@ pub fn control_block_test() {
         Some(&internal_seed),
         &bob_script,
     );
+
     let bob_tx_part = bob_schema.submit_psbt(&bob_vault, BroadcastOp::None);
 
     let p2tr=P2TR::new(Some("1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094".to_string()), 0, 0);
     let tr_vault = P2TRVault::new(&p2tr, 2000, &"tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz".to_string());
-    let adapter=VaultAdapter::new(&tr_vault,&bob_vault);
 
-    let spender_schema = ClientWithSchema::new(&p2tr, ReUseCall::<P2TR>::new(None,&bob_tx_part));
+
+
+
+
+
+
+    let bob_vault_with_part = MultiSigPath::new(
+        &bob_addr,
+        Some(&bob_tx_part),
+        Some(&internal_seed),
+        &bob_script,
+    );
+
+    let bob_tx_part_with_bob_part = bob_schema.submit_psbt(&bob_vault_with_part, BroadcastOp::None);
+
+
+
+
+
+    let adapter=VaultAdapter::new(&tr_vault,&bob_vault_with_part);
+
+    let spender_schema = ClientWithSchema::new(&p2tr, ReUseCall::<P2TR>::new(None,&bob_tx_part_with_bob_part));
 
 
     let bob_tx_part = spender_schema.submit_psbt(&adapter, BroadcastOp::Finalize);
