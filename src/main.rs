@@ -35,7 +35,7 @@ fn main() {
     // wallet_test_vectors.test();
     Test();
 
-    control_block_test();
+    // control_block_test();
     // wallet_test_vectors.test();
 }
 
@@ -60,14 +60,16 @@ pub fn control_block_test() {
     let preimage =
         Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f").unwrap();
     let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&preimage);
-
+let preimage_hash_sha=Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333").unwrap();
     let pair=KeyPair::from_secret_key(&bob_addr.to_wallet().secp, SecretKey::from_str(seeds[bob_seed]).unwrap());
 
     // let bob_script=Script::from_hex("a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac").unwrap();
     let bob_script = Builder::new()
         .push_opcode(all::OP_SHA256)
-        .push_slice(&preimage_hash)
+        .push_opcode(all::OP_PUSHBYTES_32)
+        .push_slice(&preimage_hash_sha)
         .push_opcode(all::OP_EQUALVERIFY)
+        .push_opcode(all::OP_PUSHBYTES_32)
         .push_x_only_key(&pair.public_key())
         .push_opcode(all::OP_CHECKSIG)
         .into_script();
