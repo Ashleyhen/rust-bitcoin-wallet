@@ -2,18 +2,20 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
-    hashes::{sha256, Hash, hex::FromHex},
+    hashes::{hex::FromHex, sha256, Hash},
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     schnorr::TapTweak,
-    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey, Message},
+    secp256k1::{ecdh::SharedSecret, All, Message, Parity, Secp256k1, SecretKey},
     util::{
+        bip143::SigHashCache,
         bip32::{DerivationPath, Fingerprint},
+        sighash::{Prevouts, SighashCache},
         taproot::{
             ControlBlock, LeafVersion, TapBranchHash, TapLeafHash, TapLeafTag, TaprootBuilder,
             TaprootMerkleBranch, TaprootSpendInfo,
-        }, bip143::SigHashCache, sighash::{SighashCache, Prevouts},
+        },
     },
-    KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey, SchnorrSig, Address,
+    Address, KeyPair, SchnorrSig, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 use miniscript::ToPublicKey;
 
@@ -130,7 +132,7 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
     }
 
     fn unlock_key(&self, previous: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        let secp=self.p2tr.to_wallet().secp;
+        let secp = self.p2tr.to_wallet().secp;
         let value: Vec<Input> = self
             .optional_psbt
             .map(|psbt| {
@@ -174,11 +176,6 @@ impl<'a, 'b, 's> Vault for MultiSigPath<'a, 'b, 's> {
             //     ),
             // }
                 // let mut b_tree_map = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
-
-                
-
-
-
                 let mut input = Input::default();
                 // input.tap_scripts = b_tree_map;
 dbg!(actual_control.clone());
@@ -190,9 +187,6 @@ let actual_script="a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe9
                     (Script::from_hex(actual_script).unwrap(), LeafVersion::TapScript),
                 );
                 // input.sha256_preimages.insert(sha256::Hash::hash(&preimage), preimage);
-
-                   
-
 // Address::p2tr(&secp,output.tap_internal_key.unwrap(), merkle_root, bitcoin::Network::Testnet);
 
 // Address::p2tr_tweaked(output_key, bitcoin::Network::Testnet);
@@ -208,12 +202,11 @@ let (tap_hash,_)=tap_key_origin.get(&self.p2tr.get_ext_pub_key().to_x_only_pub()
 let key_pair=KeyPair::from_secret_key(&secp,SecretKey::from_slice(&self.p2tr.get_client_wallet().seed).unwrap());
 dbg!(key_pair.public_key());
 
-        let tweaked_key_pair = key_pair 
+        let tweaked_key_pair = key_pair
         // .to_keypair(&secp)
             .tap_tweak(&secp, None)
             .into_inner();
             let sig =secp.sign_schnorr(&msg,&tweaked_key_pair);
-            
             let schnorr_sig=SchnorrSig{ sig, hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay };
 
             dbg!(tap_hash[0]);

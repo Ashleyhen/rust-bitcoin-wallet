@@ -3,19 +3,27 @@ use std::{env, str::FromStr};
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
+    psbt::Output,
+    secp256k1::SecretKey,
     util::taproot::ControlBlock,
-    Script, KeyPair, secp256k1::SecretKey,
+    Address, KeyPair, Script,
 };
 use bitcoin_hashes::Hash;
 use btc_wallet::{
     address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
+    constants::NETWORK,
     input_data::{
         electrum_rpc::{ElectrumCall, ElectrumRpc},
-        reuse_rpc_call::{ReUseCall, TestRpc}, tapscript_ex_input::TapscriptExInput,
+        reuse_rpc_call::{ReUseCall, TestRpc},
+        tapscript_ex_input::TapscriptExInput,
     },
     spending_path::{
-        mutlisig_path::MultiSigPath, p2tr_key_path::P2TRVault, p2tr_multisig_path::P2trMultisig,
-        vault_adaptor::VaultAdapter, Vault,
+        mutlisig_path::MultiSigPath,
+        p2tr_key_path::P2TRVault,
+        p2tr_multisig_path::P2trMultisig,
+        script_conditions::{alice_script, bob_scripts},
+        vault_adaptor::VaultAdapter,
+        Vault,
     },
     wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
@@ -33,12 +41,49 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // let wallet_test_vectors = WalletTestVectors::load_test();
     // wallet_test_vectors.test();
-    Test();
+    create_input();
 
     // control_block_test();
     // wallet_test_vectors.test();
 }
 
+pub fn create_input() {
+    let alice_seed = 0;
+    let bob_seed = 1;
+
+    let seeds = vec![
+        "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90", //alice
+        "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9", //bob
+        "1229101a0fcf2104e8808dab35661134aa5903867d44deb73ce1c7e4eb925be8", //internal
+    ];
+
+    let alice_addr = P2TR::new(Some(seeds[alice_seed].to_string()), 0, 0);
+    let bob_addr = P2TR::new(Some(seeds[bob_seed].to_string()), 0, 0);
+
+    let secret_key =
+        alice_addr.new_shared_secret(vec![bob_addr.get_ext_pub_key().to_x_only_pub()].iter());
+    let alice_script = alice_script();
+    let bob_script = bob_scripts(&bob_addr);
+    let combined_script = vec![bob_script.clone(), alice_script.clone()].concat();
+
+    let mut func_list: Vec<Box<dyn for<'r> FnMut(&'r mut bitcoin::psbt::Output)>> = vec![
+        bob_addr.new_tap_internal_key(&secret_key),
+        alice_addr.insert_tap_key_origin(&alice_script),
+        bob_addr.insert_tap_key_origin(&bob_script),
+        P2TR::insert_tap_tree(&combined_script),
+        bob_addr.insert_witness(),
+    ];
+
+    let mut output = Output::default();
+
+    for output_func in &mut func_list {
+        output_func(&mut output);
+    }
+    let addr = Address::from_script(&output.witness_script.unwrap(), NETWORK).unwrap();
+    dbg!(addr.to_string());
+
+    
+}
 pub fn control_block_test() {
     let alice_seed = 0;
     let bob_seed = 1;
@@ -57,11 +102,16 @@ pub fn control_block_test() {
         "029000b275209997a497d964fc1a62885b05a51166a65a90df00492c8d7cf61d6accf54803beac",
     )
     .unwrap();
+
     let preimage =
         Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f").unwrap();
     let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&preimage);
-let preimage_hash_sha=Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333").unwrap();
-    let pair=KeyPair::from_secret_key(&bob_addr.to_wallet().secp, SecretKey::from_str(seeds[bob_seed]).unwrap());
+    let preimage_hash_sha =
+        Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333").unwrap();
+    let pair = KeyPair::from_secret_key(
+        &bob_addr.to_wallet().secp,
+        SecretKey::from_str(seeds[bob_seed]).unwrap(),
+    );
 
     // let bob_script=Script::from_hex("a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac").unwrap();
     let bob_script = Builder::new()
@@ -74,13 +124,12 @@ let preimage_hash_sha=Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bc
         .push_opcode(all::OP_CHECKSIG)
         .into_script();
 
-
-//     OP_SHA256
-// 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333
-// OP_EQUALVERIFY
-// 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10
-// OP_CHECKSIG
-// let tap_script=;
+    //     OP_SHA256
+    // 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333
+    // OP_EQUALVERIFY
+    // 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10
+    // OP_CHECKSIG
+    // let tap_script=;
     dbg!(get_signed_tx());
     let internal_seed = seeds[2].to_string();
     let alice_schema = ClientWithSchema::new(&alice_addr, TapscriptExInput::new());
@@ -99,14 +148,16 @@ let preimage_hash_sha=Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bc
 
     let bob_tx_part = bob_schema.submit_psbt(&bob_vault, BroadcastOp::None);
 
-    let p2tr=P2TR::new(Some("1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094".to_string()), 0, 0);
-    let tr_vault = P2TRVault::new(&p2tr, 2000, &"tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz".to_string());
-
-
-
-
-
-
+    let p2tr = P2TR::new(
+        Some("1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094".to_string()),
+        0,
+        0,
+    );
+    let tr_vault = P2TRVault::new(
+        &p2tr,
+        2000,
+        &"tb1puma0fas8dgukcvhm8ewsganj08edgnm6ejyde3ev5lvxv4h7wqvqpjslxz".to_string(),
+    );
 
     let bob_vault_with_part = MultiSigPath::new(
         &bob_addr,
@@ -117,14 +168,12 @@ let preimage_hash_sha=Vec::from_hex("6c60f404f8167a38fc70eaf8aa17ac351023bef86bc
 
     let bob_tx_part_with_bob_part = bob_schema.submit_psbt(&bob_vault_with_part, BroadcastOp::None);
 
+    let adapter = VaultAdapter::new(&tr_vault, &bob_vault_with_part);
 
-
-
-
-    let adapter=VaultAdapter::new(&tr_vault,&bob_vault_with_part);
-
-    let spender_schema = ClientWithSchema::new(&p2tr, ReUseCall::<P2TR>::new(None,&bob_tx_part_with_bob_part));
-
+    let spender_schema = ClientWithSchema::new(
+        &p2tr,
+        ReUseCall::<P2TR>::new(None, &bob_tx_part_with_bob_part),
+    );
 
     let bob_tx_part = spender_schema.submit_psbt(&adapter, BroadcastOp::Finalize);
     // let result_vault = P2TRVault::new(&addr[reciever], 1000, &tr[alice]);
