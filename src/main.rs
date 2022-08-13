@@ -69,10 +69,13 @@ pub fn create_input() {
 
     let alice_addr = P2TR::new(Some(seeds[alice_seed].to_string()), 0, 0);
     let bob_addr = P2TR::new(Some(seeds[bob_seed].to_string()), 0, 0);
+dbg!(bob_addr.get_ext_pub_key().public_key);
 
-    let secret_key =
-        alice_addr.new_shared_secret(vec![bob_addr.get_ext_pub_key().to_x_only_pub()].iter());
 
+    // let secret_key =
+    //     alice_addr.new_shared_secret(vec![bob_addr.get_ext_pub_key().to_x_only_pub()].iter());
+
+        let secret_key=SecretKey::from_str(seeds[2]).unwrap();
     let alice_script = alice_script();
     let bob_script = bob_scripts(&bob_addr);
 
@@ -82,8 +85,8 @@ pub fn create_input() {
     let bob_input_service = InputService(bob_addr.clone());
 
     let output_func = output_factory(&alice_output_service, &bob_output_service, secret_key);
+    let lock_func = create_tx();
     let unlock_func = input_factory(&bob_input_service);
-    let lock_func = create_tx(1000);
     create_partially_signed_tx(vec![output_func], lock_func, unlock_func)(TapscriptExInput::new());
 
     // let mut output = Output::default();

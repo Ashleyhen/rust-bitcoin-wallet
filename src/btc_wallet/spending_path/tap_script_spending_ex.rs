@@ -74,8 +74,8 @@ pub fn input_factory<'a>(
     );
 }
 
-pub fn create_tx(amount: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-    return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
+pub fn create_tx(total: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+    return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, amount: u64| {
         let receiver = 0;
         let change = 1;
         let tx_out_list = || {

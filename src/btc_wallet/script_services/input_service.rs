@@ -72,7 +72,7 @@ impl InputService {
                 .witness_script
                 .as_ref()
                 .expect("missing witness script");
-
+                dbg!(witness_script);
             let prev = previous_tx
                 .iter()
                 .filter(|t| t.script_pubkey.eq(&witness_script))

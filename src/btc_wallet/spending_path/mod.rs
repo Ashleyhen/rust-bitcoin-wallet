@@ -72,33 +72,20 @@ where
     return vec![send_tx, change_tx];
 }
 
-pub fn create_tx(total: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
     let receiver = 0;
     let change = 1;
 
-    return Box::new(move |output_list, tx_in, amount| {
-        let tx_out_list = || {
-            let tx_out = TxOut {
-                value: amount,
-                script_pubkey: output_list[receiver].clone().witness_script.unwrap(),
-            };
-
-            if (total - amount) > TIP {
-                return vec![
-                    tx_out,
-                    TxOut {
-                        value: total - amount,
-                        script_pubkey: output_list[change].clone().witness_script.unwrap(),
-                    },
-                ];
-            }
-            return vec![tx_out];
-        };
+    return Box::new(move |output_list, tx_in, total| {
+        let  tx_out = vec![TxOut {
+            value: total-TIP,
+            script_pubkey: output_list[0].clone().witness_script.unwrap(),
+        }];
         return Transaction {
             version: 2,
             lock_time: 0,
             input: tx_in,
-            output: tx_out_list(),
+            output: tx_out,
         };
     });
 }
