@@ -15,7 +15,6 @@ pub mod mutlisig_path;
 pub mod p2tr_key_path;
 pub mod p2tr_multisig_path;
 pub mod p2wpkh_script_path;
-pub mod script_conditions;
 pub mod vault_adaptor;
 pub trait Vault {
     fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction;
@@ -71,4 +70,35 @@ where
     let change_tx = output_fn(schema.map_ext_keys(&change_addr).script_pubkey());
 
     return vec![send_tx, change_tx];
+}
+
+pub fn create_tx(total: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+    let receiver = 0;
+    let change = 1;
+
+    return Box::new(move |output_list, tx_in, amount| {
+        let tx_out_list = || {
+            let tx_out = TxOut {
+                value: amount,
+                script_pubkey: output_list[receiver].clone().witness_script.unwrap(),
+            };
+
+            if (total - amount) > TIP {
+                return vec![
+                    tx_out,
+                    TxOut {
+                        value: total - amount,
+                        script_pubkey: output_list[change].clone().witness_script.unwrap(),
+                    },
+                ];
+            }
+            return vec![tx_out];
+        };
+        return Transaction {
+            version: 2,
+            lock_time: 0,
+            input: tx_in,
+            output: tx_out_list(),
+        };
+    });
 }

@@ -6,10 +6,7 @@ use bitcoin::{
 };
 use bitcoin_hashes::Hash;
 
-use crate::btc_wallet::{
-    constants::NETWORK, spending_path::p2tr_multisig_path::P2trMultisig,
-    wallet_methods::ClientWallet,
-};
+use crate::btc_wallet::{constants::NETWORK, wallet_methods::ClientWallet};
 
 use super::AddressSchema;
 

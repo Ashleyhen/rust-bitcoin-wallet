@@ -3,7 +3,7 @@ use std::{env, str::FromStr};
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::Output,
+    psbt::{Output, Input},
     secp256k1::SecretKey,
     util::taproot::ControlBlock,
     Address, KeyPair, Script,
@@ -20,17 +20,19 @@ use btc_wallet::{
     spending_path::{
         mutlisig_path::MultiSigPath,
         p2tr_key_path::P2TRVault,
-        p2tr_multisig_path::P2trMultisig,
-        script_conditions::{alice_script, bob_scripts},
+        // script_conditions::{alice_script, bob_scripts},
         vault_adaptor::VaultAdapter,
         Vault,
     },
-    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
+    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema}, script_services::input_service::InputService,
 };
 use either::Either;
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
-use crate::btc_wallet::input_data::tapscript_ex_input::get_signed_tx;
+use crate::btc_wallet::{
+    input_data::tapscript_ex_input::get_signed_tx,
+    script_services::{alice_script, bob_scripts, output_service::OutputService, api::create_partially_signed_tx},
+};
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
 pub mod wallet_test;
@@ -66,24 +68,42 @@ pub fn create_input() {
     let bob_script = bob_scripts(&bob_addr);
     let combined_script = vec![bob_script.clone(), alice_script.clone()].concat();
 
-    let mut func_list: Vec<Box<dyn for<'r> FnMut(&'r mut bitcoin::psbt::Output)>> = vec![
-        bob_addr.new_tap_internal_key(&secret_key),
-        alice_addr.insert_tap_key_origin(&alice_script),
-        bob_addr.insert_tap_key_origin(&bob_script),
+    let bob_output_service = OutputService(bob_addr.clone());
+    let alice_output_service = OutputService(alice_addr);
+
+    let input_func: Vec<Box<dyn for<'r> FnMut(&'r mut bitcoin::psbt::Output)>> = vec![
+        bob_output_service.new_tap_internal_key(&secret_key),
+        alice_output_service.insert_tap_key_origin(&alice_script),
+        bob_output_service.insert_tap_key_origin(&bob_script),
         P2TR::insert_tap_tree(&combined_script),
-        bob_addr.insert_witness(),
+        bob_output_service.insert_witness(),
     ];
 
-    let mut output = Output::default();
+    let bob_input_service=InputService(bob_addr);
+    // let output_func
+let ins: Vec<Box<dyn FnOnce(&Output, &mut Input)>> =vec![
+    bob_input_service.insert_givens(),
+    // bob_input_service.filter_tx_by_tweak(tx_list: Vec<(&'a Transaction, usize)>)
+    bob_input_service.insert_control_block(&bob_script[0].1),
+    // bob_input_service.sign_tapleaf(tx: &'a Transaction, input_index: usize)
+];
 
-    for output_func in &mut func_list {
-        output_func(&mut output);
-    }
-    let addr = Address::from_script(&output.witness_script.unwrap(), NETWORK).unwrap();
-    dbg!(addr.to_string());
 
-    
+
+    create_partially_signed_tx(vec![input_func], lock_func, unlock_func);
+
+    // let mut output = Output::default();
+
+    // for output_func in &mut input_func {
+    //     output_func(&mut output);
+    // }
+
+    // let addr = Address::from_script(&output.witness_script.unwrap(), NETWORK).unwrap();
+    // dbg!(addr.to_string());
+
+    // bob_addr.insert_givens();
 }
+
 pub fn control_block_test() {
     let alice_seed = 0;
     let bob_seed = 1;

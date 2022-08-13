@@ -1,0 +1,58 @@
+// (schema, address)->pariallysignedTx
+
+use std::collections::BTreeMap;
+
+use bitcoin::{
+    psbt::{Input, Output, PartiallySignedTransaction},
+    Transaction, TxIn,
+};
+
+use crate::btc_wallet::input_data::RpcCall;
+//
+// 
+type UNLOCK_FN<'a>=Box<dyn FnOnce(&Output,&mut Input) + 'a>;
+
+type LOCK_FN= Box<dyn FnMut(&mut Output)>;
+
+pub fn create_partially_signed_tx<R>(
+    output_vec_vec_func: Vec<Vec<LOCK_FN>>,
+    lock_func: Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction>,
+    unlock_func: Box<dyn Fn(Vec<Transaction>, &Transaction) ->Vec<UNLOCK_FN>>,
+) -> Box<dyn Fn(R) -> PartiallySignedTransaction>
+where
+    R: RpcCall,
+{
+    let mut output_vec: Vec<Output> = Vec::<Output>::new();
+    for func_list in output_vec_vec_func {
+        let mut output = Output::default();
+        for mut func in func_list {
+            func(&mut output);
+        }
+        output_vec.push(output);
+    }
+
+    return Box::new(move |api_call| {
+        let confirmed = api_call.script_get_balance().unwrap().confirmed;
+        let (tx_in, previous_tx) = api_call.contract_source();
+        let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
+
+    let mut input_vec: Vec<Input> = Vec::<Input>::new();
+    for output in &output_vec{
+			let mut input=Input::default();
+			for mut func in unlock_func(previous_tx.clone(), &unsigned_tx){
+				func(output,&mut input);
+			}
+			input_vec.push(input);
+			
+		 }
+
+    return PartiallySignedTransaction {
+        unsigned_tx,
+        version: 2,
+        xpub: BTreeMap::new(),
+        proprietary: BTreeMap::new(),
+        unknown: BTreeMap::new(),
+        inputs: input_vec,
+        outputs: output_vec.clone(),
+    };});
+}

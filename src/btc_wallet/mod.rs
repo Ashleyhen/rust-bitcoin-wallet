@@ -21,6 +21,9 @@ pub mod input_data;
 pub mod address_formats;
 pub mod constants;
 pub mod spending_path;
+
+pub mod custom_spending_paths;
+pub mod script_services;
 // pub mod unlock;
 pub mod wallet_methods;
 
