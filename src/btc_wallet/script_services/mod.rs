@@ -61,9 +61,7 @@ impl P2TR {
         })
     }
 
-    pub fn insert_tap_tree<'a>(
-        scripts: &'a Vec<(u32, Script)>,
-    ) -> Box<impl FnMut(&mut Output) + 'a> {
+    pub fn insert_tap_tree<'a>(scripts: Vec<(u32, Script)>) -> Box<impl FnMut(&mut Output) + 'a> {
         return Box::new(move |output: &mut Output| {
             let internal = output
                 .tap_internal_key

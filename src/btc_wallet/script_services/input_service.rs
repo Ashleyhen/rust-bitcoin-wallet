@@ -6,14 +6,14 @@ use bitcoin::{
         sighash::{Prevouts, SighashCache},
         taproot::{LeafVersion, TaprootSpendInfo},
     },
-    SchnorrSig, SchnorrSighashType, Script, Transaction,
+    SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
 };
 
 use crate::btc_wallet::address_formats::{p2tr_addr_fmt::P2TR, AddressSchema};
 
 pub struct InputService(pub P2TR);
 
- impl InputService {
+impl InputService {
     pub fn insert_givens<'a>(&'a self) -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
         return Box::new(move |output: &Output, input: &mut Input| {
             let out = output.clone();
@@ -25,7 +25,7 @@ pub struct InputService(pub P2TR);
 
     pub fn insert_control_block<'a>(
         &'a self,
-        script: &'a Script,
+        script: Script,
     ) -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
         let secp = self.0.get_client_wallet().secp;
         let x_only = self.0.get_ext_pub_key().to_x_only_pub();
@@ -51,7 +51,7 @@ pub struct InputService(pub P2TR);
             control.as_ref().unwrap().verify_taproot_commitment(
                 &secp,
                 spending_info.output_key().to_inner(),
-                script,
+                &script,
             );
             input
                 .tap_scripts
@@ -61,22 +61,33 @@ pub struct InputService(pub P2TR);
 
     pub fn sign_tapleaf<'a>(
         &'a self,
-        tx: &'a Transaction,
+        current_tx: Transaction,
+        previous_tx: Vec<TxOut>,
         input_index: usize,
     ) -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
         let secp = self.0.get_client_wallet().secp;
         let x_only = self.0.get_ext_pub_key().to_x_only_pub();
         return Box::new(move |output: &Output, input: &mut Input| {
+            let witness_script = output
+                .witness_script
+                .as_ref()
+                .expect("missing witness script");
+
+            let prev = previous_tx
+                .iter()
+                .filter(|t| t.script_pubkey.eq(&witness_script))
+                .map(|a| a.clone())
+                .collect::<Vec<TxOut>>();
             let tap_leaf_hash = output
                 .tap_key_origins
                 .get(&self.0.get_ext_pub_key().to_x_only_pub())
                 .unwrap()
                 .0
                 .clone();
-            let tap_sig_hash = SighashCache::new(tx)
+            let tap_sig_hash = SighashCache::new(&current_tx)
                 .taproot_script_spend_signature_hash(
                     input_index,
-                    &Prevouts::All(&tx.output),
+                    &Prevouts::All(&prev),
                     tap_leaf_hash[0],
                     SchnorrSighashType::AllPlusAnyoneCanPay,
                 )
@@ -98,16 +109,5 @@ pub struct InputService(pub P2TR);
                 .tap_script_sigs
                 .insert((x_only, tap_leaf_hash[0]), schnorrsig);
         });
-    }
-
-    pub fn filter_tx_by_tweak<'a>(
-        &'a self,
-        tx_list: Vec<(&'a Transaction, usize)>,
-    ) -> Vec<Box<impl FnOnce(&Output, &mut Input) + 'a>> {
-        return tx_list
-            .clone()
-            .iter()
-            .map(|(tx, index)| return self.sign_tapleaf(tx, index.clone()))
-            .collect();
     }
 }

@@ -3,35 +3,43 @@ use std::{env, str::FromStr};
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::{Output, Input},
+    psbt::{Input, Output},
     secp256k1::SecretKey,
     util::taproot::ControlBlock,
-    Address, KeyPair, Script,
+    Address, KeyPair, Script, Transaction, TxIn, TxOut,
 };
 use bitcoin_hashes::Hash;
 use btc_wallet::{
     address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
-    constants::NETWORK,
+    constants::{NETWORK, TIP},
     input_data::{
         electrum_rpc::{ElectrumCall, ElectrumRpc},
         reuse_rpc_call::{ReUseCall, TestRpc},
         tapscript_ex_input::TapscriptExInput,
     },
+    script_services::{
+        api::{LockFn, UnlockFn},
+        input_service::InputService,
+    },
     spending_path::{
+        create_tx,
         mutlisig_path::MultiSigPath,
         p2tr_key_path::P2TRVault,
+        tap_script_spending_ex::{input_factory, output_factory},
         // script_conditions::{alice_script, bob_scripts},
         vault_adaptor::VaultAdapter,
         Vault,
     },
-    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema}, script_services::input_service::InputService,
+    wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
 use either::Either;
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::btc_wallet::{
     input_data::tapscript_ex_input::get_signed_tx,
-    script_services::{alice_script, bob_scripts, output_service::OutputService, api::create_partially_signed_tx},
+    script_services::{
+        alice_script, api::create_partially_signed_tx, bob_scripts, output_service::OutputService,
+    },
 };
 // use taproot_multi_sig::WalletInfo;
 pub mod btc_wallet;
@@ -64,33 +72,19 @@ pub fn create_input() {
 
     let secret_key =
         alice_addr.new_shared_secret(vec![bob_addr.get_ext_pub_key().to_x_only_pub()].iter());
+
     let alice_script = alice_script();
     let bob_script = bob_scripts(&bob_addr);
-    let combined_script = vec![bob_script.clone(), alice_script.clone()].concat();
 
     let bob_output_service = OutputService(bob_addr.clone());
     let alice_output_service = OutputService(alice_addr);
 
-    let input_func: Vec<Box<dyn for<'r> FnMut(&'r mut bitcoin::psbt::Output)>> = vec![
-        bob_output_service.new_tap_internal_key(&secret_key),
-        alice_output_service.insert_tap_key_origin(&alice_script),
-        bob_output_service.insert_tap_key_origin(&bob_script),
-        P2TR::insert_tap_tree(&combined_script),
-        bob_output_service.insert_witness(),
-    ];
+    let bob_input_service = InputService(bob_addr.clone());
 
-    let bob_input_service=InputService(bob_addr);
-    // let output_func
-let ins: Vec<Box<dyn FnOnce(&Output, &mut Input)>> =vec![
-    bob_input_service.insert_givens(),
-    // bob_input_service.filter_tx_by_tweak(tx_list: Vec<(&'a Transaction, usize)>)
-    bob_input_service.insert_control_block(&bob_script[0].1),
-    // bob_input_service.sign_tapleaf(tx: &'a Transaction, input_index: usize)
-];
-
-
-
-    create_partially_signed_tx(vec![input_func], lock_func, unlock_func);
+    let output_func = output_factory(&alice_output_service, &bob_output_service, secret_key);
+    let unlock_func = input_factory(&bob_input_service);
+    let lock_func = create_tx(1000);
+    create_partially_signed_tx(vec![output_func], lock_func, unlock_func)(TapscriptExInput::new());
 
     // let mut output = Output::default();
 

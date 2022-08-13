@@ -25,7 +25,7 @@ pub struct OutputService(pub P2TR);
 impl OutputService {
     pub fn insert_tap_key_origin<'a>(
         &'a self,
-        scripts: &'a Vec<(u32, Script)>,
+        scripts: Vec<(u32, Script)>,
     ) -> Box<impl FnMut(&mut Output) + 'a> {
         return Box::new(move |output: &mut Output| {
             let value = scripts
@@ -40,11 +40,8 @@ impl OutputService {
         });
     }
 
-    pub fn new_tap_internal_key<'a>(
-        &'a self,
-        key: &'a SecretKey,
-    ) -> Box<impl FnMut(&mut Output) + 'a> {
-        Box::new(|output: &mut Output| {
+    pub fn new_tap_internal_key<'a>(&'a self, key: SecretKey) -> Box<impl FnMut(&mut Output) + 'a> {
+        Box::new(move |output: &mut Output| {
             output.tap_internal_key =
                 Some(KeyPair::from_secret_key(&self.0.to_wallet().secp, key.clone()).public_key())
         })
