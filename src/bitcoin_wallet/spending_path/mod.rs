@@ -73,7 +73,6 @@ where
 }
 
 pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-    
     return Box::new(move |output_list, tx_in, total| {
         let tx_out = vec![TxOut {
             value: total - TIP,

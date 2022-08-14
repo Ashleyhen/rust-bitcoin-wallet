@@ -1,6 +1,5 @@
 use std::{str::FromStr, sync::Arc};
 
-
 use bitcoin::{
     psbt::{Input, Output},
     schnorr::TapTweak,

@@ -6,12 +6,11 @@ use miniscript::psbt::PsbtExt;
 
 // use crate::btc_wallet::utils::UnlockAndSend;
 
-
 use crate::bitcoin_wallet::address_formats::AddressSchema;
 
 use self::{
     address_formats::p2tr_addr_fmt::P2TR,
-    input_data::{ RpcCall},
+    input_data::RpcCall,
     spending_path::Vault,
     wallet_methods::{BroadcastOp, ClientWithSchema},
 };

@@ -10,7 +10,6 @@ use bitcoin::{
     KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-
 pub fn insert_givens<'a>() -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
     return Box::new(move |output: &Output, input: &mut Input| {
         let out = output.clone();
@@ -81,7 +80,7 @@ pub fn sign_tapleaf<'a>(
                 SchnorrSighashType::Default,
             )
             .unwrap();
-            let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
+        let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
         let sig = secp.sign_schnorr(
             &Message::from_slice(&tap_sig_hash).unwrap(),
             &tweaked_pair.into_inner(),

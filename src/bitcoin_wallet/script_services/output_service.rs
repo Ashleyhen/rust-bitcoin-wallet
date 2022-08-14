@@ -15,7 +15,6 @@ use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::address_formats::p2tr_addr_fmt::P2TR;
 
-
 pub trait ILock {
     fn create_tx(&self) -> dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction;
 }

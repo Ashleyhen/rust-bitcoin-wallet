@@ -20,12 +20,14 @@ use bitcoin::{
 use bitcoin_hashes::Hash;
 use miniscript::ToPublicKey;
 
-pub mod psbt_factory;
 pub mod input_service;
 pub mod output_service;
+pub mod psbt_factory;
 
-
-use super::{constants::NETWORK, address_formats::{p2tr_addr_fmt::P2TR, AddressSchema}};
+use super::{
+    address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
+    constants::NETWORK,
+};
 pub trait ILock {
     fn create_tx(&self, output_list: Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction;
     fn lock_key(&self) -> Vec<Output>;
@@ -214,4 +216,3 @@ impl P2TR {
             .collect();
     }
 }
-

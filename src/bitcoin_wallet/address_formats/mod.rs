@@ -47,11 +47,11 @@ pub fn map_wpkh_address<'a>() -> AddressMapping<'a> {
 }
 
 pub fn derive_derivation_path(
-    recieve: u32,
-    index: u32,
-) -> Box<dyn Fn(ExtendedPrivKey, u32) -> ExtendedPrivKey> {
+    extended_priv_key: ExtendedPrivKey,
+    purpose: u32,
+) -> Box<dyn Fn(u32, u32) -> ExtendedPrivKey> {
     let secp = Secp256k1::new();
-    return Box::new(move |extended_priv_key, purpose| {
+    return Box::new(move |recieve, index| {
         let keychain = KeychainKind::External;
         let path = DerivationPath::from(vec![
             ChildNumber::from_hardened_idx(purpose).unwrap(), // purpose

@@ -6,7 +6,6 @@ use bitcoin::{
 };
 use bitcoin_hashes::Hash;
 
-
 use crate::bitcoin_wallet::{constants::NETWORK, wallet_methods::ClientWallet};
 
 use super::AddressSchema;
@@ -45,6 +44,4 @@ impl P2TR {
     pub fn alice_script(&self, internal_key: XOnlyPublicKey) -> Script {
         return Script::new_v1_p2tr(&self.get_client_wallet().secp, internal_key, None);
     }
-
- 
 }

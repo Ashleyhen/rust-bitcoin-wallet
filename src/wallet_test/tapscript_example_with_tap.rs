@@ -113,7 +113,7 @@ pub fn Test() {
             SchnorrSighashType::Default,
         )
         .unwrap();
-let prev_outs=vec![tx_input().output[0].clone()];
+    let prev_outs = vec![tx_input().output[0].clone()];
     let key_sig = SighashCache::new(&mut tx.clone())
         .taproot_key_spend_signature_hash(
             0,
@@ -124,7 +124,7 @@ let prev_outs=vec![tx_input().output[0].clone()];
 
     dbg!(tx.clone());
     println!("key signing sighash {} ", key_sig);
-    
+
     // 671166d40816a904febe606f01db52ff28347cf2f15b06cad86e8e0d073024bf
     println!(" script sighash {} ", sighash_sig);
 

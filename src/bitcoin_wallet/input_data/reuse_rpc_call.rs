@@ -1,19 +1,15 @@
 use core::fmt;
 
-use bitcoin::{
-    psbt::{ PartiallySignedTransaction},
-    Script, Transaction, TxIn, 
-};
+use bitcoin::{psbt::PartiallySignedTransaction, Script, Transaction, TxIn};
 use electrum_client::{Error, GetBalanceRes};
 
-
-use super::{ RpcCall};
-pub struct ReUseCall{
-pub psbt: PartiallySignedTransaction,
-    witness:Script
+use super::RpcCall;
+pub struct ReUseCall {
+    pub psbt: PartiallySignedTransaction,
+    witness: Script,
 }
 
-impl RpcCall for  ReUseCall{
+impl RpcCall for ReUseCall {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
         let tx = self.psbt.clone().extract_tx().clone();
         return (tx.clone().input, vec![tx]);
@@ -26,9 +22,7 @@ impl RpcCall for  ReUseCall{
             .extract_tx()
             .output
             .iter()
-            .filter(|t| {
-                t.script_pubkey.eq(&self.witness)
-            })
+            .filter(|t| t.script_pubkey.eq(&self.witness))
             .map(|f| f.value)
             .sum::<u64>();
         return Ok(GetBalanceRes {

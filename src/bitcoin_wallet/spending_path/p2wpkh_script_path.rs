@@ -9,9 +9,10 @@ use bitcoin::{
 };
 use miniscript::ToPublicKey;
 
-
-
-use crate::bitcoin_wallet::{address_formats::{p2wpkh_addr_fmt::P2WPKH, AddressSchema}, constants::NETWORK};
+use crate::bitcoin_wallet::{
+    address_formats::{p2wpkh_addr_fmt::P2WPKH, AddressSchema},
+    constants::NETWORK,
+};
 
 use super::{standard_create_tx, standard_lock, Vault};
 

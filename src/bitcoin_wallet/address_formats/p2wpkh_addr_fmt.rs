@@ -1,8 +1,7 @@
 use bitcoin::{util::bip32::ExtendedPubKey, Address};
 use miniscript::ToPublicKey;
 
-
-use crate::bitcoin_wallet::{wallet_methods::ClientWallet, constants::NETWORK};
+use crate::bitcoin_wallet::{constants::NETWORK, wallet_methods::ClientWallet};
 
 use super::AddressSchema;
 

@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
 
-use bitcoin::{psbt::{Output, Input, PartiallySignedTransaction}, Transaction, TxIn};
+use bitcoin::{
+    psbt::{Input, Output, PartiallySignedTransaction},
+    Transaction, TxIn,
+};
 
 use crate::bitcoin_wallet::input_data::RpcCall;
-
 
 pub type UnlockFn<'a> = Box<dyn FnOnce(&Output, &mut Input) + 'a>;
 

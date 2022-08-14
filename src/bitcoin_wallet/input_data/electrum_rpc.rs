@@ -3,34 +3,32 @@ use std::sync::Arc;
 use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
 use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
 
-
 use crate::bitcoin_wallet::{address_formats::AddressSchema, wallet_methods::BroadcastOp};
 
 use super::RpcCall;
 
-struct ElectrumRpc{
-    pub client:Client,
-    pub script_pub_k:Script
+struct ElectrumRpc {
+    pub client: Client,
+    pub script_pub_k: Script,
 }
 
-impl ElectrumRpc{
-    pub fn get_electrum(script_pub_k:Script)->Self{
-        return ElectrumRpc{
-            client:Client::new("ssl://electrum.blockstream.info:60002").unwrap(),
-            script_pub_k
+impl ElectrumRpc {
+    pub fn get_electrum(script_pub_k: Script) -> Self {
+        return ElectrumRpc {
+            client: Client::new("ssl://electrum.blockstream.info:60002").unwrap(),
+            script_pub_k,
         };
     }
 
     pub fn transaction_broadcast(&self) -> BroadcastOp {
-            return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
-                self.client.transaction_broadcast(&tx).unwrap().clone()
-            }));
-        }
+        return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
+            self.client.transaction_broadcast(&tx).unwrap().clone()
+        }));
     }
+}
 
-    
-impl RpcCall for ElectrumRpc{
-fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
+impl RpcCall for ElectrumRpc {
+    fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
         let history = Arc::new(
             self.client
                 .script_list_unspent(&self.script_pub_k)
@@ -53,7 +51,8 @@ fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
         let previous_tx = tx_in
             .iter()
             .map(|tx_id| {
-                self.client.transaction_get(&tx_id.previous_output.txid)
+                self.client
+                    .transaction_get(&tx_id.previous_output.txid)
                     .unwrap()
             })
             .collect::<Vec<Transaction>>();
@@ -63,6 +62,4 @@ fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
     fn script_get_balance(&self) -> Result<GetBalanceRes, Error> {
         return self.client.script_get_balance(&self.script_pub_k);
     }
-
-
 }
