@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction},
+    util::bip32::ExtendedPrivKey,
     Transaction, TxIn,
 };
 
@@ -33,7 +34,6 @@ where
         let confirmed = api_call.script_get_balance().unwrap().confirmed;
         let (tx_in, previous_tx) = api_call.contract_source();
         let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
-
         let mut input_vec: Vec<Input> = Vec::<Input>::new();
         for output in &output_vec {
             let mut input = Input::default();

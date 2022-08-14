@@ -4,9 +4,9 @@ use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
     psbt::{Input, Output},
-    secp256k1::SecretKey,
+    secp256k1::{Secp256k1, SecretKey},
     util::taproot::ControlBlock,
-    Address, KeyPair, Script, Transaction, TxIn, TxOut,
+    Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 use bitcoin_hashes::Hash;
 use btc_wallet::{
@@ -17,15 +17,12 @@ use btc_wallet::{
         reuse_rpc_call::{ReUseCall, TestRpc},
         tapscript_ex_input::TapscriptExInput,
     },
-    script_services::{
-        api::{LockFn, UnlockFn},
-        input_service::InputService,
-    },
+    script_services::api::{LockFn, UnlockFn},
     spending_path::{
         create_tx,
         mutlisig_path::MultiSigPath,
         p2tr_key_path::P2TRVault,
-        tap_script_spending_ex::{input_factory, output_factory},
+        tap_script_spending_ex::{input_factory, output_factory, example_tx},
         // script_conditions::{alice_script, bob_scripts},
         vault_adaptor::VaultAdapter,
         Vault,
@@ -33,6 +30,7 @@ use btc_wallet::{
     wallet_methods::{BroadcastOp, ClientWallet, ClientWithSchema},
 };
 use either::Either;
+use miniscript::ToPublicKey;
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::btc_wallet::{
@@ -53,40 +51,37 @@ fn main() {
     // wallet_test_vectors.test();
     create_input();
 
-    // control_block_test();
-    // wallet_test_vectors.test();
+    Test();
 }
 
 pub fn create_input() {
     let alice_seed = 0;
     let bob_seed = 1;
-
+    let secp = Secp256k1::new();
     let seeds = vec![
         "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90", //alice
         "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9", //bob
         "1229101a0fcf2104e8808dab35661134aa5903867d44deb73ce1c7e4eb925be8", //internal
     ];
 
-    let alice_addr = P2TR::new(Some(seeds[alice_seed].to_string()), 0, 0);
-    let bob_addr = P2TR::new(Some(seeds[bob_seed].to_string()), 0, 0);
-dbg!(bob_addr.get_ext_pub_key().public_key);
-
-
     // let secret_key =
     //     alice_addr.new_shared_secret(vec![bob_addr.get_ext_pub_key().to_x_only_pub()].iter());
+    let keys = seeds
+        .iter()
+        .map(|scrt| KeyPair::from_secret_key(&secp, SecretKey::from_str(&scrt).unwrap()))
+        .collect::<Vec<KeyPair>>();
 
-        let secret_key=SecretKey::from_str(seeds[2]).unwrap();
-    let alice_script = alice_script();
-    let bob_script = bob_scripts(&bob_addr);
+    // xonly, inteneral alice, bob
+    let output_func = output_factory(
+        &secp,
+        keys[2].public_key(),
+        keys[0].public_key(),
+        keys[1].public_key(),
+    );
 
-    let bob_output_service = OutputService(bob_addr.clone());
-    let alice_output_service = OutputService(alice_addr);
-
-    let bob_input_service = InputService(bob_addr.clone());
-
-    let output_func = output_factory(&alice_output_service, &bob_output_service, secret_key);
     let lock_func = create_tx();
-    let unlock_func = input_factory(&bob_input_service);
+    
+    let unlock_func = input_factory(&secp, &keys[1]);
     create_partially_signed_tx(vec![output_func], lock_func, unlock_func)(TapscriptExInput::new());
 
     // let mut output = Output::default();

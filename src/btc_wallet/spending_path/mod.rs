@@ -6,6 +6,8 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
+use crate::wallet_test::tapscript_example_with_tap::unsigned_tx;
+
 use super::{address_formats::AddressSchema, constants::TIP};
 
 pub const RECEIVER: usize = 0;
@@ -73,19 +75,18 @@ where
 }
 
 pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-    let receiver = 0;
-    let change = 1;
-
+    
     return Box::new(move |output_list, tx_in, total| {
-        let  tx_out = vec![TxOut {
-            value: total-TIP,
+        let tx_out = vec![TxOut {
+            value: total - TIP,
             script_pubkey: output_list[0].clone().witness_script.unwrap(),
         }];
-        return Transaction {
-            version: 2,
-            lock_time: 0,
-            input: tx_in,
-            output: tx_out,
-        };
+        return unsigned_tx();
+        // return Transaction {
+        //     version: 2,
+        //     lock_time: 0,
+        //     input: tx_in,
+        //     output: tx_out,
+        // };
     });
 }
