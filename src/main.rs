@@ -55,8 +55,9 @@ fn main() {
 }
 
 pub fn create_input() {
-    let alice_seed = 0;
-    let bob_seed = 1;
+    let alice_secret = 0;
+    let bob_secret = 1;
+    let internal_secret=2;
     let secp = Secp256k1::new();
     let seeds = vec![
         "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90", //alice
@@ -74,9 +75,9 @@ pub fn create_input() {
     // xonly, inteneral alice, bob
     let output_func = output_factory(
         &secp,
-        keys[2].public_key(),
-        keys[0].public_key(),
-        keys[1].public_key(),
+        keys[internal_secret].public_key(),
+        keys[alice_secret].public_key(),
+        keys[bob_secret].public_key(),
     );
 
     let lock_func = create_tx();
