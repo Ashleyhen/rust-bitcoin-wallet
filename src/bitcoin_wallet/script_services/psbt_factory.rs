@@ -1,14 +1,10 @@
-// (schema, address)->pariallysignedTx
-
 use std::collections::BTreeMap;
 
-use bitcoin::{
-    psbt::{Input, Output, PartiallySignedTransaction},
-    util::bip32::ExtendedPrivKey,
-    Transaction, TxIn,
-};
+use bitcoin::{psbt::{Output, Input, PartiallySignedTransaction}, Transaction, TxIn};
 
-use crate::btc_wallet::input_data::RpcCall;
+use crate::bitcoin_wallet::input_data::RpcCall;
+
+
 pub type UnlockFn<'a> = Box<dyn FnOnce(&Output, &mut Input) + 'a>;
 
 pub type LockFn<'a> = Box<dyn FnMut(&mut Output) + 'a>;

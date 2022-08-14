@@ -13,11 +13,9 @@ use bitcoin::{
 
 use miniscript::ToPublicKey;
 
-use crate::btc_wallet::{
-    address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
-    constants::{NETWORK, TIP},
-    input_data::RpcCall,
-};
+use crate::bitcoin_wallet::address_formats::p2tr_addr_fmt::P2TR;
+
+
 pub trait ILock {
     fn create_tx(&self) -> dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction;
 }

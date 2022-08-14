@@ -7,16 +7,14 @@ use bitcoin::{
 };
 use bitcoin_hashes::Hash;
 
-use crate::{btc_wallet::{
-    constants::{TIP},
-    script_services::{
-        api::{LockFn, UnlockFn},
-        input_service::{insert_control_block, insert_givens, sign_tapleaf},
-        output_service::{
-            insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
-        },
-    },
-}, wallet_test::tapscript_example_with_tap::unsigned_tx};
+use crate::{bitcoin_wallet::{script_services::{psbt_factory::{UnlockFn, LockFn}, output_service::{new_tap_internal_key, insert_tap_key_origin, insert_tap_tree, insert_tree_witness}, input_service::{insert_givens, insert_control_block, sign_tapleaf}}, constants::TIP}, wallet_test::tapscript_example_with_tap::unsigned_tx};
+
+
+
+pub struct TapScriptSendEx{
+    pub(crate) secp: Secp256k1<All>
+}
+ impl TapScriptSendEx {
 
 pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
     let preimage =
@@ -42,37 +40,37 @@ pub fn alice_script() -> Script {
 }
 
 pub fn output_factory<'a>(
-    secp: &'a Secp256k1<All>,
+    &'a self,
     xinternal: XOnlyPublicKey,
     xalice: XOnlyPublicKey,
     xbob: XOnlyPublicKey,
 ) -> Vec<LockFn<'a>> {
-    let bob_script = bob_scripts(&xbob);
-    let alice_script = alice_script();
+    let bob_script = TapScriptSendEx::bob_scripts(&xbob);
+    let alice_script = TapScriptSendEx::alice_script();
     let combined_script = vec![(1, bob_script.clone()), (1, alice_script.clone())];
     return vec![
         new_tap_internal_key(xinternal),
         insert_tap_key_origin(vec![(1, alice_script)], xalice),
         insert_tap_key_origin(vec![(1, bob_script)], xbob),
         insert_tap_tree(combined_script),
-        insert_tree_witness(&secp),
+        insert_tree_witness(&self.secp),
     ];
 }
 
 pub fn input_factory<'a>(
-    secp: &'a Secp256k1<All>,
+    &'a self,
     keypair: &'a KeyPair,
 ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
     let x_only = keypair.public_key();
-    let bob_script = bob_scripts(&x_only);
+    let bob_script = TapScriptSendEx::bob_scripts(&x_only);
     return Box::new(
         move |previous_list: Vec<Transaction>, current_tx: Transaction| {
             let mut unlock_vec: Vec<UnlockFn> = vec![];
             for (size, prev) in previous_list.iter().enumerate() {
                 unlock_vec.push(insert_givens());
-                unlock_vec.push(insert_control_block(secp, x_only, bob_script.clone()));
+                unlock_vec.push(insert_control_block(&self.secp, x_only, bob_script.clone()));
                 unlock_vec.push(sign_tapleaf(
-                    secp,
+                    &self.secp,
                     &keypair,
                     current_tx.clone(),
                     prev.clone().output,
@@ -118,4 +116,5 @@ pub fn example_tx(_: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transact
     return Box::new(move |_: Vec<Output>, _: Vec<TxIn>, _: u64| {
         return unsigned_tx();
     });
+}
 }
