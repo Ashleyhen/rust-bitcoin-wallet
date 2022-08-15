@@ -111,8 +111,8 @@ pub fn script_tx() {
     //     keys[alice_secret].public_key(),
     //     keys[bob_secret].public_key(),
     // );
-
-    let addr_generator = map_seeds_to_scripts(Some(seed.to_string()), None, 341);
+    
+    let addr_generator = map_seeds_to_scripts(Some(seed.to_string()), &secp, 341, map_tr_address(&secp, None));
     let addr_list = (0..5)
         .map(|i| addr_generator(0, i))
         .collect::<Vec<Address>>();
