@@ -7,27 +7,28 @@ use crate::bitcoin_wallet::{address_formats::AddressSchema, wallet_methods::Broa
 
 use super::RpcCall;
 
-struct ElectrumRpc {
+pub struct ElectrumRpc<'a> {
     pub client: Client,
-    pub script_pub_k: Script,
+    pub script_pub_k: &'a Script,
 }
 
-impl ElectrumRpc {
-    pub fn get_electrum(script_pub_k: Script) -> Self {
+impl<'a> ElectrumRpc<'a> {
+    pub fn new(script_pub_k: &'a Script) -> Self {
         return ElectrumRpc {
-            client: Client::new("ssl://electrum.blockstream.info:60002").unwrap(),
+            client: get_client(),
             script_pub_k,
         };
     }
 
-    pub fn transaction_broadcast(&self) -> BroadcastOp {
-        return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
-            self.client.transaction_broadcast(&tx).unwrap().clone()
-        }));
+    pub fn transaction_broadcast(&self, tx: Transaction) -> Txid {
+        return self.client.transaction_broadcast(&tx).unwrap();
+        // return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
+        //     self.client.transaction_broadcast(&tx).unwrap().clone()
+        // }));
     }
 }
 
-impl RpcCall for ElectrumRpc {
+impl<'a> RpcCall for ElectrumRpc<'a> {
     fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
         let history = Arc::new(
             self.client
@@ -62,4 +63,7 @@ impl RpcCall for ElectrumRpc {
     fn script_get_balance(&self) -> Result<GetBalanceRes, Error> {
         return self.client.script_get_balance(&self.script_pub_k);
     }
+}
+pub fn get_client() -> Client {
+    return Client::new("ssl://electrum.blockstream.info:60002").unwrap();
 }

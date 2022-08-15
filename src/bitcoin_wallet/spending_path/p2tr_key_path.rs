@@ -3,114 +3,95 @@ use std::{str::FromStr, sync::Arc};
 use bitcoin::{
     psbt::{Input, Output},
     schnorr::TapTweak,
-    secp256k1::Message,
+    secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::ExtendedPrivKey,
         sighash::{Prevouts, SighashCache},
     },
-    SchnorrSig, SchnorrSighashType, Transaction, TxIn, TxOut,
+    Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
+    XOnlyPublicKey,
 };
 
-use crate::bitcoin_wallet::address_formats::{p2tr_addr_fmt::P2TR, AddressSchema};
+use crate::bitcoin_wallet::{
+    constants::{NETWORK, TIP},
+    script_services::{
+        input_service::{insert_witness_tx, sign_key_sig},
+        output_service::{insert_tree_witness, new_tap_internal_key, new_witness_pub_k},
+        psbt_factory::{LockFn, UnlockFn},
+    },
+};
 
-use super::{standard_create_tx, standard_lock, Vault};
-
-#[derive(Clone)]
-pub struct P2TRVault<'a> {
-    p2tr: &'a P2TR,
-    amount: u64,
-    to_addr: String,
+pub struct P2TR_K {
+    secp: Secp256k1<All>,
 }
 
-impl<'a> Vault for P2TRVault<'a> {
-    fn unlock_key(&self, previous_tx: Vec<Transaction>, current_tx: &Transaction) -> Vec<Input> {
-        let schema = self.p2tr;
-        let signer_pub_k = schema.get_ext_pub_key();
-        let ext_prv = schema.get_ext_prv_k();
-        let input_list: Vec<Input> = previous_tx
-            .clone()
-            .iter()
-            .enumerate()
-            .flat_map(|(index, prev_tx)| {
-                let tx_out_list: Vec<TxOut> = prev_tx
-                    .output
-                    .iter()
-                    .filter(|tx_out| {
-                        tx_out
-                            .script_pubkey
-                            .eq(&schema.map_ext_keys(&signer_pub_k).script_pubkey())
-                    })
-                    .map(|f| f.clone())
-                    .collect();
+impl P2TR_K {
+    pub fn new(secp: &Secp256k1<All>) -> Self {
+        return P2TR_K { secp: secp.clone() };
+    }
+    pub fn create_tx(amount: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+        return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
+            let mut tx_out_vec = vec![TxOut {
+                value: amount,
+                script_pubkey: outputs[0].clone().witness_script.unwrap(),
+            }];
 
-                let inputs: Vec<Input> = tx_out_list
-                    .iter()
-                    .map(|utxo| {
-                        let mut new_input =
-                            self.pub_key_unlock(index, &current_tx, tx_out_list.to_vec(), ext_prv);
-                        new_input.witness_utxo = Some(utxo.clone());
-                        return new_input;
-                    })
-                    .collect();
-                return inputs;
-            })
-            .collect();
-        return input_list;
+            if (total - amount) > TIP {
+                tx_out_vec.push(TxOut {
+                    value: total - (amount + TIP),
+                    script_pubkey: outputs[1].clone().witness_script.unwrap(),
+                });
+            }
+            return Transaction {
+                version: 2,
+                lock_time: 0,
+                input: tx_in,
+                output: tx_out_vec,
+            };
+        });
     }
 
-    fn lock_key(&self) -> Vec<Output> {
-        let cw = self.p2tr.to_wallet();
-
-        let change_address = cw.derive_pub_k(cw.derive_ext_priv_k(&cw.derive_derivation_path(
-            self.p2tr.wallet_purpose(),
-            cw.recieve,
-            cw.change + 1,
-        )));
-
-        return standard_lock(self.p2tr, change_address, &self.to_addr);
+    pub fn output_factory<'a>(&'a self, change: Script, send: Script) -> Vec<Vec<LockFn<'a>>> {
+        return vec![
+            vec![new_witness_pub_k(change)],
+            vec![new_witness_pub_k(send)],
+        ];
     }
-
-    fn create_tx(&self, output_list: &Vec<Output>, tx_in: Vec<TxIn>, total: u64) -> Transaction {
-        return standard_create_tx(self.amount, output_list, tx_in, total);
+    pub fn single_output<'a>(&'a self, send: Script) -> LockFn<'a> {
+        return new_witness_pub_k(send);
     }
-}
-
-impl<'a> P2TRVault<'a> {
-    pub fn new(p2tr: &'a P2TR, amount: u64, to_addr: &String) -> Self {
-        return P2TRVault {
-            p2tr,
-            amount,
-            to_addr: to_addr.to_string(),
-        };
-    }
-
-    pub fn pub_key_unlock(
-        &self,
-        index: usize,
-        current_tx: &Transaction,
-        prev_txout: Vec<TxOut>,
-        extended_priv_k: ExtendedPrivKey,
-    ) -> Input {
-        let cw = self.p2tr.to_wallet();
-        let tweaked_key_pair = extended_priv_k
-            .to_keypair(&cw.secp)
-            .tap_tweak(&cw.secp, None)
-            .into_inner();
-        let sig_hash = SighashCache::new(&mut current_tx.clone())
-            .taproot_key_spend_signature_hash(
-                index,
-                &Prevouts::All(&prev_txout),
-                SchnorrSighashType::AllPlusAnyoneCanPay,
-            )
-            .unwrap();
-        let msg = Message::from_slice(&sig_hash).unwrap();
-        let signed_shnorr = cw.secp.sign_schnorr(&msg, &tweaked_key_pair);
-        let schnorr_sig = SchnorrSig {
-            sig: signed_shnorr,
-            hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
-        };
-        let mut input = Input::default();
-        input.tap_key_sig = Some(schnorr_sig);
-        return input;
+    pub fn input_factory<'a>(
+        &'a self,
+        keypair: &'a KeyPair,
+    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
+        return Box::new(
+            move |previous_list: Vec<Transaction>, current_tx: Transaction| {
+                let mut unlock_vec: Vec<UnlockFn> = vec![];
+                for (size, prev) in previous_list.iter().enumerate() {
+                    let tx_out = prev
+                        .output
+                        .iter()
+                        .find(|t| {
+                            t.script_pubkey.eq(&Address::p2tr(
+                                &self.secp,
+                                keypair.public_key(),
+                                None,
+                                NETWORK,
+                            )
+                            .script_pubkey())
+                        })
+                        .unwrap();
+                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+                    unlock_vec.push(sign_key_sig(
+                        &self.secp,
+                        &keypair,
+                        current_tx.clone(),
+                        prev.clone().output,
+                        size,
+                    ));
+                }
+                return unlock_vec;
+            },
+        );
     }
 }

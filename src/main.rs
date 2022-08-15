@@ -13,21 +13,20 @@ use bitcoin::{
 };
 use bitcoin_hashes::Hash;
 use bitcoin_wallet::{
-    address_formats::{derive_derivation_path, map_tr_address},
+    address_formats::{derive_derivation_path, map_seeds_to_scripts, map_tr_address},
     constants::NETWORK,
-    input_data::tapscript_ex_input::TapscriptExInput,
+    input_data::{electrum_rpc::ElectrumRpc, tapscript_ex_input::TapscriptExInput, RpcCall},
     script_services::psbt_factory::create_partially_signed_tx,
-    spending_path::{create_tx, tap_script_spending_ex::TapScriptSendEx},
+    spending_path::{p2tr_key_path::P2TR_K, tap_script_spending_ex::TapScriptSendEx},
 };
 
 use either::Either;
-use miniscript::ToPublicKey;
+use miniscript::{psbt::PsbtExt, ToPublicKey};
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::bitcoin_wallet::{
     address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
     input_data::{reuse_rpc_call::ReUseCall, tapscript_ex_input::get_signed_tx},
-    spending_path::p2tr_key_path::P2TRVault,
     wallet_methods::{BroadcastOp, ClientWithSchema},
 };
 
@@ -37,8 +36,8 @@ pub mod bitcoin_wallet;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-key_tx();
-    // script_tx();
+    // key_tx();
+    script_tx();
 
     // Test();
 }
@@ -58,22 +57,38 @@ pub fn key_tx() {
             .unwrap(),
         341,
     );
-    let private_ext_keys = (0..2)
+    let private_ext_keys = (0..5)
         .map(|index| derivation_fn(0, index))
         .collect::<Vec<ExtendedPrivKey>>();
+    let key_pair = private_ext_keys
+        .iter()
+        .map(|prv| KeyPair::from_secret_key(&secp, prv.private_key))
+        .collect::<Vec<KeyPair>>();
     let address_generate = map_tr_address(&secp, None);
-    let address = private_ext_keys
+    let addresses = private_ext_keys
         .iter()
         .map(|f| address_generate(ExtendedPubKey::from_priv(&secp, f)))
         .collect::<Vec<Address>>();
-
-        address.iter().for_each(|f|{
-            dbg!(f.to_string());
-        })
+    let my_add = addresses[3].script_pubkey();
+    let electrum = ElectrumRpc::new(&my_add);
+    let tr = P2TR_K::new(&secp);
+    let send_addr = "tb1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gskndd0z".to_string();
+    let output_func = tr.output_factory(
+        Address::from_str(&send_addr).unwrap().script_pubkey(),
+        addresses[3].script_pubkey(),
+    );
+    let unlock_func = tr.input_factory(&key_pair[3]);
+    let psbt =
+        create_partially_signed_tx(output_func, P2TR_K::create_tx(10000), unlock_func)(&electrum);
+    let finalize = psbt.finalize(&secp).unwrap().extract_tx();
+    // dbg!(Address::from_script(&finalize.output[1].script_pubkey, NETWORK).unwrap().to_string());
+    // dbg!(Address::from_script(&finalize.output[0].script_pubkey, NETWORK).unwrap().to_string());
+    dbg!(finalize.clone());
+    let tx = finalize.clone();
 }
 
-
 pub fn script_tx() {
+    let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
     let alice_secret = 0;
     let bob_secret = 1;
     let internal_secret = 2;
@@ -89,15 +104,28 @@ pub fn script_tx() {
         .map(|scrt| KeyPair::from_secret_key(&secp, SecretKey::from_str(&scrt).unwrap()))
         .collect::<Vec<KeyPair>>();
 
-    let tap_script = TapScriptSendEx { secp };
-    let output_func = tap_script.output_factory(
-        keys[internal_secret].public_key(),
-        keys[alice_secret].public_key(),
-        keys[bob_secret].public_key(),
-    );
+    let tap_script = TapScriptSendEx::new(&secp);
+    let tap_key = P2TR_K::new(&secp);
+    // let output_func = tap_script.output_factory(
+    //     keys[internal_secret].public_key(),
+    //     keys[alice_secret].public_key(),
+    //     keys[bob_secret].public_key(),
+    // );
 
-    let lock_func = create_tx();
+    let addr_generator = map_seeds_to_scripts(Some(seed.to_string()), None, 341);
+    let addr_list = (0..5)
+        .map(|i| addr_generator(0, i))
+        .collect::<Vec<Address>>();
+    let my_add = Address::from_str(
+        &"tb1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gskndd0z".to_string(),
+    )
+    .unwrap()
+    .script_pubkey();
 
-    let unlock_func = tap_script.input_factory(&keys[1]);
-    create_partially_signed_tx(vec![output_func], lock_func, unlock_func)(TapscriptExInput::new());
+    let output_func = tap_key.single_output(addr_list[3].script_pubkey());
+    let electrum = ElectrumRpc::new(&my_add);
+    let lock_func = TapScriptSendEx::create_tx();
+    let unlock_func =
+        tap_script.input_factory(&keys[bob_secret], keys[internal_secret].public_key());
+    create_partially_signed_tx(vec![vec![output_func]], lock_func, unlock_func)(&electrum);
 }

@@ -1,42 +1,24 @@
 use bitcoin::{
-    psbt::{Input, Output},
+    psbt::{Input, Output, TapTree},
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::ExtendedPrivKey,
         sighash::{Prevouts, SighashCache},
-        taproot::{LeafVersion, TaprootSpendInfo},
+        taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
-    KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
+    XOnlyPublicKey,
 };
 
-pub fn insert_givens<'a>() -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
-    return Box::new(move |output: &Output, input: &mut Input| {
-        let out = output.clone();
-        input.witness_script = out.witness_script;
-        input.tap_internal_key = out.tap_internal_key;
-        input.tap_key_origins = out.tap_key_origins;
-    });
-}
+use crate::bitcoin_wallet::constants::NETWORK;
 
 pub fn insert_control_block<'a>(
     secp: &'a Secp256k1<All>,
-    x_only: XOnlyPublicKey,
     script: Script,
-) -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
-    let mut err_msg = "missing expected scripts for x_only ".to_string();
-    err_msg.push_str(&x_only.to_string());
-
-    return Box::new(move |output: &Output, input: &mut Input| {
-        let internal_key = input.tap_internal_key.expect("msg");
-        let spending_info = output
-            .tap_tree
-            .as_ref()
-            .unwrap()
-            .to_builder()
-            .finalize(&secp, internal_key)
-            .unwrap();
-
+    spending_info: TaprootSpendInfo,
+) -> Box<impl FnOnce(&mut Input) + 'a> {
+    return Box::new(move |input: &mut Input| {
         let control = spending_info.control_block(&(script.clone(), LeafVersion::TapScript));
         let verify = control.as_ref().unwrap().verify_taproot_commitment(
             &secp,
@@ -50,6 +32,12 @@ pub fn insert_control_block<'a>(
     });
 }
 
+pub fn insert_witness_tx<'a>(tx_out: TxOut) -> Box<impl FnOnce(&mut Input) + 'a> {
+    return Box::new(move |input: &mut Input| {
+        input.witness_utxo = Some(tx_out);
+    });
+}
+
 fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
     return previous_tx
         .iter()
@@ -57,26 +45,25 @@ fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
         .map(|a| a.clone())
         .collect::<Vec<TxOut>>();
 }
+
 pub fn sign_tapleaf<'a>(
     secp: &'a Secp256k1<All>,
     key_pair: &'a KeyPair,
     current_tx: Transaction,
     previous_tx: Vec<TxOut>,
     input_index: usize,
-) -> Box<impl FnOnce(&Output, &mut Input) + 'a> {
+    witness_script: Script,
+    leaf_script: Script,
+) -> Box<impl FnOnce(&mut Input) + 'a> {
     let x_only = key_pair.public_key();
-    return Box::new(move |output: &Output, input: &mut Input| {
-        let witness_script = output
-            .witness_script
-            .as_ref()
-            .expect("missing witness script");
-        let prev = filter_for_wit(previous_tx, witness_script);
-        let tap_leaf_hash = output.tap_key_origins.get(&x_only).unwrap().0.clone();
+    return Box::new(move |input: &mut Input| {
+        let prev = filter_for_wit(previous_tx, &witness_script);
+        let tap_leaf_hash = TapLeafHash::from_script(&leaf_script, LeafVersion::TapScript);
         let tap_sig_hash = SighashCache::new(&current_tx)
             .taproot_script_spend_signature_hash(
                 input_index,
                 &Prevouts::All(&prev),
-                tap_leaf_hash[0],
+                tap_leaf_hash,
                 SchnorrSighashType::Default,
             )
             .unwrap();
@@ -91,6 +78,37 @@ pub fn sign_tapleaf<'a>(
         };
         input
             .tap_script_sigs
-            .insert((x_only, tap_leaf_hash[0]), schnorrsig);
+            .insert((x_only, tap_leaf_hash), schnorrsig);
+    });
+}
+pub fn sign_key_sig<'a>(
+    secp: &'a Secp256k1<All>,
+    key_pair: &'a KeyPair,
+    current_tx: Transaction,
+    previous_tx: Vec<TxOut>,
+    input_index: usize,
+) -> Box<impl FnOnce(&mut Input) + 'a> {
+    return Box::new(move |input: &mut Input| {
+        let witness_script =
+            Address::p2tr(secp, key_pair.public_key(), None, NETWORK).script_pubkey();
+        let prev = filter_for_wit(previous_tx, &witness_script);
+        let tap_sig = SighashCache::new(&current_tx)
+            .taproot_key_spend_signature_hash(
+                input_index,
+                &Prevouts::All(&prev),
+                SchnorrSighashType::AllPlusAnyoneCanPay,
+            )
+            .unwrap();
+        let tweaked_pair = key_pair.tap_tweak(&secp, None);
+
+        let sig = secp.sign_schnorr(
+            &Message::from_slice(&tap_sig).unwrap(),
+            &tweaked_pair.into_inner(),
+        );
+        let schnorrsig = SchnorrSig {
+            sig,
+            hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
+        };
+        input.tap_key_sig = Some(schnorrsig);
     });
 }

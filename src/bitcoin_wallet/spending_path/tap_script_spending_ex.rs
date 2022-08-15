@@ -1,17 +1,18 @@
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::Output,
+    psbt::{Output, TapTree},
     secp256k1::{All, Secp256k1},
-    KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    util::taproot::TaprootBuilder,
+    Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 use bitcoin_hashes::Hash;
 
 use crate::{
     bitcoin_wallet::{
-        constants::TIP,
+        constants::{NETWORK, TIP},
         script_services::{
-            input_service::{insert_control_block, insert_givens, sign_tapleaf},
+            input_service::{insert_control_block, sign_tapleaf},
             output_service::{
                 insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
             },
@@ -21,10 +22,14 @@ use crate::{
     wallet_test::tapscript_example_with_tap::unsigned_tx,
 };
 
-pub struct TapScriptSendEx {
-    pub(crate) secp: Secp256k1<All>,
+pub struct TapScriptSendEx<'a> {
+    pub secp: &'a Secp256k1<All>,
 }
-impl TapScriptSendEx {
+
+impl<'a> TapScriptSendEx<'a> {
+    pub fn new(secp: &'a Secp256k1<All>) -> Self {
+        return TapScriptSendEx { secp };
+    }
     pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
         let preimage =
             Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f")
@@ -49,7 +54,7 @@ impl TapScriptSendEx {
         return script;
     }
 
-    pub fn output_factory<'a>(
+    pub fn output_factory(
         &'a self,
         xinternal: XOnlyPublicKey,
         xalice: XOnlyPublicKey,
@@ -67,24 +72,37 @@ impl TapScriptSendEx {
         ];
     }
 
-    pub fn input_factory<'a>(
+    pub fn input_factory(
         &'a self,
-        keypair: &'a KeyPair,
+        bob_keypair: &'a KeyPair,
+        internal_key: XOnlyPublicKey,
     ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
-        let x_only = keypair.public_key();
-        let bob_script = TapScriptSendEx::bob_scripts(&x_only);
+        let xbob = bob_keypair.public_key();
+        let bob_script = TapScriptSendEx::bob_scripts(&xbob);
+        let alice_script = TapScriptSendEx::alice_script();
+
+        let script_weights = vec![(1, bob_script.clone()), (1, alice_script.clone())];
+        let tap_builder = TaprootBuilder::with_huffman_tree(script_weights.clone()).unwrap();
+        let tap_spending_info = tap_builder.finalize(&self.secp, internal_key).unwrap();
+        let witness = Script::new_v1_p2tr_tweaked(tap_spending_info.output_key());
+
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
                 let mut unlock_vec: Vec<UnlockFn> = vec![];
                 for (size, prev) in previous_list.iter().enumerate() {
-                    unlock_vec.push(insert_givens());
-                    unlock_vec.push(insert_control_block(&self.secp, x_only, bob_script.clone()));
+                    unlock_vec.push(insert_control_block(
+                        &self.secp,
+                        bob_script.clone(),
+                        tap_spending_info.clone(),
+                    ));
                     unlock_vec.push(sign_tapleaf(
                         &self.secp,
-                        &keypair,
+                        &bob_keypair,
                         current_tx.clone(),
                         prev.clone().output,
                         size,
+                        witness.clone(),
+                        bob_script.clone(),
                     ));
                 }
                 return unlock_vec;
@@ -92,39 +110,27 @@ impl TapScriptSendEx {
         );
     }
 
-    pub fn create_tx(total: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-        return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, amount: u64| {
-            let receiver = 0;
-            let change = 1;
-            let tx_out_list = || {
-                let tx_out = TxOut {
-                    value: amount,
-                    script_pubkey: outputs[receiver].clone().witness_script.unwrap(),
-                };
-
-                if (total - amount) > TIP {
-                    return vec![
-                        tx_out,
-                        TxOut {
-                            value: total - amount,
-                            script_pubkey: outputs[change].clone().witness_script.unwrap(),
-                        },
-                    ];
-                }
-                return vec![tx_out];
-            };
+    pub fn example_tx(_: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+        return Box::new(move |_: Vec<Output>, _: Vec<TxIn>, _: u64| {
+            return unsigned_tx();
+        });
+    }
+    pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+        return Box::new(move |output_list, tx_in, total| {
+            let addr =
+                Address::from_script(&output_list[0].clone().witness_script.unwrap(), NETWORK)
+                    .unwrap();
+            dbg!(addr.to_string());
+            let tx_out = vec![TxOut {
+                value: total - TIP,
+                script_pubkey: output_list[0].clone().witness_script.unwrap(),
+            }];
             return Transaction {
                 version: 2,
                 lock_time: 0,
                 input: tx_in,
-                output: tx_out_list(),
+                output: tx_out,
             };
-        });
-    }
-
-    pub fn example_tx(_: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-        return Box::new(move |_: Vec<Output>, _: Vec<TxIn>, _: u64| {
-            return unsigned_tx();
         });
     }
 }

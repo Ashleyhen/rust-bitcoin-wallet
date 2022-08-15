@@ -71,19 +71,3 @@ where
 
     return vec![send_tx, change_tx];
 }
-
-pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-    return Box::new(move |output_list, tx_in, total| {
-        let tx_out = vec![TxOut {
-            value: total - TIP,
-            script_pubkey: output_list[0].clone().witness_script.unwrap(),
-        }];
-        return unsigned_tx();
-        // return Transaction {
-        //     version: 2,
-        //     lock_time: 0,
-        //     input: tx_in,
-        //     output: tx_out,
-        // };
-    });
-}
