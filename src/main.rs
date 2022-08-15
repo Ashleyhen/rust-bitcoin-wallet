@@ -64,10 +64,10 @@ pub fn key_tx() {
         .iter()
         .map(|prv| KeyPair::from_secret_key(&secp, prv.private_key))
         .collect::<Vec<KeyPair>>();
-    let address_generate = map_tr_address(&secp, None);
+    let address_generate = map_tr_address( None);
     let addresses = private_ext_keys
         .iter()
-        .map(|f| address_generate(ExtendedPubKey::from_priv(&secp, f)))
+        .map(|f| address_generate(&secp, ExtendedPubKey::from_priv(&secp, f)))
         .collect::<Vec<Address>>();
     let my_add = addresses[3].script_pubkey();
     let electrum = ElectrumRpc::new(&my_add);
@@ -106,13 +106,9 @@ pub fn script_tx() {
 
     let tap_script = TapScriptSendEx::new(&secp);
     let tap_key = P2TR_K::new(&secp);
-    // let output_func = tap_script.output_factory(
-    //     keys[internal_secret].public_key(),
-    //     keys[alice_secret].public_key(),
-    //     keys[bob_secret].public_key(),
-    // );
+
     
-    let addr_generator = map_seeds_to_scripts(Some(seed.to_string()), &secp, 341, map_tr_address(&secp, None));
+    let addr_generator = map_seeds_to_scripts(Some(seed.to_string()), &secp, 341, map_tr_address( None));
     let addr_list = (0..5)
         .map(|i| addr_generator(0, i))
         .collect::<Vec<Address>>();
