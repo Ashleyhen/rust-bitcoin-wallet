@@ -131,6 +131,6 @@ pub fn script_tx() {
         create_partially_signed_tx(vec![vec![output_func]], lock_func, unlock_func)(&electrum);
     let tx = TapScriptSendEx::finialize_script(psbt, &keys[bob_secret].public_key());
 // let tx_id=electrum.transaction_broadcast(tx);
-    dbg!(tx_id);
+    // dbg!(tx_id);
     //
 }
