@@ -1,10 +1,10 @@
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::{Output, TapTree},
+    psbt::{Output, PartiallySignedTransaction, TapTree},
     secp256k1::{All, Secp256k1},
     util::taproot::TaprootBuilder,
-    Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    Address, KeyPair, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
 };
 use bitcoin_hashes::Hash;
 
@@ -25,25 +25,25 @@ use crate::{
 pub struct TapScriptSendEx<'a> {
     pub secp: &'a Secp256k1<All>,
 }
+pub fn get_preimage() -> Vec<u8> {
+    return Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f")
+        .unwrap();
+}
+pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
+    let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&get_preimage());
+    let bob_script = Builder::new()
+        .push_opcode(all::OP_SHA256)
+        .push_slice(&preimage_hash)
+        .push_opcode(all::OP_EQUALVERIFY)
+        .push_x_only_key(&x_only)
+        .push_opcode(all::OP_CHECKSIG)
+        .into_script();
 
+    return bob_script;
+}
 impl<'a> TapScriptSendEx<'a> {
     pub fn new(secp: &'a Secp256k1<All>) -> Self {
         return TapScriptSendEx { secp };
-    }
-    pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
-        let preimage =
-            Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f")
-                .unwrap();
-        let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&preimage);
-        let bob_script = Builder::new()
-            .push_opcode(all::OP_SHA256)
-            .push_slice(&preimage_hash)
-            .push_opcode(all::OP_EQUALVERIFY)
-            .push_x_only_key(&x_only)
-            .push_opcode(all::OP_CHECKSIG)
-            .into_script();
-
-        return bob_script;
     }
 
     pub fn alice_script() -> Script {
@@ -60,7 +60,7 @@ impl<'a> TapScriptSendEx<'a> {
         xalice: XOnlyPublicKey,
         xbob: XOnlyPublicKey,
     ) -> Vec<LockFn<'a>> {
-        let bob_script = TapScriptSendEx::bob_scripts(&xbob);
+        let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
         let combined_script = vec![(1, bob_script.clone()), (1, alice_script.clone())];
         return vec![
@@ -78,7 +78,7 @@ impl<'a> TapScriptSendEx<'a> {
         internal_key: XOnlyPublicKey,
     ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
         let xbob = bob_keypair.public_key();
-        let bob_script = TapScriptSendEx::bob_scripts(&xbob);
+        let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
 
         let script_weights = vec![(1, bob_script.clone()), (1, alice_script.clone())];
@@ -132,5 +132,28 @@ impl<'a> TapScriptSendEx<'a> {
                 output: tx_out,
             };
         });
+    }
+
+    pub fn finialize_script(
+        psbt: PartiallySignedTransaction,
+        x_only: &XOnlyPublicKey,
+    ) -> Transaction {
+        let mut witness = Witness::new();
+
+        for sig in &psbt.inputs[0].tap_script_sigs {
+            let shnor = sig.1;
+            witness.push(shnor.to_vec());
+        }
+        witness.push(get_preimage());
+         let bob_script = bob_scripts(x_only);
+        witness.push(bob_script.as_bytes());
+        for control in &psbt.inputs[0].tap_scripts {
+            // let control_hash = control.0.merkle_branch.as_inner();
+            witness.push(control.0.merkle_branch.serialize());
+        }
+       
+        let mut tx = psbt.extract_tx();
+        tx.input[0].witness = witness;
+        return tx;
     }
 }

@@ -64,7 +64,7 @@ pub fn sign_tapleaf<'a>(
                 input_index,
                 &Prevouts::All(&prev),
                 tap_leaf_hash,
-                SchnorrSighashType::Default,
+                SchnorrSighashType::AllPlusAnyoneCanPay,
             )
             .unwrap();
         let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
