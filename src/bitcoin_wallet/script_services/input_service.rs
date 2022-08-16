@@ -25,7 +25,7 @@ pub fn insert_control_block<'a>(
             spending_info.output_key().to_inner(),
             &script,
         );
-        print!("{}", verify);
+        print!("is this control block valid {}", verify);
         input
             .tap_scripts
             .insert(control.unwrap(), (script.clone(), LeafVersion::TapScript));

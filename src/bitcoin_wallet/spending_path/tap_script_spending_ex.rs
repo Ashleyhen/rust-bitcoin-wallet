@@ -149,7 +149,7 @@ impl<'a> TapScriptSendEx<'a> {
         witness.push(bob_script.as_bytes());
         for control in &psbt.inputs[0].tap_scripts {
             // let control_hash = control.0.merkle_branch.as_inner();
-            witness.push(control.0.merkle_branch.serialize());
+            witness.push(control.0.serialize());
         }
 
         let mut tx = psbt.extract_tx();

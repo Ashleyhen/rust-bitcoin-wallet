@@ -112,6 +112,10 @@ pub fn create_tx(total: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Trans
             output: tx_out_list(),
         };
     });
+
+    pub fn finalize(psbt:& PartiallySignedTransaction){
+
+    }
 }
 
 pub fn example_tx(_: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
