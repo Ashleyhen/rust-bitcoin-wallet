@@ -4,7 +4,7 @@ use bitcoin::{
     secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::ExtendedPrivKey,
-        sighash::{Prevouts, SighashCache},
+        sighash::{Prevouts, SighashCache, ScriptPath},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
     Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
@@ -29,6 +29,10 @@ pub fn insert_control_block<'a>(
         input
             .tap_scripts
             .insert(control.unwrap(), (script.clone(), LeafVersion::TapScript));
+        let witness = Address::p2tr_tweaked(spending_info.output_key(), NETWORK);
+
+        input.witness_script=Some(witness.script_pubkey());
+        input.tap_merkle_root = spending_info.merkle_root();
     });
 }
 
@@ -53,29 +57,31 @@ pub fn sign_tapleaf<'a>(
     previous_tx: Vec<TxOut>,
     input_index: usize,
     witness_script: Script,
-    leaf_script: Script,
+    bob_script: Script,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     let x_only = key_pair.public_key();
     return Box::new(move |input: &mut Input| {
         let prev = filter_for_wit(previous_tx, &witness_script);
-        let tap_leaf_hash = TapLeafHash::from_script(&leaf_script, LeafVersion::TapScript);
+        let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
+        ;
         let tap_sig_hash = SighashCache::new(&current_tx)
             .taproot_script_spend_signature_hash(
                 input_index,
                 &Prevouts::All(&prev),
-                tap_leaf_hash,
-                SchnorrSighashType::AllPlusAnyoneCanPay,
+                ScriptPath::with_defaults(&bob_script),
+                SchnorrSighashType::Default,
             )
             .unwrap();
         let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
         let sig = secp.sign_schnorr(
             &Message::from_slice(&tap_sig_hash).unwrap(),
-            &tweaked_pair.into_inner(),
+            &key_pair,
         );
         let schnorrsig = SchnorrSig {
             sig,
             hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
         };
+
         input
             .tap_script_sigs
             .insert((x_only, tap_leaf_hash), schnorrsig);
@@ -89,8 +95,8 @@ pub fn sign_key_sig<'a>(
     input_index: usize,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     return Box::new(move |input: &mut Input| {
-        let witness_script =
-            Address::p2tr(secp, key_pair.public_key(), None, NETWORK).script_pubkey();
+        let witness_script =input.clone().witness_script.unwrap();
+          
         let prev = filter_for_wit(previous_tx, &witness_script);
         let tap_sig = SighashCache::new(&current_tx)
             .taproot_key_spend_signature_hash(
@@ -99,7 +105,7 @@ pub fn sign_key_sig<'a>(
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
             .unwrap();
-        let tweaked_pair = key_pair.tap_tweak(&secp, None);
+        let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
 
         let sig = secp.sign_schnorr(
             &Message::from_slice(&tap_sig).unwrap(),
