@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::vec;
 use std::{ops::Add, str::FromStr};
 
 use bincode::config::LittleEndian;
@@ -6,6 +7,7 @@ use bitcoin::bech32::FromBase32;
 use bitcoin::hashes::hex;
 use bitcoin::psbt::{Input, Output, PartiallySignedTransaction, TapTree};
 use bitcoin::secp256k1::{Message, Parity, Signature};
+use bitcoin::util::sighash::ScriptPath;
 use bitcoin::util::taproot::LeafVersion::TapScript;
 use bitcoin::util::taproot::{ControlBlock, LeafVersion};
 use bitcoin::{
@@ -25,31 +27,32 @@ use bitcoin::{
     Address, KeyPair, OutPoint, PrivateKey, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
     Txid, Witness,
 };
-use bitcoin::{Network, SchnorrSig, XOnlyPublicKey};
+use bitcoin::{AddressType, Network, SchnorrSig, XOnlyPublicKey};
 use bitcoin_hashes::hex::ToHex;
+use electrum_client::{Client, ElectrumApi};
 use miniscript::psbt::{PsbtExt, PsbtInputSatisfier};
 use miniscript::ToPublicKey;
 
-pub fn Test() {
-    use bitcoin_hashes::Hash;
-    let secp = Secp256k1::new();
-    let alice_private =
+
+pub fn Test(){
+ let secp = Secp256k1::new();
+    let alice_secret =
         SecretKey::from_str("2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90")
             .unwrap();
-    let bob_private =
+    let bob_secret =
         SecretKey::from_str("81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9")
             .unwrap();
-    let internal_private =
+    let internal_secret =
         SecretKey::from_str("1229101a0fcf2104e8808dab35661134aa5903867d44deb73ce1c7e4eb925be8")
             .unwrap();
 
-    let alice = KeyPair::from_secret_key(&secp, alice_private);
-    let bob = KeyPair::from_secret_key(&secp, bob_private);
-    let internal = KeyPair::from_secret_key(&secp, internal_private);
+    let alice = KeyPair::from_secret_key(&secp, alice_secret);
+    let bob = KeyPair::from_secret_key(&secp, bob_secret);
+    let internal = KeyPair::from_secret_key(&secp, internal_secret);
     let preimage =
         Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f").unwrap();
-    //    16e1ae70ff0fa102905d4af297f6912bda6cce19
-    let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&preimage);
+
+    let preimage_hash = bitcoin::hashes::sha256::Hash::hash(&preimage);
 
     println!("alice public key {}", alice.public_key());
     println!("bob public key {}", bob.public_key());
@@ -62,8 +65,6 @@ pub fn Test() {
     )
     .unwrap();
 
-    dbg!(alice_script.clone());
-
     let bob_script = Builder::new()
         .push_opcode(all::OP_SHA256)
         .push_slice(&preimage_hash)
@@ -72,166 +73,134 @@ pub fn Test() {
         .push_opcode(all::OP_CHECKSIG)
         .into_script();
 
-    let alice_leaf = TapLeafHash::from_script(&alice_script, TapScript);
-    let bob_leaf = TapLeafHash::from_script(&bob_script, TapScript);
-
-    let alice_branch = TapBranchHash::from_inner(alice_leaf.into_inner());
-    let bob_branch = TapBranchHash::from_inner(bob_leaf.into_inner());
-
-    let branch = TapBranchHash::from_node_hashes(
-        sha256::Hash::from_inner(alice_branch.into_inner()),
-        sha256::Hash::from_inner(bob_branch.into_inner()),
-    );
-
     let builder =
         TaprootBuilder::with_huffman_tree(vec![(1, bob_script.clone()), (1, alice_script.clone())])
             .unwrap();
 
     let tap_tree = TapTree::from_builder(builder).unwrap();
+
     let tap_info = tap_tree
         .into_builder()
         .finalize(&secp, internal.public_key())
         .unwrap();
 
-    let tweak_key_pair = internal.tap_tweak(&secp, Some(branch)).into_inner();
-    dbg!(tweak_key_pair.public_key());
-    dbg!(tap_info.output_key());
+    let merkle_root = tap_info.merkle_root();
+    let tweak_key_pair = internal.tap_tweak(&secp, merkle_root).into_inner();
+
     let address = Address::p2tr(
         &secp,
-        internal.public_key(),
-        Some(branch),
-        bitcoin::Network::Regtest,
+        tap_info.internal_key(),
+        tap_info.merkle_root(),
+        bitcoin::Network::Testnet,
     );
 
-    let tx = unsigned_tx();
+let client = Client::new("ssl://electrum.blockstream.info:60002").unwrap();
+    let vec_tx_in = client
+        .script_list_unspent(&address.script_pubkey())
+        .unwrap()
+        .iter()
+        .map(|l| {
+            return TxIn {
+                previous_output: OutPoint::new(l.tx_hash, l.tx_pos.try_into().unwrap()),
+                script_sig: Script::new(),
+                sequence: 0xFFFFFFFF,
+                witness: Witness::default(),
+            };
+        })
+        .collect::<Vec<TxIn>>();
+
+    let prev_tx = vec_tx_in
+        .iter()
+        .map(|tx_id| client.transaction_get(&tx_id.previous_output.txid).unwrap())
+        .collect::<Vec<Transaction>>();
+
+    let mut tx=Transaction {
+        version: 2,
+        lock_time: 0,
+        input: vec![TxIn {
+            previous_output: vec_tx_in[0].previous_output.clone(),
+            script_sig: Script::new(),
+            sequence: 0xFFFFFFFF,
+            witness: Witness::default(),
+        }],
+
+        output: vec![TxOut {
+            value: 700,
+            script_pubkey: Address::from_str(
+                "tb1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gskndd0z",
+            )
+            .unwrap()
+            .script_pubkey(),
+        }],
+    };
+
+    let prevouts = Prevouts::One(0, prev_tx[0].output[0].clone());
+
 
     let sighash_sig = SighashCache::new(&mut tx.clone())
         .taproot_script_spend_signature_hash(
             0,
-            &Prevouts::All(&vec![tx_input().output[0].clone()]),
-            bob_leaf,
-            SchnorrSighashType::Default,
+            &prevouts,
+            ScriptPath::with_defaults(&bob_script),
+            SchnorrSighashType::AllPlusAnyoneCanPay,
         )
         .unwrap();
-    let prev_outs = vec![tx_input().output[0].clone()];
+
     let key_sig = SighashCache::new(&mut tx.clone())
         .taproot_key_spend_signature_hash(
             0,
-            &Prevouts::All(&prev_outs),
-            SchnorrSighashType::Default,
+            &prevouts,
+            SchnorrSighashType::AllPlusAnyoneCanPay,
         )
         .unwrap();
 
-    dbg!(tx.clone());
     println!("key signing sighash {} ", key_sig);
 
-    // 671166d40816a904febe606f01db52ff28347cf2f15b06cad86e8e0d073024bf
-    println!(" script sighash {} ", sighash_sig);
+    println!("script sighash {} ", sighash_sig);
 
-    let sig = secp.sign_schnorr(
-        &Message::from_slice(&sighash_sig).unwrap(),
-        &bob.tap_tweak(&secp, Some(branch)).into_inner(),
-    );
+    let sig = secp.sign_schnorr(&Message::from_slice(&sighash_sig).unwrap(), &bob);
 
-    let actual_control = ControlBlock {
-        leaf_version: LeafVersion::TapScript,
-        output_key_parity: Parity::Odd,
-        internal_key: internal.public_key(),
-        merkle_branch: TaprootMerkleBranch::from_slice(&alice_leaf).unwrap(),
-    };
+    let actual_control = tap_info
+        .control_block(&(bob_script.clone(), LeafVersion::TapScript))
+        .unwrap();
 
     let res =
         actual_control.verify_taproot_commitment(&secp, tweak_key_pair.public_key(), &bob_script);
 
-    dbg!(res);
+    println!("is taproot committed? {} ", res);
 
-    let mut input = Input::default();
-    // input.tap_scripts
+    println!("control block {} ", actual_control.serialize().to_hex());
+
+
     let mut b_tree_map = BTreeMap::<ControlBlock, (Script, LeafVersion)>::default();
     b_tree_map.insert(
         actual_control.clone(),
         (bob_script.clone(), LeafVersion::TapScript),
     );
 
-    input.tap_scripts = b_tree_map;
-    input.tap_internal_key = Some(internal.public_key());
-
-    input.witness_utxo = Some(tx_input().output[0].clone());
-    input.tap_merkle_root = Some(branch);
-
-    let pst = PartiallySignedTransaction {
-        unsigned_tx: unsigned_tx(),
-        version: 2,
-        xpub: BTreeMap::default(),
-        proprietary: BTreeMap::default(),
-        unknown: BTreeMap::default(),
-        inputs: vec![input],
-        outputs: vec![],
-    };
-    // dbg!(unsigned_tx());
     let schnorr_sig = SchnorrSig {
         sig,
         hash_ty: SchnorrSighashType::Default,
     };
-    // sig
-    println!("witness {}", sig);
-    println!("Input preimage {}", preimage.to_hex());
-    println!("script {}", bob_script.to_hex());
-    println!("control block {:#?}", actual_control.serialize().to_hex());
+
     let wit = Witness::from_vec(vec![
         schnorr_sig.to_vec(),
-        preimage,
+        preimage.clone(),
         bob_script.to_bytes(),
         actual_control.serialize(),
     ]);
-    dbg!(wit);
-}
-pub fn input_tx() -> Transaction {
-    return Transaction {
-        version: 2,
-        lock_time: 0,
-        input: vec![
-			TxIn {
-				previous_output: OutPoint {
-					txid: Txid::from_str(
-						"ec409014a3b1e7171cf498726bc7bc8bd249a04b65f30c7b8cb5c3079cf8f271",
-					)
-					.unwrap(),
-					vout: 0,
-				},
-				script_sig: Script::new(),
-				sequence: 4294967294,
-				witness:Witness::from_vec(
-					vec![
-						Vec::from_hex("3044022017de23798d7a01946744421fbb79a48556da809a9ffdb729f6e5983051480991022052460a5082749422804ad2a25e6f8335d5cf31f69799cece4a1ccc0256d5010701").unwrap(),
-						Vec::from_hex("0257e0052b0ec6736ee13392940b7932571ce91659f71e899210b8daaf6f170275").unwrap()
-					]),
-				}],
 
-        output: vec![
-            TxOut {
-                value: 100000,
-                script_pubkey: Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c")
-                .unwrap()
-                .script_pubkey(),
-            },
-            TxOut {
-                value: 99899847,
-                script_pubkey: Address::from_str("bcrt1q00uyu7xgrw0767j8hyj3m9d384ht4s2p3058pr")
-                    .unwrap()
-                    .script_pubkey(),
-            },
-        ],
-    };
-}
-pub fn unsigned_tx() -> Transaction {
-    return Transaction::deserialize(&Vec::from_hex("020000000171f2f89c07c3b58c7b0cf3654ba049d28bbcc76b7298f41c17e7b1a3149040ec0000000000ffffffff01905f010000000000160014ceb2d28afdcad1ae0fc2cf81cb929ba29e83468200000000").unwrap()).unwrap();
-}
+    tx.input[0].witness=wit;
 
-pub fn tx_input() -> Transaction {
-    return Transaction::deserialize(&Vec::from_hex("020000000001010aa633878f200c80fc8ec88f13f746e5870be7373ad5d78d22e14a402d6c6fc20000000000feffffff02a086010000000000225120a5ba0871796eb49fb4caa6bf78e675b9455e2d66e751676420f8381d5dda8951c759f405000000001600147bf84e78c81b9fed7a47b9251d95b13d6ebac14102473044022017de23798d7a01946744421fbb79a48556da809a9ffdb729f6e5983051480991022052460a5082749422804ad2a25e6f8335d5cf31f69799cece4a1ccc0256d5010701210257e0052b0ec6736ee13392940b7932571ce91659f71e899210b8daaf6f17027500000000").unwrap()).unwrap();
-}
+    println!("Address: {} ",address.to_string());
 
-pub fn finalized() -> Transaction {
-    return Transaction::deserialize(&Vec::from_hex("0200000000010171f2f89c07c3b58c7b0cf3654ba049d28bbcc76b7298f41c17e7b1a3149040ec0000000000ffffffff01905f010000000000160014ceb2d28afdcad1ae0fc2cf81cb929ba29e834682044054d5ee309be92f531d62449d8ef82b216f1e5b6229aaef918a78c26ce6dd66d57c523202b4650302667723f63dd5a87b2370ada51e08de0eccb27a80450ff9bf20107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f45a8206c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd533388204edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10ac41c1f30544d6009c8d8d94f5d030b2e844b1a3ca036255161c479db1cca5b374dd1cc81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c900000000").unwrap()).unwrap();
+    // this part fails fix me plz !!!
+     let tx_id=client.transaction_broadcast(&tx).unwrap();
+     println!("transaction hash: {}",tx_id.to_string());
+
+    // sig
+    println!("signature {:#?}", sig.to_hex());
+    println!("Input preimage {}", preimage.to_hex());
+    println!("script {}", bob_script.to_hex());
+    println!("control block {:#?}", actual_control.serialize().to_hex());
 }
