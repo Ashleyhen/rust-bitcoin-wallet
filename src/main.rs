@@ -37,9 +37,9 @@ pub mod bitcoin_wallet;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // key_tx();
-    script_tx();
+    // script_tx();
 
-    // Test();
+     Test();
 }
 
 pub fn key_tx() {

@@ -19,7 +19,6 @@ use crate::{
             psbt_factory::{LockFn, UnlockFn},
         },
     },
-    wallet_test::tapscript_example_with_tap::unsigned_tx,
 };
 
 pub struct TapScriptSendEx<'a> {
@@ -110,11 +109,7 @@ impl<'a> TapScriptSendEx<'a> {
         );
     }
 
-    pub fn example_tx(_: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-        return Box::new(move |_: Vec<Output>, _: Vec<TxIn>, _: u64| {
-            return unsigned_tx();
-        });
-    }
+ 
     pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
         return Box::new(move |output_list, tx_in, total| {
             let addr =

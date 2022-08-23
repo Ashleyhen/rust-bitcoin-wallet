@@ -17,7 +17,6 @@ use bitcoin::{
     Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, WitnessMerkleNode,
     XOnlyPublicKey,
 };
-use bitcoin_hashes::Hash;
 use miniscript::ToPublicKey;
 
 pub mod input_service;

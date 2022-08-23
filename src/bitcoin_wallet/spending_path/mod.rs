@@ -6,7 +6,6 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use crate::wallet_test::tapscript_example_with_tap::unsigned_tx;
 
 use super::{address_formats::AddressSchema, constants::TIP};
 

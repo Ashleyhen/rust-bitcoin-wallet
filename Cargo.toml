@@ -7,14 +7,14 @@ edition = "2021"
 
 [dependencies]
 
-lightning = { version = "0.0.109", features = ["max_level_trace"] }
-lightning-persister = { version = "0.0.109" }
+# lightning = { version = "0.0.109", features = ["max_level_trace"] }
+# lightning-persister = { version = "0.0.109" }
 # bdk={version="0.18.0"}
 miniscript={version="7.0.0"}
 # lightning = "0.0.105"
-bitcoin={version="^0.28.0",features=["rand","std"]}
+bitcoin={ version = "0.28.1", features=["rand","std"]}
 
-bdk={version="0.20.0"}
+bdk={version="0.21.0"}
 # bitcoin={git="https://github.com/rust-bitcoin/rust-bitcoin.git",features=["rand"] }
 
 # [dependencies.electrum-client]
