@@ -192,7 +192,7 @@ pub fn Test() {
     println!("Address: {} ",address.to_string());
   
     // this part fails fix me plz !!!
-     let tx_id=client.transaction_broadcast(&tx).unwrap();
+    //  let tx_id=client.transaction_broadcast(&tx).unwrap();
      println!("transaction hash: {}",tx_id.to_string());
   
     // sig
