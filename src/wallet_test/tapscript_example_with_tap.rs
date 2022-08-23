@@ -193,7 +193,7 @@ pub fn Test() {
   
     // this part fails fix me plz !!!
     //  let tx_id=client.transaction_broadcast(&tx).unwrap();
-     println!("transaction hash: {}",tx_id.to_string());
+    //  println!("transaction hash: {}",tx_id.to_string());
   
     // sig
     println!("signature {:#?}", sig.to_hex());
