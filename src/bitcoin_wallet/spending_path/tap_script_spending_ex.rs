@@ -1,23 +1,21 @@
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::{Output, PartiallySignedTransaction, TapTree},
+    psbt::{Output, PartiallySignedTransaction},
     secp256k1::{All, Secp256k1},
     util::taproot::TaprootBuilder,
     Address, KeyPair, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
 };
 use bitcoin_hashes::Hash;
 
-use crate::{
-    bitcoin_wallet::{
-        constants::{NETWORK, TIP},
-        script_services::{
-            input_service::{insert_control_block, sign_tapleaf},
-            output_service::{
-                insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
-            },
-            psbt_factory::{LockFn, UnlockFn},
+use crate::bitcoin_wallet::{
+    constants::{NETWORK, TIP},
+    script_services::{
+        input_service::{insert_control_block, sign_tapleaf},
+        output_service::{
+            insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
         },
+        psbt_factory::{LockFn, UnlockFn},
     },
 };
 
@@ -109,7 +107,6 @@ impl<'a> TapScriptSendEx<'a> {
         );
     }
 
- 
     pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
         return Box::new(move |output_list, tx_in, total| {
             let addr =

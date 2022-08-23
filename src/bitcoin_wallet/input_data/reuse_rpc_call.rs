@@ -1,5 +1,3 @@
-use core::fmt;
-
 use bitcoin::{psbt::PartiallySignedTransaction, Script, Transaction, TxIn};
 use electrum_client::{Error, GetBalanceRes};
 

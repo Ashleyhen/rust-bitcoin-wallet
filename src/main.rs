@@ -17,7 +17,7 @@ use bitcoin_wallet::{
     constants::NETWORK,
     input_data::{electrum_rpc::ElectrumRpc, tapscript_ex_input::TapscriptExInput, RpcCall},
     script_services::psbt_factory::create_partially_signed_tx,
-    spending_path::{p2tr_key_path::P2TR_K, tap_script_spending_ex::TapScriptSendEx},
+    spending_path::tap_script_spending_ex::TapScriptSendEx,
 };
 
 use either::Either;
@@ -25,9 +25,8 @@ use miniscript::{psbt::PsbtExt, ToPublicKey};
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::bitcoin_wallet::{
-    address_formats::{p2tr_addr_fmt::P2TR, AddressSchema},
     input_data::{reuse_rpc_call::ReUseCall, tapscript_ex_input::get_signed_tx},
-    wallet_methods::{BroadcastOp, ClientWithSchema},
+    spending_path::p2tr_key_path::P2tr,
 };
 
 pub mod wallet_test;
@@ -39,7 +38,7 @@ fn main() {
     // key_tx();
     // script_tx();
 
-     Test();
+    Test();
 }
 
 pub fn key_tx() {
@@ -71,7 +70,7 @@ pub fn key_tx() {
         .collect::<Vec<Address>>();
     let my_add = addresses[3].script_pubkey();
     let electrum = ElectrumRpc::new(&my_add);
-    let tr = P2TR_K::new(&secp);
+    let tr = P2tr::new(&secp);
     let send_addr = "tb1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gskndd0z".to_string();
     let output_func = tr.output_factory(
         Address::from_str(&send_addr).unwrap().script_pubkey(),
@@ -79,7 +78,7 @@ pub fn key_tx() {
     );
     let unlock_func = tr.input_factory(&key_pair[3]);
     let psbt =
-        create_partially_signed_tx(output_func, P2TR_K::create_tx(10000), unlock_func)(&electrum);
+        create_partially_signed_tx(output_func, P2tr::create_tx(10000), unlock_func)(&electrum);
     let finalize = psbt.finalize(&secp).unwrap().extract_tx();
     // dbg!(Address::from_script(&finalize.output[1].script_pubkey, NETWORK).unwrap().to_string());
     // dbg!(Address::from_script(&finalize.output[0].script_pubkey, NETWORK).unwrap().to_string());
@@ -105,7 +104,7 @@ pub fn script_tx() {
         .collect::<Vec<KeyPair>>();
 
     let tap_script = TapScriptSendEx::new(&secp);
-    let tap_key = P2TR_K::new(&secp);
+    let tap_key = P2tr::new(&secp);
 
     let addr_generator =
         map_seeds_to_scripts(Some(seed.to_string()), &secp, 341, map_tr_address(None));
@@ -126,7 +125,7 @@ pub fn script_tx() {
     let psbt =
         create_partially_signed_tx(vec![vec![output_func]], lock_func, unlock_func)(&electrum);
     let tx = TapScriptSendEx::finialize_script(psbt, &keys[bob_secret].public_key());
-    let tx_id=electrum.transaction_broadcast(tx);
+    let tx_id = electrum.transaction_broadcast(tx);
     dbg!(tx_id);
     //
 }

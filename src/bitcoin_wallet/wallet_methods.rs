@@ -12,7 +12,6 @@ use super::{
     address_formats::AddressSchema,
     constants::{Seed, NETWORK},
     input_data::RpcCall,
-    spending_path::Vault,
 };
 
 #[derive(Clone)]

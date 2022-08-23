@@ -1,33 +1,25 @@
-use std::{str::FromStr, sync::Arc};
-
 use bitcoin::{
-    psbt::{Input, Output},
-    schnorr::TapTweak,
-    secp256k1::{All, Message, Secp256k1},
-    util::{
-        bip32::ExtendedPrivKey,
-        sighash::{Prevouts, SighashCache},
-    },
-    Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
-    XOnlyPublicKey,
+    psbt::Output,
+    secp256k1::{All, Secp256k1},
+    Address, KeyPair, Script, Transaction, TxIn, TxOut,
 };
 
 use crate::bitcoin_wallet::{
     constants::{NETWORK, TIP},
     script_services::{
         input_service::{insert_witness_tx, sign_key_sig},
-        output_service::{insert_tree_witness, new_tap_internal_key, new_witness_pub_k},
+        output_service::new_witness_pub_k,
         psbt_factory::{LockFn, UnlockFn},
     },
 };
 
-pub struct P2TR_K {
-    secp: Secp256k1<All>,
+pub struct P2tr {
+    pub secp: Secp256k1<All>,
 }
 
-impl P2TR_K {
+impl P2tr {
     pub fn new(secp: &Secp256k1<All>) -> Self {
-        return P2TR_K { secp: secp.clone() };
+        return P2tr { secp: secp.clone() };
     }
     pub fn create_tx(amount: u64) -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
         return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {

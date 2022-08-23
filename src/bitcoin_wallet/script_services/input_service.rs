@@ -1,15 +1,17 @@
 use bitcoin::{
+    blockdata::{opcodes, script::Builder},
     psbt::{Input, Output, TapTree},
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::ExtendedPrivKey,
-        sighash::{Prevouts, SighashCache, ScriptPath},
+        sighash::{Prevouts, ScriptPath, SighashCache},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
-    Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
-    XOnlyPublicKey,
+    Address, EcdsaSig, KeyPair, PublicKey, SchnorrSig, SchnorrSighashType, Script, Transaction,
+    TxIn, TxOut, XOnlyPublicKey,
 };
+use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::constants::NETWORK;
 
@@ -31,7 +33,7 @@ pub fn insert_control_block<'a>(
             .insert(control.unwrap(), (script.clone(), LeafVersion::TapScript));
         let witness = Address::p2tr_tweaked(spending_info.output_key(), NETWORK);
 
-        input.witness_script=Some(witness.script_pubkey());
+        input.witness_script = Some(witness.script_pubkey());
         input.tap_merkle_root = spending_info.merkle_root();
     });
 }
@@ -63,7 +65,6 @@ pub fn sign_tapleaf<'a>(
     return Box::new(move |input: &mut Input| {
         let prev = filter_for_wit(previous_tx, &witness_script);
         let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
-        ;
         let tap_sig_hash = SighashCache::new(&current_tx)
             .taproot_script_spend_signature_hash(
                 input_index,
@@ -73,10 +74,7 @@ pub fn sign_tapleaf<'a>(
             )
             .unwrap();
         let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
-        let sig = secp.sign_schnorr(
-            &Message::from_slice(&tap_sig_hash).unwrap(),
-            &key_pair,
-        );
+        let sig = secp.sign_schnorr(&Message::from_slice(&tap_sig_hash).unwrap(), &key_pair);
         let schnorrsig = SchnorrSig {
             sig,
             hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
@@ -95,8 +93,8 @@ pub fn sign_key_sig<'a>(
     input_index: usize,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     return Box::new(move |input: &mut Input| {
-        let witness_script =input.clone().witness_script.unwrap();
-          
+        let witness_script = input.clone().witness_script.unwrap();
+
         let prev = filter_for_wit(previous_tx, &witness_script);
         let tap_sig = SighashCache::new(&current_tx)
             .taproot_key_spend_signature_hash(
@@ -117,4 +115,43 @@ pub fn sign_key_sig<'a>(
         };
         input.tap_key_sig = Some(schnorrsig);
     });
+}
+
+pub fn sign_segwit_v0<'a>(
+    secp: &'a Secp256k1<All>,
+    current_tx: Transaction,
+    tx_out: TxOut,
+    input_index: usize,
+    script_code: Script,
+    extended_priv_k: ExtendedPrivKey,
+) -> Box<impl FnOnce(&mut Input) + 'a> {
+    Box::new(move |input: &mut Input| {
+        let public_key = extended_priv_k
+            .to_keypair(&secp)
+            .public_key()
+            .to_public_key();
+        let sig_hash = SighashCache::new(&mut current_tx.clone())
+            .segwit_signature_hash(
+                input_index,
+                &script_code,
+                tx_out.value,
+                bitcoin::EcdsaSighashType::All,
+            )
+            .unwrap();
+
+        let msg = Message::from_slice(&sig_hash).unwrap();
+        let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg, &extended_priv_k.private_key));
+
+        input.partial_sigs.insert(public_key, sig);
+    })
+}
+
+pub fn p2wpkh_script_code(script: &Script) -> Script {
+    Builder::new()
+        .push_opcode(opcodes::all::OP_DUP)
+        .push_opcode(opcodes::all::OP_HASH160)
+        .push_slice(&script[2..])
+        .push_opcode(opcodes::all::OP_EQUALVERIFY)
+        .push_opcode(opcodes::all::OP_CHECKSIG)
+        .into_script()
 }

@@ -3,8 +3,6 @@ use std::sync::Arc;
 use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
 use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
 
-use crate::bitcoin_wallet::{address_formats::AddressSchema, wallet_methods::BroadcastOp};
-
 use super::RpcCall;
 
 pub struct ElectrumRpc<'a> {
@@ -22,9 +20,6 @@ impl<'a> ElectrumRpc<'a> {
 
     pub fn transaction_broadcast(&self, tx: Transaction) -> Txid {
         return self.client.transaction_broadcast(&tx).unwrap();
-        // return BroadcastOp::Broadcast(Box::new(|tx: Transaction| {
-        //     self.client.transaction_broadcast(&tx).unwrap().clone()
-        // }));
     }
 }
 
@@ -64,6 +59,7 @@ impl<'a> RpcCall for ElectrumRpc<'a> {
         return self.client.script_get_balance(&self.script_pub_k);
     }
 }
+
 pub fn get_client() -> Client {
     return Client::new("ssl://electrum.blockstream.info:60002").unwrap();
 }

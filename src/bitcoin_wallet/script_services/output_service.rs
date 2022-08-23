@@ -13,13 +13,13 @@ use bitcoin::{
 
 use miniscript::ToPublicKey;
 
-use crate::bitcoin_wallet::address_formats::p2tr_addr_fmt::P2TR;
+use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
 
 pub trait ILock {
     fn create_tx(&self) -> dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction;
 }
 
-pub struct OutputService(pub P2TR);
+pub struct OutputService(pub P2tr);
 
 pub fn insert_tap_key_origin<'a>(
     scripts: Vec<(u32, Script)>,
