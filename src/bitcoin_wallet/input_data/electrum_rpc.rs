@@ -5,29 +5,21 @@ use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
 
 use super::RpcCall;
 
-pub struct ElectrumRpc<'a> {
-    pub client: Client,
-    pub script_pub_k: &'a Script,
+pub struct ElectrumRpc{
+    amount: Arc<GetBalanceRes>,
+    tx_in:Vec<TxIn>,
+    previous_tx:Vec<Transaction>
 }
 
-impl<'a> ElectrumRpc<'a> {
-    pub fn new(script_pub_k: &'a Script) -> Self {
-        return ElectrumRpc {
-            client: get_client(),
-            script_pub_k,
-        };
-    }
 
-    pub fn transaction_broadcast(&self, tx: Transaction) -> Txid {
-        return self.client.transaction_broadcast(&tx).unwrap();
-    }
-}
+impl ElectrumRpc {
+    pub fn  new(script_pub_k: & Script) -> Self {
 
-impl<'a> RpcCall for ElectrumRpc<'a> {
-    fn contract_source(&self) -> (Vec<TxIn>, Vec<Transaction>) {
+        let client =get_client();
+        
         let history = Arc::new(
-            self.client
-                .script_list_unspent(&self.script_pub_k)
+            client
+                .script_list_unspent(&script_pub_k)
                 .expect("address history call failed"),
         );
 
@@ -47,16 +39,37 @@ impl<'a> RpcCall for ElectrumRpc<'a> {
         let previous_tx = tx_in
             .iter()
             .map(|tx_id| {
-                self.client
+            client
                     .transaction_get(&tx_id.previous_output.txid)
                     .unwrap()
             })
             .collect::<Vec<Transaction>>();
-        return (tx_in, previous_tx);
+let amount =client.script_get_balance(&script_pub_k.clone()).unwrap();
+ return ElectrumRpc {
+            amount: Arc::new(amount),
+            tx_in,
+            previous_tx,
+
+        };
     }
 
-    fn script_get_balance(&self) -> Result<GetBalanceRes, Error> {
-        return self.client.script_get_balance(&self.script_pub_k);
+    pub fn transaction_broadcast(&self, tx: Transaction) -> Txid {
+        return get_client().transaction_broadcast(&tx).unwrap();
+    }
+
+}
+
+impl RpcCall for ElectrumRpc {
+    fn contract_source(&self) ->  Vec<Transaction> {
+        return self.previous_tx.clone();
+    }
+
+    fn script_get_balance(&self) -> Arc<GetBalanceRes> {
+        return self.amount.clone();
+    }
+
+    fn prev_input(&self)->Vec<TxIn> {
+        return self.tx_in.clone();
     }
 }
 

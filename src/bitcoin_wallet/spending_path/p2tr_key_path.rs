@@ -49,9 +49,11 @@ impl P2tr {
             vec![new_witness_pub_k(send)],
         ];
     }
+
     pub fn single_output<'a>(&'a self, send: Script) -> LockFn<'a> {
         return new_witness_pub_k(send);
     }
+
     pub fn input_factory<'a>(
         &'a self,
         keypair: &'a KeyPair,
