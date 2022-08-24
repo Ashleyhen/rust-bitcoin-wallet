@@ -15,7 +15,7 @@ use crate::bitcoin_wallet::{
         output_service::{
             insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
         },
-        psbt_factory::{LockFn, UnlockFn},
+        psbt_factory::{CreateTxFn, LockFn, UnlockFn},
     },
 };
 
@@ -107,7 +107,7 @@ impl<'a> TapScriptSendEx<'a> {
         );
     }
 
-    pub fn create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
+    pub fn create_tx() -> CreateTxFn<'a> {
         return Box::new(move |output_list, tx_in, total| {
             let addr =
                 Address::from_script(&output_list[0].clone().witness_script.unwrap(), NETWORK)
@@ -124,6 +124,13 @@ impl<'a> TapScriptSendEx<'a> {
                 output: tx_out,
             };
         });
+    }
+
+    pub fn get_script_addresses(output_list: Vec<Output>) -> Vec<Address> {
+        return output_list
+            .iter()
+            .map(|f| Address::from_script(&f.witness_script.as_ref().unwrap(), NETWORK).unwrap())
+            .collect::<Vec<Address>>();
     }
 
     pub fn finialize_script(

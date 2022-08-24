@@ -11,7 +11,7 @@ pub struct ReUseCall {
 
 impl RpcCall for ReUseCall {
     fn contract_source(&self) -> Vec<Transaction> {
-        return  vec![self.psbt.clone().extract_tx().clone()];
+        return vec![self.psbt.clone().extract_tx().clone()];
     }
 
     fn script_get_balance(&self) -> Arc<GetBalanceRes> {
@@ -30,7 +30,7 @@ impl RpcCall for ReUseCall {
         });
     }
 
-    fn prev_input(&self)->Vec<TxIn> {
+    fn prev_input(&self) -> Vec<TxIn> {
         return self.psbt.clone().extract_tx().clone().input;
     }
 }

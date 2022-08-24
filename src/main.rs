@@ -20,6 +20,7 @@ use bitcoin_wallet::{
     spending_path::tap_script_spending_ex::TapScriptSendEx,
 };
 
+use configuration::script_demo;
 use either::Either;
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
@@ -31,13 +32,14 @@ use crate::bitcoin_wallet::{
 
 pub mod wallet_test;
 
+pub mod configuration;
 pub mod bitcoin_wallet;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // key_tx();
     // script_tx();
-script_tx();
+    script_demo();
     // Test();
 }
 
@@ -85,7 +87,7 @@ pub fn key_tx() {
     dbg!(finalize.clone());
     let tx = finalize.clone();
 }
-
+/*
 pub fn script_tx() {
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
     let alice_secret = 0;
@@ -111,30 +113,38 @@ pub fn script_tx() {
     let addr_list = (0..5)
         .map(|i| addr_generator(0, i))
         .collect::<Vec<Address>>();
+
     let my_add = Address::from_str(
-        &"tb1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gskndd0z".to_string(),
+        &"tb1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4q7lnavj".to_string(),
     )
     .unwrap()
     .script_pubkey();
     
-    // let output_func = ||vec![vec![tap_key.single_output(addr_list[3].script_pubkey())]];
-let output_func = vec![tap_script.output_factory(keys[0].public_key(), keys[1].public_key(),keys[2].public_key())];
+    let output_factory = ||vec![vec![tap_key.single_output(my_add.clone())]];
+    let output_func = || {
+        vec![tap_script.output_factory(
+            keys[internal_secret].public_key(),
+            keys[alice_secret].public_key(),
+            keys[bob_secret].public_key(),
+        )]
+    };
+
+    TapScriptSendEx::get_script_addresses(get_output(output_func()))
+        .iter()
+        .for_each(|f| println!("target address {}", f.to_string()));
+
     let electrum = ElectrumRpc::new(&my_add);
+    dbg!(electrum.script_get_balance());
     let lock_func = TapScriptSendEx::create_tx();
     let unlock_func =
-    tap_script.input_factory(&keys[bob_secret], keys[internal_secret].public_key());
-// output_func.clone();
-// output_func.clone();
-
-    let addr =lock_func(get_output(output_func),vec![],10000);
-    for tx_out in addr.output {
-        dbg!(Address::from_script(&tx_out.script_pubkey, bitcoin::Network::Testnet).unwrap().to_string());
-    }
-
-    // let psbt = create_partially_signed_tx(output_func(), lock_func, unlock_func)(&electrum);
-    // let tx = TapScriptSendEx::finialize_script(psbt, &keys[bob_secret].public_key());
+        tap_script.input_factory(&keys[bob_secret], keys[internal_secret].public_key());
+    let psbt = create_partially_signed_tx(output_factory(), lock_func, unlock_func)(&electrum);
+    // dbg!(psbt);
+    let tx = TapScriptSendEx::finialize_script(psbt, &keys[bob_secret].public_key());
     // let tx_id = electrum.transaction_broadcast(tx);
     // dbg!(tx_id);
     //
 }
+
+ */
 // tb1paq75m2jlhjeywx75g3t08d8yplt5w9a0ecar3mdp5ay3laxva7vqng2jak

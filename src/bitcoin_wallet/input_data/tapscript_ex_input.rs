@@ -9,7 +9,7 @@ use super::RpcCall;
 pub struct TapscriptExInput();
 
 impl RpcCall for TapscriptExInput {
-    fn contract_source(&self) ->  Vec<Transaction> {
+    fn contract_source(&self) -> Vec<Transaction> {
         return (vec![get_tx()]);
     }
 
@@ -20,7 +20,7 @@ impl RpcCall for TapscriptExInput {
         });
     }
 
-    fn prev_input(&self)->Vec<TxIn> {
+    fn prev_input(&self) -> Vec<TxIn> {
         return get_tx().input;
     }
 }

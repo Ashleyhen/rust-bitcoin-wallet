@@ -9,7 +9,7 @@ pub mod tapscript_ex_input;
 // pub mod json_input;
 
 pub trait RpcCall {
-    fn contract_source(&self) ->  Vec<Transaction>;
-    fn prev_input(&self)->Vec<TxIn>;
+    fn contract_source(&self) -> Vec<Transaction>;
+    fn prev_input(&self) -> Vec<TxIn>;
     fn script_get_balance(&self) -> Arc<GetBalanceRes>;
 }

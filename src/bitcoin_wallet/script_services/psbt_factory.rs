@@ -11,20 +11,22 @@ pub type UnlockFn<'a> = Box<dyn FnOnce(&mut Input) + 'a>;
 
 pub type LockFn<'a> = Box<dyn FnMut(&mut Output) + 'a>;
 
+pub type CreateTxFn<'a> = Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction + 'a>;
+
 pub fn create_partially_signed_tx<'a, R>(
     output_vec_vec_func: Vec<Vec<LockFn>>,
-    lock_func: Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction>,
+    lock_func: CreateTxFn<'a>,
     unlock_func: Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>,
 ) -> Box<dyn Fn(&R) -> PartiallySignedTransaction + 'a>
 where
     R: RpcCall,
 {
-    let output_vec=get_output(output_vec_vec_func);
+    let output_vec = get_output(output_vec_vec_func);
 
     return Box::new(move |api_call| {
         let confirmed = api_call.script_get_balance().confirmed;
         let previous_tx = api_call.contract_source();
-        let tx_in=api_call.prev_input();
+        let tx_in = api_call.prev_input();
         let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
         let mut input_vec: Vec<Input> = Vec::<Input>::new();
         let mut input = Input::default();
@@ -45,15 +47,13 @@ where
     });
 }
 pub fn get_output<'a>(output_vec_vec_func: Vec<Vec<LockFn>>) -> Vec<Output> {
-        let mut output_vec: Vec<Output> = Vec::<Output>::new();
-        for func_list in output_vec_vec_func {
-            let mut output = Output::default();
-            for mut func in func_list {
-                func(&mut output);
-            }
-            output_vec.push(output);
+    let mut output_vec: Vec<Output> = Vec::<Output>::new();
+    for func_list in output_vec_vec_func {
+        let mut output = Output::default();
+        for mut func in func_list {
+            func(&mut output);
         }
-        return output_vec;
+        output_vec.push(output);
     }
-
-    
+    return output_vec;
+}

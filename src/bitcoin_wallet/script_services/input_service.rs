@@ -46,13 +46,30 @@ pub fn insert_witness_tx<'a>(tx_out: TxOut) -> Box<impl FnOnce(&mut Input) + 'a>
     });
 }
 
-fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
+pub fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
     return previous_tx
         .iter()
         .filter(|t| t.script_pubkey.eq(&witness))
         .map(|a| a.clone())
         .collect::<Vec<TxOut>>();
 }
+
+
+pub fn print_tx_out_addr(addr_list:Vec<(String,&Vec<TxOut>)>)->String{
+        let mut dbg_err=String::from("\n");
+        addr_list.iter().for_each(|(var_name,tx_list)|{
+            dbg_err.push_str(&var_name);
+            dbg_err.push_str(": \n");
+            tx_list.iter().map(|tx_out|Address::from_script(&tx_out.script_pubkey,NETWORK).unwrap().to_string()).for_each(|addr| { 
+                dbg!(addr.clone());
+                dbg_err.push_str(&addr);
+                dbg_err.push_str("\n");
+            });
+
+        });
+        dbg_err.push_str("\n");
+        return dbg_err.to_string();
+    }
 
 pub fn sign_tapleaf<'a>(
     secp: &'a Secp256k1<All>,
@@ -65,8 +82,11 @@ pub fn sign_tapleaf<'a>(
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     let x_only = key_pair.public_key();
     return Box::new(move |input: &mut Input| {
-        let prev = filter_for_wit(previous_tx, &witness_script);
+        let prev = filter_for_wit(previous_tx.clone(), &witness_script);
+        
+
         let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
+        
         let tap_sig_hash = SighashCache::new(&current_tx)
             .taproot_script_spend_signature_hash(
                 input_index,
@@ -74,7 +94,8 @@ pub fn sign_tapleaf<'a>(
                 ScriptPath::with_defaults(&bob_script),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
-            .unwrap();
+            .expect(&print_tx_out_addr(vec![("prevouts ".to_owned(),&previous_tx),("current tx ".to_string(),&current_tx.output)]));
+
         let sig = secp.sign_schnorr(&Message::from_slice(&tap_sig_hash).unwrap(), &key_pair);
         let schnorrsig = SchnorrSig {
             sig,
