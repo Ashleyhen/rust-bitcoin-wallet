@@ -1,8 +1,16 @@
 use std::str::FromStr;
 
-use bitcoin::{secp256k1::{Secp256k1, SecretKey}, KeyPair, Address};
+use bitcoin::{
+    secp256k1::{Secp256k1, SecretKey},
+    Address, KeyPair,
+};
 
-use crate::bitcoin_wallet::{spending_path::{tap_script_spending_ex::TapScriptSendEx, p2tr_key_path::P2tr}, address_formats::{map_seeds_to_scripts, map_tr_address}, script_services::psbt_factory::{get_output, create_partially_signed_tx}, input_data::{electrum_rpc::ElectrumRpc, RpcCall}};
+use crate::bitcoin_wallet::{
+    address_formats::{map_seeds_to_scripts, map_tr_address},
+    input_data::{electrum_rpc::ElectrumRpc, RpcCall},
+    script_services::psbt_factory::{create_partially_signed_tx, get_output},
+    spending_path::{p2tr_key_path::P2tr, tap_script_spending_ex::TapScriptSendEx},
+};
 
 pub fn script_demo() {
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
@@ -35,8 +43,8 @@ pub fn script_demo() {
     )
     .unwrap()
     .script_pubkey();
-    
-    let output_factory = ||vec![vec![tap_key.single_output(my_add.clone())]];
+
+    let output_factory = || vec![vec![tap_key.single_output(my_add.clone())]];
     let output_func = || {
         vec![tap_script.output_factory(
             keys[internal_secret].public_key(),

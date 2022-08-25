@@ -54,22 +54,27 @@ pub fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
         .collect::<Vec<TxOut>>();
 }
 
-
-pub fn print_tx_out_addr(addr_list:Vec<(String,&Vec<TxOut>)>)->String{
-        let mut dbg_err=String::from("\n");
-        addr_list.iter().for_each(|(var_name,tx_list)|{
-            dbg_err.push_str(&var_name);
-            dbg_err.push_str(": \n");
-            tx_list.iter().map(|tx_out|Address::from_script(&tx_out.script_pubkey,NETWORK).unwrap().to_string()).for_each(|addr| { 
+pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>) -> String {
+    let mut dbg_err = String::from("\n");
+    addr_list.iter().for_each(|(var_name, tx_list)| {
+        dbg_err.push_str(&var_name);
+        dbg_err.push_str(": \n");
+        tx_list
+            .iter()
+            .map(|tx_out| {
+                Address::from_script(&tx_out.script_pubkey, NETWORK)
+                    .unwrap()
+                    .to_string()
+            })
+            .for_each(|addr| {
                 dbg!(addr.clone());
                 dbg_err.push_str(&addr);
                 dbg_err.push_str("\n");
             });
-
-        });
-        dbg_err.push_str("\n");
-        return dbg_err.to_string();
-    }
+    });
+    dbg_err.push_str("\n");
+    return dbg_err.to_string();
+}
 
 pub fn sign_tapleaf<'a>(
     secp: &'a Secp256k1<All>,
@@ -83,10 +88,9 @@ pub fn sign_tapleaf<'a>(
     let x_only = key_pair.public_key();
     return Box::new(move |input: &mut Input| {
         let prev = filter_for_wit(previous_tx.clone(), &witness_script);
-        
 
         let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
-        
+
         let tap_sig_hash = SighashCache::new(&current_tx)
             .taproot_script_spend_signature_hash(
                 input_index,
@@ -94,7 +98,10 @@ pub fn sign_tapleaf<'a>(
                 ScriptPath::with_defaults(&bob_script),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
-            .expect(&print_tx_out_addr(vec![("prevouts ".to_owned(),&previous_tx),("current tx ".to_string(),&current_tx.output)]));
+            .expect(&print_tx_out_addr(vec![
+                ("prevouts ".to_owned(), &previous_tx),
+                ("current tx ".to_string(), &current_tx.output),
+            ]));
 
         let sig = secp.sign_schnorr(&Message::from_slice(&tap_sig_hash).unwrap(), &key_pair);
         let schnorrsig = SchnorrSig {

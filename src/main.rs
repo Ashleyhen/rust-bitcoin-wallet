@@ -1,4 +1,4 @@
-use std::{env, str::FromStr, sync::Arc, ops::Add};
+use std::{env, ops::Add, str::FromStr, sync::Arc};
 
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
@@ -20,34 +20,50 @@ use bitcoin_wallet::{
     spending_path::tap_script_spending_ex::TapScriptSendEx,
 };
 
-use bitcoincore_rpc::{Client, jsonrpc::Request, RpcApi};
+use bitcoincore_rpc::{jsonrpc::Request, Client, RpcApi};
 use configuration::script_demo;
 use either::Either;
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::bitcoin_wallet::{
-    input_data::{reuse_rpc_call::ReUseCall, tapscript_ex_input::get_signed_tx},
+    input_data::{
+        regtest_rpc::RegtestRpc, reuse_rpc_call::ReUseCall, tapscript_ex_input::get_signed_tx,
+    },
     spending_path::p2tr_key_path::P2tr,
 };
 
 pub mod wallet_test;
 
-pub mod configuration;
 pub mod bitcoin_wallet;
+pub mod configuration;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // key_tx();
     // script_tx();
     // script_demo();
-    let client=Client::new("http://127.0.0.1:18443", bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned())).unwrap();
-    
-    let adresses=Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c").unwrap();
-    let unspent=client.list_unspent(None, None, Some(&vec![&adresses]), None, None).unwrap();
+    let client = Client::new(
+        "http://127.0.0.1:18443",
+        bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),
+    )
+    .unwrap();
 
-    dbg!(unspent);
-    
+    let reg_test = RegtestRpc::new(&vec![
+        "bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c".to_owned(),
+    ]);
+
+    dbg!(reg_test.script_get_balance());
+
+    // let adresses =
+    //     Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c")
+    //         .unwrap();
+    // let unspent = client
+    //     .list_unspent(None, None, Some(&vec![&adresses]), None, None)
+    //     .unwrap();
+
+    // dbg!(unspent);
+
     // Test();
 }
 

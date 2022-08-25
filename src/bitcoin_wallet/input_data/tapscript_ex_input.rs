@@ -13,11 +13,8 @@ impl RpcCall for TapscriptExInput {
         return (vec![get_tx()]);
     }
 
-    fn script_get_balance(&self) -> Arc<GetBalanceRes> {
-        return Arc::new(GetBalanceRes {
-            confirmed: get_tx().output.iter().map(|f| f.value).sum(),
-            unconfirmed: 0,
-        });
+    fn script_get_balance(&self) -> u64 {
+        return get_tx().output.iter().map(|f| f.value).sum();
     }
 
     fn prev_input(&self) -> Vec<TxIn> {

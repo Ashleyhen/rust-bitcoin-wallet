@@ -6,8 +6,6 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-
-
 pub const RECEIVER: usize = 0;
 pub const CHANGE: usize = 1;
 

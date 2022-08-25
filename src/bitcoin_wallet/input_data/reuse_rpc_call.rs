@@ -14,8 +14,8 @@ impl RpcCall for ReUseCall {
         return vec![self.psbt.clone().extract_tx().clone()];
     }
 
-    fn script_get_balance(&self) -> Arc<GetBalanceRes> {
-        let value = self
+    fn script_get_balance(&self) -> u64 {
+        return self
             .psbt
             .clone()
             .extract_tx()
@@ -24,10 +24,6 @@ impl RpcCall for ReUseCall {
             .filter(|t| t.script_pubkey.eq(&self.witness))
             .map(|f| f.value)
             .sum::<u64>();
-        return Arc::new(GetBalanceRes {
-            confirmed: value,
-            unconfirmed: 0,
-        });
     }
 
     fn prev_input(&self) -> Vec<TxIn> {

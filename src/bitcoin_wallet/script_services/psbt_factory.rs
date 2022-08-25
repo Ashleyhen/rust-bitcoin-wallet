@@ -24,7 +24,7 @@ where
     let output_vec = get_output(output_vec_vec_func);
 
     return Box::new(move |api_call| {
-        let confirmed = api_call.script_get_balance().confirmed;
+        let confirmed = api_call.script_get_balance();
         let previous_tx = api_call.contract_source();
         let tx_in = api_call.prev_input();
         let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
