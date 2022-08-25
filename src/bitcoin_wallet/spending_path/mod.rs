@@ -6,7 +6,7 @@ use bitcoin::{
     Address, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use super::constants::TIP;
+
 
 pub const RECEIVER: usize = 0;
 pub const CHANGE: usize = 1;
