@@ -1,9 +1,9 @@
 use bitcoin::{Transaction, Txid, Script};
-use lightning::{chain::{chaininterface::{FeeEstimator, ConfirmationTarget, BroadcasterInterface}, Filter, WatchedOutput, chainmonitor::ChainMonitor}, util::logger::{Logger, Record}};
+use lightning::{chain::{chaininterface::{FeeEstimator, ConfirmationTarget, BroadcasterInterface}, Filter, WatchedOutput, chainmonitor::{ChainMonitor, Persist}, keysinterface::{Sign, InMemorySigner}, ChannelMonitorUpdateErr, channelmonitor::{ChannelMonitor, ChannelMonitorUpdate}, transaction::OutPoint}, util::logger::{Logger, Record}, ln::peer_handler::MessageHandler};
 
 struct YourFeeEstimator();
 
-type FeeEstimatorPointer=Box<dyn Fn(ConfirmationTarget) -> u32>;
+pub mod base_protocal;
 
 impl FeeEstimator for YourFeeEstimator {
 	fn get_est_sat_per_1000_weight(
@@ -61,6 +61,9 @@ impl Filter for YourTxFilter {
 use lightning_persister::FilesystemPersister; // import LDK sample persist module
 
 
+
+
+
 pub fn testldk(){
 
 	let filter: Option<Box<dyn Filter>> = Some(Box::new(YourTxFilter())); // leave this as None or insert the Filter trait
@@ -69,8 +72,11 @@ pub fn testldk(){
 
 	let fee_estimator = YourFeeEstimator();
 	let broadcaster=YourTxBroadcaster();
-
 	
+	let mut persister=FilesystemPersister::new("".to_owned());
+
+	let chainMonitor:ChainMonitor<InMemorySigner, Box<dyn lightning::chain::Filter>, &YourTxBroadcaster, &YourFeeEstimator, &YourLogger, &mut FilesystemPersister>=ChainMonitor::new(filter, &broadcaster, &logger, &fee_estimator,  &mut persister);
+
  
 }
 
