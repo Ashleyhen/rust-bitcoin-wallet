@@ -1,10 +1,9 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr};
 
 use bitcoin::{Address, OutPoint, Script, Transaction, TxIn, Witness};
-use bitcoincore_rpc::{bitcoincore_rpc_json::GetTransactionResult, Client, RpcApi};
-use electrum_client::GetBalanceRes;
+use bitcoincore_rpc::{ Client, RpcApi};
 
-use super::{electrum_rpc::ElectrumRpc, RpcCall};
+use super::{ RpcCall};
 pub struct RegtestRpc {
     amount: u64,
     tx_in: Vec<TxIn>,
@@ -27,10 +26,10 @@ impl RpcCall for RegtestRpc {
 
 impl<'a> RegtestRpc {
     pub fn new(script_list: &'a Vec<String>) -> RegtestRpc {
-        return RegtestRpc::upgrade(script_list)();
+        return RegtestRpc::update(script_list)();
     }
 
-    pub fn upgrade(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
+    pub fn update(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
         let client = Client::new(
             "http://127.0.0.1:18443",
             bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),

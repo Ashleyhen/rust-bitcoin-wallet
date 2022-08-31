@@ -35,6 +35,7 @@ use crate::bitcoin_wallet::{
 
 pub mod wallet_test;
 
+pub mod lighting_wallet;
 pub mod bitcoin_wallet;
 pub mod configuration;
 
@@ -49,6 +50,7 @@ fn main() {
     )
     .unwrap();
 
+    client.get_block_count();
     let reg_test = RegtestRpc::new(&vec![
         "bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c".to_owned(),
     ]);

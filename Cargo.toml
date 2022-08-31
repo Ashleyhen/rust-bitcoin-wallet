@@ -9,6 +9,18 @@ edition = "2021"
 
 lightning = { version = "0.0.110", features = ["max_level_trace"] }
 lightning-persister = { version = "0.0.110" }
+
+
+  # Add the following dependencies to your cargo.toml and replace {"0.0.110"} with the version number you want to use.
+
+  lightning-block-sync = { version =  "0.0.110" }
+  lightning-invoice = { version =  "0.18.0"  }
+  lightning-net-tokio = { version = "0.0.110" }
+  lightning-background-processor = { version = "0.0.110" }
+  lightning-rapid-gossip-sync = { version = "0.0.110" }
+
+
+
 # bdk={version="0.18.0"}
 miniscript={version="7.0.0"}
 # lightning = "0.0.105"
