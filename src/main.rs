@@ -43,7 +43,22 @@ fn main() {
     // key_tx();
     // script_tx();
     // script_demo();
-    let client = Client::new(
+        // let adresses =
+    //     Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c")
+    //         .unwrap();
+    // let unspent = client
+    //     .list_unspent(None, None, Some(&vec![&adresses]), None, None)
+    //     .unwrap();
+
+    // dbg!(unspent);
+
+    // Test();
+
+    
+}
+
+pub fn get_base_balance(){
+let client = Client::new(
         "http://127.0.0.1:18443",
         bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),
     )
@@ -56,18 +71,8 @@ fn main() {
 
     dbg!(reg_test.script_get_balance());
 
-    // let adresses =
-    //     Address::from_str("bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c")
-    //         .unwrap();
-    // let unspent = client
-    //     .list_unspent(None, None, Some(&vec![&adresses]), None, None)
-    //     .unwrap();
 
-    // dbg!(unspent);
-
-    // Test();
 }
-
 pub fn key_tx() {
     let secp = Secp256k1::new();
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
