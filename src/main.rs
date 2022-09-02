@@ -35,7 +35,6 @@ use crate::bitcoin_wallet::{
 
 pub mod wallet_test;
 
-pub mod lighting_wallet;
 pub mod bitcoin_wallet;
 pub mod configuration;
 
