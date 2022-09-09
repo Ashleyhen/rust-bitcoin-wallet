@@ -15,9 +15,7 @@ use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
 
-pub trait ILock {
-    fn create_tx(&self) -> dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction;
-}
+
 
 pub struct OutputService(pub P2tr);
 
@@ -73,7 +71,7 @@ pub fn new_shared_secret<'a>(
     mut iter: impl Iterator<Item = &'a XOnlyPublicKey>,
     secret: String,
 ) -> SecretKey {
-    {
+    
         match iter.next() {
             Some(x_only) => {
                 return SecretKey::from_slice(
@@ -88,7 +86,7 @@ pub fn new_shared_secret<'a>(
 
             None => SecretKey::from_str(&secret).unwrap(),
         }
-    }
+    
 }
 
 fn lock_key<'a>(func_list_list: Vec<Vec<Box<dyn Fn(&mut Output)>>>) -> Vec<Output> {

@@ -175,12 +175,4 @@ pub fn sign_segwit_v0<'a>(
     })
 }
 
-pub fn p2wpkh_script_code(script: &Script) -> Script {
-    Builder::new()
-        .push_opcode(opcodes::all::OP_DUP)
-        .push_opcode(opcodes::all::OP_HASH160)
-        .push_slice(&script[2..])
-        .push_opcode(opcodes::all::OP_EQUALVERIFY)
-        .push_opcode(opcodes::all::OP_CHECKSIG)
-        .into_script()
-}
+

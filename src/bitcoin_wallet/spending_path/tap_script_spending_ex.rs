@@ -19,13 +19,18 @@ use crate::bitcoin_wallet::{
     },
 };
 
+use super::scripts::TapScripts;
+
+
 pub struct TapScriptSendEx<'a> {
     pub secp: &'a Secp256k1<All>,
 }
+
 pub fn get_preimage() -> Vec<u8> {
     return Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f")
         .unwrap();
 }
+
 pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
     let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&get_preimage());
     let bob_script = Builder::new()
@@ -38,6 +43,7 @@ pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
 
     return bob_script;
 }
+
 impl<'a> TapScriptSendEx<'a> {
     pub fn new(secp: &'a Secp256k1<All>) -> Self {
         return TapScriptSendEx { secp };
@@ -68,6 +74,8 @@ impl<'a> TapScriptSendEx<'a> {
             insert_tree_witness(&self.secp),
         ];
     }
+
+    
 
     pub fn input_factory(
         &'a self,
