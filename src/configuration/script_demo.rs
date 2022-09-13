@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use bitcoin::{secp256k1::{Secp256k1, SecretKey}, KeyPair, Address, util::bip32::{ExtendedPrivKey, ExtendedPubKey}};
+use bitcoin::{secp256k1::{Secp256k1, SecretKey}, KeyPair, Address, util::bip32::{ExtendedPrivKey, ExtendedPubKey}, Script, Network};
 use miniscript::psbt::PsbtExt;
 
-use crate::{bitcoin_wallet::{spending_path::{tap_script_spending_ex::TapScriptSendEx, p2tr_key_path::P2tr, adaptor_script::AdaptorScript}, address_formats::{map_seeds_to_scripts, map_tr_address, derive_derivation_path, generate_key_pair}, script_services::psbt_factory::{get_output, create_partially_signed_tx}, input_data::{electrum_rpc::ElectrumRpc, RpcCall}, constants::NETWORK}, configuration::SEED};
+use crate::{bitcoin_wallet::{spending_path::{tap_script_spending_ex::TapScriptSendEx, p2tr_key_path::P2tr, adaptor_script::AdaptorScript}, address_formats::{map_seeds_to_scripts, map_tr_address, derive_derivation_path, generate_key_pair}, script_services::psbt_factory::{get_output, create_partially_signed_tx}, input_data::{electrum_rpc::ElectrumRpc, RpcCall, regtest_rpc::RegtestRpc}, constants::{NETWORK, SEED}}};
 
 
 pub fn script_demo() {
@@ -22,7 +22,7 @@ pub fn script_demo() {
         .iter()
         .map(|scrt| KeyPair::from_secret_key(&secp, SecretKey::from_str(&scrt).unwrap()))
         .collect::<Vec<KeyPair>>();
-
+        
     let tap_script = TapScriptSendEx::new(&secp);
     let tap_key = P2tr::new(&secp);
 
@@ -54,11 +54,12 @@ pub fn script_demo() {
     let electrum = ElectrumRpc::new(&my_add);
     dbg!(electrum.script_get_balance());
     let lock_func = TapScriptSendEx::create_tx();
-    let unlock_func =
+    let unlock_func =||
         tap_script.input_factory(&keys[bob_secret], keys[internal_secret].public_key());
-    let psbt = create_partially_signed_tx(output_factory(), lock_func, unlock_func)(&electrum);
+    let psbt = create_partially_signed_tx(output_factory(), lock_func, unlock_func())(&electrum);
     // dbg!(psbt);
     let tx = TapScriptSendEx::finialize_script(psbt, &keys[bob_secret].public_key());
+    // send bitcoin to this address on testnet bcrt1pp375ce9lvxs8l9rlsl78u4szhqa7za748dfhtjj5ht05lufu4dwsshpxl6
     // let tx_id = electrum.transaction_broadcast(tx);
     // dbg!(tx_id);
     //
@@ -68,13 +69,42 @@ pub fn script_demo() {
 pub fn adaptor_demo(){
     let secp = Secp256k1::new();
     let get_xonly_fn=|i|derive_derivation_path(generate_key_pair(Some(SEED.to_string())),32)
-    (0,i).to_keypair(&secp).public_key();
+    (0,i).to_keypair(&secp);
+    let internal =get_xonly_fn(0).public_key();
+    let x_only_1=get_xonly_fn(1).public_key();//bcrt1pcfc3whp89g2va7zwndpzjgdlzr4x03754nln0n0lvnj6rupm6pjq8xkj0r
+    let x_only_2=get_xonly_fn(2).public_key();//bcrt1p9pfqwxwe5v25mw5452nswzvwp6qnpk3q8hjduvc2p6sllr6plfjsjls0z5
     let adaptor_script=AdaptorScript::new(&secp);
-    let output_vec_vec_func=vec![adaptor_script.adaptor_sig(get_xonly_fn(0), get_xonly_fn(1), get_xonly_fn(2))];
-    
-    TapScriptSendEx::get_script_addresses(get_output(output_vec_vec_func))
+    let output_vec_vec_func=||vec![adaptor_script.adaptor_script(internal, x_only_1 , x_only_2)];
+
+    let tr = P2tr::new(&secp);
+    TapScriptSendEx::get_script_addresses(get_output(output_vec_vec_func()))
         .iter()
         .for_each(|f| println!("target address {}", f.to_string()));
+
+    
+    let auxiliary=AdaptorScript::generate_auxiliary(None);
+
+    let btc_address=vec!["bcrt1pp375ce9lvxs8l9rlsl78u4szhqa7za748dfhtjj5ht05lufu4dwsshpxl6".to_owned()]; //bitcoin address
+    let eth_address=vec!["bcrt1phkshr74fsn3n04v0xm9pq0ru80n03t4hjum978zr6sp3a9zalh9sjag4pc".to_owned()]; //bitcoin address
+
+    let api_call=RegtestRpc::new(&btc_address)();
+    let a_output_fn=vec![vec![tr.single_output(Address::p2tr(&secp,x_only_2, None, NETWORK).script_pubkey())]];
+    tr.single_output(Address::p2tr(&secp,x_only_1, None, NETWORK).script_pubkey());
+    // dbg!(api_call.contract_source());
+    TapScriptSendEx::create_tx();
+    let sig_1=get_xonly_fn(1);
+    let sig_2=get_xonly_fn(2);
+    let unlock_fn=adaptor_script.adaptor_sig(&internal, &sig_1, &x_only_2, &auxiliary);
+    adaptor_script.adaptor_sig(&internal, &sig_2, &x_only_2, &auxiliary);
+
+    
+    let psbt = create_partially_signed_tx(
+        a_output_fn, 
+        P2tr::single_create_tx(40000000000), 
+        unlock_fn)(&api_call);
+
+
+
 }
 
 pub fn key_tx() {

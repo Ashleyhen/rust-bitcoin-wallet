@@ -13,10 +13,12 @@ pub type LockFn<'a> = Box<dyn FnMut(&mut Output) + 'a>;
 
 pub type CreateTxFn<'a> = Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction + 'a>;
 
+pub type SpendFn<'a>=Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>;
+
 pub fn create_partially_signed_tx<'a, R>(
     output_vec_vec_func: Vec<Vec<LockFn>>,
     lock_func: CreateTxFn<'a>,
-    unlock_func: Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>,
+    unlock_func: SpendFn<'a>,
 ) -> Box<dyn Fn(&R) -> PartiallySignedTransaction + 'a>
 where
     R: RpcCall,

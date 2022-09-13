@@ -25,13 +25,11 @@ impl RpcCall for RegtestRpc {
 }
 
 impl<'a> RegtestRpc {
-    pub fn new(script_list: &'a Vec<String>) -> RegtestRpc {
-        return RegtestRpc::update(script_list)();
-    }
+  
 
-    pub fn update(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
+    pub fn new(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
         let client = Client::new(
-            "http://127.0.0.1:18443",
+            "http://127.0.0.1:18444",
             bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),
         )
         .unwrap();

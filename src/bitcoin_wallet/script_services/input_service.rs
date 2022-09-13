@@ -76,6 +76,42 @@ pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>) -> String {
     return dbg_err.to_string();
 }
 
+pub fn sign_2_of_2<'a> (
+    secp:&'a Secp256k1<All>,
+    current_tx: &'a Transaction,
+    previous_tx: Vec<TxOut>,
+    input_index: usize,
+    key_pair: &'a KeyPair,
+    witness_script:Script,
+    contract:Script,
+    auxiliary: &'a [u8; 32]
+)-> Box<impl FnOnce(&mut Input) + 'a>{
+    return Box::new(move |input:&mut Input|{
+        let prev = filter_for_wit(previous_tx.clone(), &witness_script);
+        let tap_leaf_hash=TapLeafHash::from_script(&contract,LeafVersion::TapScript);
+        let tap_sighash_cache=SighashCache::new(current_tx)
+        .taproot_script_spend_signature_hash(
+            input_index, 
+            &Prevouts::All(&prev), 
+            ScriptPath::with_defaults(&contract), 
+            SchnorrSighashType::AllPlusAnyoneCanPay)
+            .expect(&print_tx_out_addr(vec![
+                ("prevouts ".to_owned(), &previous_tx),
+                ("current tx ".to_string(), &current_tx.output),
+            ]));
+
+        let sig = secp.sign_schnorr_with_aux_rand(&Message::from_slice(&tap_sighash_cache).unwrap(), &key_pair,auxiliary);
+        
+        let schnorrsig = SchnorrSig {
+            sig,
+            hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
+        };
+            input
+            .tap_script_sigs
+            .insert((key_pair.public_key(), tap_leaf_hash), schnorrsig);
+    });
+}
+
 pub fn sign_tapleaf<'a>(
     secp: &'a Secp256k1<All>,
     key_pair: &'a KeyPair,
@@ -109,6 +145,7 @@ pub fn sign_tapleaf<'a>(
             hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
         };
 
+        
         input
             .tap_script_sigs
             .insert((x_only, tap_leaf_hash), schnorrsig);

@@ -53,11 +53,10 @@ let client = Client::new(
     .unwrap();
 
     client.get_block_count();
-    let reg_test = RegtestRpc::new(&vec![
-        "bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c".to_owned(),
-    ]);
+    let address_list=vec![ "bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c".to_owned() ];
+    let reg_test = RegtestRpc::new(&address_list);
 
-    dbg!(reg_test.script_get_balance());
+    dbg!(reg_test().script_get_balance());
 
 
 }

@@ -13,7 +13,6 @@ use crate::bitcoin_wallet::{
 };
 
 pub mod script_demo;
-const SEED: &str = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
 
 
 // tb1paq75m2jlhjeywx75g3t08d8yplt5w9a0ecar3mdp5ay3laxva7vqng2jak
