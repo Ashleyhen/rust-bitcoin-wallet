@@ -5,7 +5,7 @@ use bitcoin::{
     secp256k1::{All, Message, Secp256k1},
     util::{
         bip32::ExtendedPrivKey,
-        sighash::{Prevouts, ScriptPath, SighashCache},
+        sighash::{Prevouts, ScriptPath, SighashCache, Error},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
     Address, EcdsaSig, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxOut,
@@ -54,7 +54,8 @@ pub fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
         .collect::<Vec<TxOut>>();
 }
 
-pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>) -> String {
+pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>, err:Error) -> String {
+    eprintln!("ERROR!!! {} ",err.to_string());
     let mut dbg_err = String::from("\n");
     addr_list.iter().for_each(|(var_name, tx_list)| {
         dbg_err.push_str(&var_name);
@@ -67,7 +68,7 @@ pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>) -> String {
                     .to_string()
             })
             .for_each(|addr| {
-                dbg!(addr.clone());
+                eprintln!("{}",addr.clone());
                 dbg_err.push_str(&addr);
                 dbg_err.push_str("\n");
             });
@@ -78,7 +79,7 @@ pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>) -> String {
 
 pub fn sign_2_of_2<'a> (
     secp:&'a Secp256k1<All>,
-    current_tx: &'a Transaction,
+    current_tx: Transaction,
     previous_tx: Vec<TxOut>,
     input_index: usize,
     key_pair: &'a KeyPair,
@@ -89,16 +90,17 @@ pub fn sign_2_of_2<'a> (
     return Box::new(move |input:&mut Input|{
         let prev = filter_for_wit(previous_tx.clone(), &witness_script);
         let tap_leaf_hash=TapLeafHash::from_script(&contract,LeafVersion::TapScript);
-        let tap_sighash_cache=SighashCache::new(current_tx)
+        let tap_sighash_cache=SighashCache::new(&mut current_tx.clone())
         .taproot_script_spend_signature_hash(
             input_index, 
             &Prevouts::All(&prev), 
             ScriptPath::with_defaults(&contract), 
             SchnorrSighashType::AllPlusAnyoneCanPay)
-            .expect(&print_tx_out_addr(vec![
+            .map_err(|err|
+                print_tx_out_addr(vec![
                 ("prevouts ".to_owned(), &previous_tx),
                 ("current tx ".to_string(), &current_tx.output),
-            ]));
+            ],err)).unwrap();
 
         let sig = secp.sign_schnorr_with_aux_rand(&Message::from_slice(&tap_sighash_cache).unwrap(), &key_pair,auxiliary);
         
@@ -134,10 +136,10 @@ pub fn sign_tapleaf<'a>(
                 ScriptPath::with_defaults(&bob_script),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
-            .expect(&print_tx_out_addr(vec![
+            .map_err(|err|print_tx_out_addr(vec![
                 ("prevouts ".to_owned(), &previous_tx),
                 ("current tx ".to_string(), &current_tx.output),
-            ]));
+            ],err)).unwrap();
 
         let sig = secp.sign_schnorr(&Message::from_slice(&tap_sig_hash).unwrap(), &key_pair);
         let schnorrsig = SchnorrSig {
