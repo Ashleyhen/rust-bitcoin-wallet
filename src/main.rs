@@ -21,7 +21,7 @@ use bitcoin_wallet::{
 };
 
 use bitcoincore_rpc::{jsonrpc::Request, Client, RpcApi};
-use configuration::script_demo::{self, adaptor_demo};
+use configuration::{script_demo::{self, adaptor_demo}, musig_demo::musig_demo};
 use either::Either;
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
@@ -41,7 +41,7 @@ pub mod configuration;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
-    adaptor_demo();
+    musig_demo();
     
 }
 

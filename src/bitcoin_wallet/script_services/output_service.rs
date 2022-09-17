@@ -67,7 +67,19 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
     });
 }
 
-pub fn new_shared_secret<'a>(
+
+pub fn merge_x_only<'a>(secp: &'a Secp256k1<All>,x_only:XOnlyPublicKey,x_only_2:XOnlyPublicKey) -> Box<impl Fn(&mut Output) + 'a> {
+    let mut shared_x_only=x_only.clone();
+    shared_x_only.tweak_add_assign(secp, &x_only_2.serialize()).unwrap();
+    return Box::new(move |output: &mut Output|{
+        let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
+        output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
+        output.tap_internal_key=Some(shared_x_only);
+    });
+}
+
+
+ fn new_shared_secret<'a>(
     mut iter: impl Iterator<Item = &'a XOnlyPublicKey>,
     secret: String,
 ) -> SecretKey {

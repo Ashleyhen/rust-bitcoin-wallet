@@ -8,7 +8,7 @@ use bitcoin::{
         sighash::{Prevouts, ScriptPath, SighashCache, Error},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
-    Address, EcdsaSig, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxOut,
+    Address, EcdsaSig, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxOut, TxIn,
 };
 
 use miniscript::ToPublicKey;
@@ -42,40 +42,12 @@ pub fn insert_control_block<'a>(
 
 pub fn insert_witness_tx<'a>(tx_out: TxOut) -> Box<impl FnOnce(&mut Input) + 'a> {
     return Box::new(move |input: &mut Input| {
+        input.witness_script=Some(tx_out.clone().script_pubkey);
         input.witness_utxo = Some(tx_out);
     });
 }
 
-pub fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
-    return previous_tx
-        .iter()
-        .filter(|t| t.script_pubkey.eq(&witness))
-        .map(|a| a.clone())
-        .collect::<Vec<TxOut>>();
-}
 
-pub fn print_tx_out_addr(addr_list: Vec<(String, &Vec<TxOut>)>, err:Error) -> String {
-    eprintln!("ERROR!!! {} ",err.to_string());
-    let mut dbg_err = String::from("\n");
-    addr_list.iter().for_each(|(var_name, tx_list)| {
-        dbg_err.push_str(&var_name);
-        dbg_err.push_str(": \n");
-        tx_list
-            .iter()
-            .map(|tx_out| {
-                Address::from_script(&tx_out.script_pubkey, NETWORK)
-                    .unwrap()
-                    .to_string()
-            })
-            .for_each(|addr| {
-                eprintln!("{}",addr.clone());
-                dbg_err.push_str(&addr);
-                dbg_err.push_str("\n");
-            });
-    });
-    dbg_err.push_str("\n");
-    return dbg_err.to_string();
-}
 
 pub fn sign_2_of_2<'a> (
     secp:&'a Secp256k1<All>,
@@ -97,10 +69,8 @@ pub fn sign_2_of_2<'a> (
             ScriptPath::with_defaults(&contract), 
             SchnorrSighashType::AllPlusAnyoneCanPay)
             .map_err(|err|
-                print_tx_out_addr(vec![
-                ("prevouts ".to_owned(), &previous_tx),
-                ("current tx ".to_string(), &current_tx.output),
-            ],err)).unwrap();
+                print_tx_out_addr(&prev,&current_tx.input,&witness_script, err)
+        ).unwrap();
 
         let sig = secp.sign_schnorr_with_aux_rand(&Message::from_slice(&tap_sighash_cache).unwrap(), &key_pair,auxiliary);
         
@@ -136,10 +106,8 @@ pub fn sign_tapleaf<'a>(
                 ScriptPath::with_defaults(&bob_script),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
-            .map_err(|err|print_tx_out_addr(vec![
-                ("prevouts ".to_owned(), &previous_tx),
-                ("current tx ".to_string(), &current_tx.output),
-            ],err)).unwrap();
+            .map_err(|err|print_tx_out_addr(&prev,&current_tx.input, &witness_script,err)
+        ).unwrap();
 
         let sig = secp.sign_schnorr(&Message::from_slice(&tap_sig_hash).unwrap(), &key_pair);
         let schnorrsig = SchnorrSig {
@@ -169,8 +137,8 @@ pub fn sign_key_sig<'a>(
                 input_index,
                 &Prevouts::All(&prev),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
-            )
-            .unwrap();
+            ).map_err(|err| print_tx_out_addr(&prev,&current_tx.input,&witness_script,err)
+        ).unwrap();
         let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
 
         let sig = secp.sign_schnorr(
@@ -212,6 +180,30 @@ pub fn sign_segwit_v0<'a>(
 
         input.partial_sigs.insert(public_key, sig);
     })
+
 }
 
 
+ fn filter_for_wit(previous_tx: Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
+    return previous_tx
+        .iter()
+        .filter(|t| t.script_pubkey.eq(&witness))
+        .map(|a| a.clone())
+        .collect::<Vec<TxOut>>();
+}
+
+ fn print_tx_out_addr(prev:&Vec<TxOut> , input: &Vec<TxIn>, witness:&Script, err:Error) -> String {
+    eprintln!("ERROR!!! {} ",err.to_string());
+    let mut dbg_err = String::from("\n");
+    
+    eprintln!("witness: {}",Address::from_script(witness, NETWORK).unwrap().to_string() );
+    eprintln!("previous output: ");
+    prev.iter().for_each(|tx_out|{eprintln!("script {}, amount, {}", Address::from_script(&tx_out.script_pubkey, NETWORK).unwrap().to_string(), tx_out.value)});
+
+    eprintln!("current transaction inputs: ");
+    input.iter().for_each(|tx_in|{eprintln!("previous output points {} ", tx_in.previous_output)});
+
+
+   eprintln!("{}",dbg_err.to_string());
+    return dbg_err.to_string();
+}

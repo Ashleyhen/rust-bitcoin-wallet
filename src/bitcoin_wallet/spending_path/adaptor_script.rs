@@ -1,4 +1,4 @@
-use bitcoin::{secp256k1::{Secp256k1, All, rand::{ RngCore, rngs::OsRng}, SecretKey}, XOnlyPublicKey, Address, Transaction, TxOut, util::taproot::TaprootBuilder, Script, KeyPair};
+use bitcoin::{secp256k1::{Secp256k1, All, rand::{ RngCore, rngs::OsRng}, SecretKey}, XOnlyPublicKey, Address, Transaction, TxOut, util::taproot::TaprootBuilder, Script, KeyPair, psbt::PartiallySignedTransaction, Witness};
 
 use crate::{bitcoin_wallet::{script_services::{psbt_factory::{LockFn, CreateTxFn, UnlockFn}, output_service::{new_tap_internal_key, insert_tap_tree, insert_tap_key_origin, insert_tree_witness}, input_service::{insert_control_block, sign_tapleaf, sign_2_of_2}}, constants::{Seed, NETWORK, TIP}}, wallet_test::wallet_test_vector_traits::Auxiliary};
 
@@ -21,6 +21,7 @@ impl <'a> AdaptorScript<'a>{
 		secondary_xonly: XOnlyPublicKey
 	)->Vec<LockFn<'a>>{
 		let delay=TapScripts::delay(&primary_xonly);
+		
 		let multi_sig=TapScripts::multi_2_of_2_script(&primary_xonly, &secondary_xonly);
 		let combined_script = vec![(1, delay.get_script()), (1, multi_sig.get_script())];
 		return vec![
@@ -81,4 +82,32 @@ impl <'a> AdaptorScript<'a>{
 		});
 	}
 
+	pub fn merge_psbt(psbt:PartiallySignedTransaction, psbt2:PartiallySignedTransaction)->PartiallySignedTransaction{
+		let mut updated_psbt=psbt.clone();
+		let mut updated_psbt2=psbt2.clone();
+		updated_psbt.inputs.append(&mut updated_psbt2.inputs);
+		updated_psbt.outputs.append(&mut updated_psbt2.outputs);
+		return updated_psbt;
+	}
+
+	
+    pub fn finialize_script(
+        psbt: PartiallySignedTransaction,
+    ) -> Transaction {
+        let mut witness = Witness::new();
+		psbt.inputs.iter().flat_map(|f|f.tap_script_sigs.iter()
+		.map(|sig|sig.1)).for_each(|shnor|{
+			witness.push(shnor.to_vec());
+		});
+
+		for entry in psbt.inputs[0].clone().tap_scripts{
+			let script:Script=entry.1.0;
+            witness.push(script);
+            witness.push(entry.0.serialize());
+		}
+
+        let mut tx = psbt.extract_tx();
+        tx.input[0].witness = witness;
+        return tx;
+    }
 }

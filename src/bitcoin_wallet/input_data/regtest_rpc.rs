@@ -1,6 +1,6 @@
 use std::{str::FromStr};
 
-use bitcoin::{Address, OutPoint, Script, Transaction, TxIn, Witness};
+use bitcoin::{Address, OutPoint, Script, Transaction, TxIn, Witness, Txid};
 use bitcoincore_rpc::{ Client, RpcApi};
 
 use super::{ RpcCall};
@@ -26,13 +26,19 @@ impl RpcCall for RegtestRpc {
 
 impl<'a> RegtestRpc {
   
+    pub fn get_client()-> Client{
+        return Client::new(
+                    "http://127.0.0.1:18444",
+                    bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),
+                ).unwrap();
+    } 
+
+    pub fn transaction_broadcast(&self, tx:&Transaction)->Txid{
+        return RegtestRpc::get_client().send_raw_transaction(tx).unwrap();
+    }
 
     pub fn new(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
-        let client = Client::new(
-            "http://127.0.0.1:18444",
-            bitcoincore_rpc::Auth::UserPass("polaruser".to_string(), "polarpass".to_owned()),
-        )
-        .unwrap();
+        let client = RegtestRpc::get_client();
         return Box::new(move || {
             let address_list = script_list
                 .iter()
@@ -63,7 +69,7 @@ impl<'a> RegtestRpc {
                 .iter()
                 .map(|tx_id| {
                     client
-                        .get_transaction(&tx_id.previous_output.txid, None)
+                        .get_transaction(&tx_id.previous_output.txid, Some(true))
                         .unwrap()
                         .transaction()
                         .unwrap()
