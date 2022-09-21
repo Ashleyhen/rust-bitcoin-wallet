@@ -11,7 +11,6 @@ use bitcoin::{
     Address, EcdsaSig, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxOut, TxIn,
 };
 
-use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::constants::NETWORK;
 
@@ -80,7 +79,7 @@ pub fn sign_2_of_2<'a> (
         };
             input
             .tap_script_sigs
-            .insert((key_pair.public_key(), tap_leaf_hash), schnorrsig);
+            .insert((key_pair.public_key().x_only_public_key().0, tap_leaf_hash), schnorrsig);
     });
 }
 
@@ -93,7 +92,7 @@ pub fn sign_tapleaf<'a>(
     witness_script: Script,
     bob_script: Script,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
-    let x_only = key_pair.public_key();
+    let x_only = key_pair.public_key().x_only_public_key().0;
     return Box::new(move |input: &mut Input| {
         let prev = filter_for_wit(previous_tx.clone(), &witness_script);
 
@@ -140,9 +139,9 @@ pub fn sign_key_sig<'a>(
             ).map_err(|err| print_tx_out_addr(&prev,&current_tx.input,&witness_script,err)
         ).unwrap();
         let tweaked_pair = key_pair.tap_tweak(&secp, input.tap_merkle_root);
-
+        let msg=Message::from_slice(&tap_sig).unwrap();
         let sig = secp.sign_schnorr(
-            &Message::from_slice(&tap_sig).unwrap(),
+            &msg,
             &tweaked_pair.into_inner(),
         );
         let schnorrsig = SchnorrSig {
@@ -162,10 +161,7 @@ pub fn sign_segwit_v0<'a>(
     extended_priv_k: ExtendedPrivKey,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     Box::new(move |input: &mut Input| {
-        let public_key = extended_priv_k
-            .to_keypair(&secp)
-            .public_key()
-            .to_public_key();
+        let public_key=bitcoin::PublicKey::from_private_key(secp, &extended_priv_k.to_priv());
         let sig_hash = SighashCache::new(&mut current_tx.clone())
             .segwit_signature_hash(
                 input_index,

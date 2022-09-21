@@ -2,9 +2,8 @@ use bitcoin::{
     blockdata::{opcodes, script::Builder},
     secp256k1::{All, Secp256k1},
     util::bip32::ExtendedPrivKey,
-    Script, Transaction,
+    Script, Transaction, hashes::hex::ToHex,
 };
-use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::script_services::{
     input_service::sign_segwit_v0, psbt_factory::UnlockFn,
@@ -21,9 +20,9 @@ impl P2wpkh {
     ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
         return Box::new(
             move |previous_list: Vec<Transaction>, current: Transaction| {
-                let public_key = ext_prv.to_keypair(&self.secp).public_key().to_public_key();
+                let pubkey=bitcoin::PublicKey::from_private_key(&self.secp, &ext_prv.to_priv());
 
-                let script = Script::new_v0_p2wpkh(&public_key.wpubkey_hash().unwrap());
+                let script = Script::new_v0_p2wpkh(&pubkey.wpubkey_hash().unwrap());
                 let mut unlock_vec: Vec<UnlockFn> = vec![];
                 for (input_index, prev) in previous_list.iter().enumerate() {
                     let tx_out = prev

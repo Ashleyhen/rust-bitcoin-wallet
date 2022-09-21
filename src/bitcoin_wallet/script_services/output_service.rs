@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use bitcoin::{
     psbt::{Output, TapTree},
     schnorr::TweakedPublicKey,
-    secp256k1::{ecdh::SharedSecret, All, Secp256k1, SecretKey},
+    secp256k1::{ecdh::SharedSecret, All, Secp256k1, SecretKey, Parity},
     util::{
         bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
@@ -11,7 +11,6 @@ use bitcoin::{
     Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
 
@@ -43,7 +42,7 @@ pub fn new_tap_internal_key<'a>(xinternal: XOnlyPublicKey) -> Box<impl Fn(&mut O
 pub fn insert_tap_tree<'a>(scripts: Vec<(u32, Script)>) -> Box<impl Fn(&mut Output) + 'a> {
     return Box::new(move |output: &mut Output| {
         let builder = TaprootBuilder::with_huffman_tree(scripts.clone()).unwrap();
-        output.tap_tree = Some(TapTree::from_builder(builder).unwrap());
+        output.tap_tree = Some(TapTree::try_from(builder).unwrap());
     });
 }
 
@@ -69,12 +68,12 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
 
 
 pub fn merge_x_only<'a>(secp: &'a Secp256k1<All>,x_only:XOnlyPublicKey,x_only_2:XOnlyPublicKey) -> Box<impl Fn(&mut Output) + 'a> {
-    let mut shared_x_only=x_only.clone();
-    shared_x_only.tweak_add_assign(secp, &x_only_2.serialize()).unwrap();
+    // let mut shared_x_only=x_only.clone();
+    // shared_x_only.add_tweak(secp, &x_only_2.serialize()).unwrap();
     return Box::new(move |output: &mut Output|{
-        let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
-        output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
-        output.tap_internal_key=Some(shared_x_only);
+    //     let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
+    //     output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
+    //     output.tap_internal_key=Some(shared_x_only);
     });
 }
 
@@ -88,7 +87,7 @@ pub fn merge_x_only<'a>(secp: &'a Secp256k1<All>,x_only:XOnlyPublicKey,x_only_2:
             Some(x_only) => {
                 return SecretKey::from_slice(
                     &SharedSecret::new(
-                        &x_only.to_public_key().inner,
+                        &x_only.public_key(Parity::Even),
                         &new_shared_secret(iter, secret),
                     )
                     .secret_bytes(),

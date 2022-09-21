@@ -56,7 +56,7 @@ impl<'a> ElectrumRpc {
                     return TxIn {
                         previous_output: OutPoint::new(tx.tx_hash, tx.tx_pos.try_into().unwrap()),
                         script_sig: Script::new(), // The scriptSig must be exactly empty or the validation fails (native witness program)
-                        sequence: 0xFFFFFFFF,
+                        sequence: bitcoin::Sequence(0xFFFFFFFF),
                         witness: Witness::default(),
                     };
                 })

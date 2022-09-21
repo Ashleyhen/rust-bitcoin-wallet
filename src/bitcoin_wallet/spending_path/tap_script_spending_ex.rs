@@ -82,7 +82,7 @@ impl<'a> TapScriptSendEx<'a> {
         bob_keypair: &'a KeyPair,
         internal_key: XOnlyPublicKey,
     ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
-        let xbob = bob_keypair.public_key();
+        let xbob = bob_keypair.x_only_public_key().0;
         let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
 
@@ -127,7 +127,7 @@ impl<'a> TapScriptSendEx<'a> {
             }];
             return Transaction {
                 version: 2,
-                lock_time: 0,
+                lock_time: bitcoin::PackedLockTime(0),
                 input: tx_in,
                 output: tx_out,
             };

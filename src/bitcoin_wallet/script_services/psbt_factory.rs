@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction},
-    Transaction, TxIn, secp256k1::{ffi::{secp256k1_ec_seckey_negate, secp256k1_ec_seckey_tweak_add}, Secp256k1, All}, Address, SchnorrSig, SchnorrSighashType,
+    Transaction, TxIn, secp256k1::{ffi::{secp256k1_ec_seckey_negate, secp256k1_ec_seckey_tweak_add}, Secp256k1, All, ecdsa::Signature}, Address, SchnorrSig, SchnorrSighashType,
 };
 
 use crate::bitcoin_wallet::{input_data::RpcCall, constants::NETWORK};
@@ -96,19 +96,21 @@ pub fn get_output<'a>(output_vec_vec_func: Vec<Vec<LockFn>>,output_vec:&'a mut V
 pub fn merge_psbt(secp:&Secp256k1<All>,psbt:&PartiallySignedTransaction, psbt_2:&PartiallySignedTransaction)->PartiallySignedTransaction{
 
     let input_list=psbt.inputs.iter().zip(psbt_2.inputs.iter()).map(|(input_1,input_2)|{
-    let mut sig=input_1.tap_key_sig.unwrap().sig;
+    let mut sig=input_1.tap_key_sig.unwrap().to_vec();
         unsafe{
         // let combined_sig=input_1.tap_key_sig.unwrap().sig.as_mut_ptr();
 
         println!("before: {:#?}",sig);
-
+        // secp.verify_schnorr(sig, msg, pubkey)
         let is_successful=secp256k1_ec_seckey_tweak_add(*secp.ctx(),sig.as_mut_ptr(),input_2.tap_key_sig.unwrap().to_vec().as_ptr());
 
         println!("is successful {}",is_successful);
 
         println!("after: {:#?}",sig);
         
-        input_1.clone().tap_key_sig=Some(SchnorrSig{ sig, hash_ty:SchnorrSighashType::AllPlusAnyoneCanPay });
+        // input_1.clone().tap_key_sig=Some(SchnorrSig{ sig, hash_ty:SchnorrSighashType::AllPlusAnyoneCanPay });
+
+        input_1.clone().tap_key_sig=Some(SchnorrSig::from_slice(&sig).unwrap());
         return input_1.clone();
         }
     }).collect::<Vec<Input>>();

@@ -36,7 +36,7 @@ impl P2tr {
             }
             return Transaction {
                 version: 2,
-                lock_time: 0,
+                lock_time: bitcoin::PackedLockTime(0),
                 input: tx_in,
                 output: tx_out_vec,
             };
@@ -51,7 +51,7 @@ impl P2tr {
             }];
             return Transaction {
                 version: 2,
-                lock_time: 0,
+                lock_time: bitcoin::PackedLockTime(0),
                 input: tx_in,
                 output: tx_out_vec,
             };

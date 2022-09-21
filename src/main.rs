@@ -22,9 +22,6 @@ use bitcoin_wallet::{
 
 use bitcoincore_rpc::{jsonrpc::Request, Client, RpcApi};
 use configuration::{script_demo::{self, adaptor_demo}, musig_demo::musig_demo};
-use either::Either;
-use miniscript::{psbt::PsbtExt, ToPublicKey};
-use wallet_test::{tapscript_example_with_tap::Test, wallet_test_vector_traits::WalletTestVectors};
 
 use crate::bitcoin_wallet::{
     input_data::{
@@ -33,7 +30,6 @@ use crate::bitcoin_wallet::{
     spending_path::p2tr_key_path::P2tr,
 };
 
-pub mod wallet_test;
 
 pub mod bitcoin_wallet;
 pub mod configuration;

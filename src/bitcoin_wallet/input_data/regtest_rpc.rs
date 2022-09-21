@@ -59,7 +59,7 @@ impl<'a> RegtestRpc {
                     return TxIn {
                         previous_output: OutPoint::new(entry.txid, entry.vout),
                         script_sig: Script::new(),
-                        sequence: 0xFFFFFFFF,
+                        sequence: bitcoin::Sequence(0xFFFFFFFF),
                         witness: Witness::default(),
                     };
                 })

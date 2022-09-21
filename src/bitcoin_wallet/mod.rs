@@ -2,7 +2,6 @@ use bitcoin::{
     psbt::PartiallySignedTransaction,
     util::bip32::{ExtendedPubKey, KeySource},
 };
-use miniscript::psbt::PsbtExt;
 
 // use crate::btc_wallet::utils::UnlockAndSend;
 

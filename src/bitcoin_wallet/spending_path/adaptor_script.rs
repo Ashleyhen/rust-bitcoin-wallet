@@ -1,6 +1,6 @@
-use bitcoin::{secp256k1::{Secp256k1, All, rand::{ RngCore, rngs::OsRng}, SecretKey}, XOnlyPublicKey, Address, Transaction, TxOut, util::taproot::TaprootBuilder, Script, KeyPair, psbt::PartiallySignedTransaction, Witness};
+use bitcoin::{secp256k1::{Secp256k1, All, rand::{ RngCore, rngs::OsRng}, SecretKey, Scalar}, XOnlyPublicKey, Address, Transaction, TxOut, util::taproot::TaprootBuilder, Script, KeyPair, psbt::PartiallySignedTransaction, Witness};
 
-use crate::{bitcoin_wallet::{script_services::{psbt_factory::{LockFn, CreateTxFn, UnlockFn}, output_service::{new_tap_internal_key, insert_tap_tree, insert_tap_key_origin, insert_tree_witness}, input_service::{insert_control_block, sign_tapleaf, sign_2_of_2}}, constants::{Seed, NETWORK, TIP}}, wallet_test::wallet_test_vector_traits::Auxiliary};
+use crate::{bitcoin_wallet::{script_services::{psbt_factory::{LockFn, CreateTxFn, UnlockFn}, output_service::{new_tap_internal_key, insert_tap_tree, insert_tap_key_origin, insert_tree_witness}, input_service::{insert_control_block, sign_tapleaf, sign_2_of_2}}, constants::{Seed, NETWORK, TIP}}};
 
 use super::scripts::TapScripts;
 
@@ -33,7 +33,7 @@ impl <'a> AdaptorScript<'a>{
 	}
 
 	pub fn generate_auxiliary(auxiliary:Option<Seed>)->Seed{
-		return auxiliary.unwrap_or(SecretKey::new(&mut OsRng::new().unwrap()).secret_bytes());
+		return Scalar::random().to_be_bytes();
 	}
 
 	pub fn adaptor_sig(
@@ -45,7 +45,7 @@ impl <'a> AdaptorScript<'a>{
 		
 	)->Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>
 	{
-		let x_only=key_pair.public_key();
+		let x_only=key_pair.x_only_public_key().0;
 		let multi_sig=TapScripts::multi_2_of_2_script(&x_only, x_only_2);
 		let delay=TapScripts::delay(&x_only);
 		let script_weights=vec![(1, multi_sig.get_script()),(1, delay.get_script())];

@@ -5,7 +5,7 @@ use bitcoin::{
     hashes::hex::FromHex,
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     schnorr::{TapTweak, TweakedPublicKey},
-    secp256k1::{ecdh::SharedSecret, All, Message, Secp256k1, SecretKey},
+    secp256k1::{ecdh::SharedSecret, All, Message, Secp256k1, SecretKey, Parity},
     util::{
         bip32::{DerivationPath, ExtendedPrivKey, Fingerprint, KeySource},
         sighash::{Prevouts, SighashCache},
@@ -17,7 +17,6 @@ use bitcoin::{
     Address, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, WitnessMerkleNode,
     XOnlyPublicKey,
 };
-use miniscript::ToPublicKey;
 
 pub mod input_service;
 pub mod output_service;
@@ -51,9 +50,9 @@ impl P2tr {
         &'a self,
         key: &'a SecretKey,
     ) -> Box<impl FnMut(&mut Output) + 'a> {
-        Box::new(|output: &mut Output| {
+        Box::new(move |output: &mut Output| {
             output.tap_internal_key =
-                Some(KeyPair::from_secret_key(&self.secp, key.clone()).public_key())
+            Some(KeyPair::from_secret_key(&self.secp, &key).x_only_public_key().0)
         })
     }
 
@@ -69,7 +68,7 @@ impl P2tr {
             .script_pubkey();
             scripts.clone().push((0, tap_tweak));
             let builder = TaprootBuilder::with_huffman_tree(scripts.clone()).unwrap();
-            output.tap_tree = Some(TapTree::from_builder(builder).unwrap());
+            output.tap_tree = Some(TapTree::try_from(builder).unwrap());
         });
     }
 
@@ -100,7 +99,7 @@ impl P2tr {
                 Some(x_only) => {
                     return SecretKey::from_slice(
                         &SharedSecret::new(
-                            &x_only.to_public_key().inner,
+                            &x_only.public_key(Parity::Even),
                             &self.new_shared_secret(iter, seed),
                         )
                         .secret_bytes(),
@@ -179,7 +178,7 @@ impl P2tr {
                 .tap_tweak(&self.secp, input.tap_merkle_root);
             let sig = self.secp.sign_schnorr(
                 &Message::from_slice(&tap_sig_hash).unwrap(),
-                &tweaked_pair.into_inner(),
+                &tweaked_pair.to_inner(),
             );
             let schnorrsig = SchnorrSig {
                 sig,
