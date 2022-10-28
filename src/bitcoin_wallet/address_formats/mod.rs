@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    secp256k1::{rand::rngs::OsRng, All, Secp256k1, SecretKey, Scalar},
+    secp256k1::{rand::rngs::OsRng, All, Scalar, Secp256k1, SecretKey},
     util::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
         taproot::TapBranchHash,
@@ -19,8 +19,7 @@ pub fn generate_key_pair(seed: Option<String>) -> ExtendedPrivKey {
         NETWORK,
         &seed
             .map(|f| SecretKey::from_str(&f).unwrap())
-
-            .unwrap_or(SecretKey::from_slice(& Scalar::random().to_be_bytes()).unwrap())
+            .unwrap_or(SecretKey::from_slice(&Scalar::random().to_be_bytes()).unwrap())
             .secret_bytes(),
     )
     .unwrap();
@@ -75,4 +74,3 @@ pub fn derive_derivation_path(
             .unwrap();
     });
 }
-

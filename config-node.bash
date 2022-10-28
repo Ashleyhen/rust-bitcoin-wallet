@@ -4,8 +4,8 @@
 user=foo
 password=qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
 url=http://127.0.0.1:18443/
-address='"addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)"';
-descriptor='"addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs"';
+address='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)"';
+descriptor='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)#3gv8dgag"';
 
 function invoke {
 	echo $1
@@ -41,10 +41,43 @@ function listunspent {
 	invoke "${JSON_STRING}" 
 }
 
+case $1 in
+
+  all)
+    echo -n "running complete script"
+		getdescriptorinfo $address
+		createwallet
+		importdescriptors $descriptor
+		generatetodescriptor 50 $descriptor 
+		listunspent
+    ;;
+
+  descinfo) 
+	getdescriptorinfo 
+	;;
+	
+  import) 
+	importdescriptors $descriptor 
+	;;
+
+  mine)
+	generatetodescriptor $2  
+	;;
+
+  unspent)
+	listunspent
+    ;;
+  
+
+  init)
+	docker run --rm -it   -p 18443:18443   -p 18444:18444   ruimarinho/bitcoin-core   -printtoconsole   -regtest=1   -rpcallowip=172.17.0.0/16   -rpcbind=0.0.0.0   -rpcauth='foo:7d9ba5ae63c3d4dc30583ff4fe65a67e$9e3634e81c11659e3de036d0bf88f89cd169c1039e6e09607562d54765c649cc'
+	;;
+  *)
+    echo -n "unknown"
+    ;;
+esac
 
 
-getdescriptorinfo
-createwallet
-importdescriptors
-# generatetodescriptor 10  
-listunspent
+# function all {
+# 	
+# }

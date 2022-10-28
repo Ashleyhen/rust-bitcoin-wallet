@@ -46,7 +46,7 @@ impl P2tr {
     pub fn single_create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
         return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
             let mut tx_out_vec = vec![TxOut {
-                value: total-TIP,
+                value: total - TIP,
                 script_pubkey: outputs[0].clone().witness_script.unwrap(),
             }];
             return Transaction {
@@ -66,27 +66,27 @@ impl P2tr {
     }
 
     pub fn single_output<'a>(&'a self, send: Script) -> Vec<LockFn<'a>> {
-        return vec![
-            new_witness_pub_k(send),
-            ];
+        return vec![new_witness_pub_k(send)];
     }
 
     pub fn input_factory<'a>(
         &'a self,
         keypair: &'a KeyPair,
-        script_pubkey:Script
-    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
+        script_pubkey: Script,
+    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>
+    {
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
-                let prev_output_list=previous_list.iter().flat_map(|tx|tx.output.clone()).collect::<Vec<TxOut>>();
+                let prev_output_list = previous_list
+                    .iter()
+                    .flat_map(|tx| tx.output.clone())
+                    .collect::<Vec<TxOut>>();
                 let mut unlock_vec: Vec<UnlockFn> = vec![];
                 for (size, prev) in previous_list.iter().enumerate() {
                     let tx_out = prev
                         .output
                         .iter()
-                        .find(|t| {
-                            t.script_pubkey.eq(&script_pubkey)
-                        })
+                        .find(|t| t.script_pubkey.eq(&script_pubkey))
                         .unwrap();
                     unlock_vec.push(insert_witness_tx(tx_out.clone()));
                     unlock_vec.push(sign_key_sig(

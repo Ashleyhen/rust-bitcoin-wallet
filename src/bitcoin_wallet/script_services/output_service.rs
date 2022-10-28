@@ -3,7 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use bitcoin::{
     psbt::{Output, TapTree},
     schnorr::TweakedPublicKey,
-    secp256k1::{ecdh::SharedSecret, All, Secp256k1, SecretKey, Parity},
+    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey},
     util::{
         bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
@@ -11,10 +11,7 @@ use bitcoin::{
     Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
 };
 
-
 use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
-
-
 
 pub struct OutputService(pub P2tr);
 
@@ -66,38 +63,38 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
     });
 }
 
-
-pub fn merge_x_only<'a>(secp: &'a Secp256k1<All>,x_only:XOnlyPublicKey,x_only_2:XOnlyPublicKey) -> Box<impl Fn(&mut Output) + 'a> {
+pub fn merge_x_only<'a>(
+    secp: &'a Secp256k1<All>,
+    x_only: XOnlyPublicKey,
+    x_only_2: XOnlyPublicKey,
+) -> Box<impl Fn(&mut Output) + 'a> {
     // let mut shared_x_only=x_only.clone();
     // shared_x_only.add_tweak(secp, &x_only_2.serialize()).unwrap();
-    return Box::new(move |output: &mut Output|{
-    //     let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
-    //     output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
-    //     output.tap_internal_key=Some(shared_x_only);
+    return Box::new(move |output: &mut Output| {
+        //     let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
+        //     output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
+        //     output.tap_internal_key=Some(shared_x_only);
     });
 }
 
-
- fn new_shared_secret<'a>(
+fn new_shared_secret<'a>(
     mut iter: impl Iterator<Item = &'a XOnlyPublicKey>,
     secret: String,
 ) -> SecretKey {
-    
-        match iter.next() {
-            Some(x_only) => {
-                return SecretKey::from_slice(
-                    &SharedSecret::new(
-                        &x_only.public_key(Parity::Even),
-                        &new_shared_secret(iter, secret),
-                    )
-                    .secret_bytes(),
+    match iter.next() {
+        Some(x_only) => {
+            return SecretKey::from_slice(
+                &SharedSecret::new(
+                    &x_only.public_key(Parity::Even),
+                    &new_shared_secret(iter, secret),
                 )
-                .unwrap()
-            }
-
-            None => SecretKey::from_str(&secret).unwrap(),
+                .secret_bytes(),
+            )
+            .unwrap()
         }
-    
+
+        None => SecretKey::from_str(&secret).unwrap(),
+    }
 }
 
 fn lock_key<'a>(func_list_list: Vec<Vec<Box<dyn Fn(&mut Output)>>>) -> Vec<Output> {

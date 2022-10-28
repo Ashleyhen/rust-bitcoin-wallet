@@ -5,7 +5,7 @@ use bitcoin::{
     hashes::hex::FromHex,
     psbt::{Input, Output, PartiallySignedTransaction, TapTree},
     schnorr::{TapTweak, TweakedPublicKey},
-    secp256k1::{ecdh::SharedSecret, All, Message, Secp256k1, SecretKey, Parity},
+    secp256k1::{ecdh::SharedSecret, All, Message, Parity, Secp256k1, SecretKey},
     util::{
         bip32::{DerivationPath, ExtendedPrivKey, Fingerprint, KeySource},
         sighash::{Prevouts, SighashCache},
@@ -51,8 +51,11 @@ impl P2tr {
         key: &'a SecretKey,
     ) -> Box<impl FnMut(&mut Output) + 'a> {
         Box::new(move |output: &mut Output| {
-            output.tap_internal_key =
-            Some(KeyPair::from_secret_key(&self.secp, &key).x_only_public_key().0)
+            output.tap_internal_key = Some(
+                KeyPair::from_secret_key(&self.secp, &key)
+                    .x_only_public_key()
+                    .0,
+            )
         })
     }
 

@@ -1,8 +1,9 @@
 use bitcoin::{
     blockdata::{opcodes, script::Builder},
+    hashes::hex::ToHex,
     secp256k1::{All, Secp256k1},
     util::bip32::ExtendedPrivKey,
-    Script, Transaction, hashes::hex::ToHex,
+    Script, Transaction,
 };
 
 use crate::bitcoin_wallet::script_services::{
@@ -20,7 +21,7 @@ impl P2wpkh {
     ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
         return Box::new(
             move |previous_list: Vec<Transaction>, current: Transaction| {
-                let pubkey=bitcoin::PublicKey::from_private_key(&self.secp, &ext_prv.to_priv());
+                let pubkey = bitcoin::PublicKey::from_private_key(&self.secp, &ext_prv.to_priv());
 
                 let script = Script::new_v0_p2wpkh(&pubkey.wpubkey_hash().unwrap());
                 let mut unlock_vec: Vec<UnlockFn> = vec![];
