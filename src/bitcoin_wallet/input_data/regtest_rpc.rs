@@ -8,8 +8,24 @@ pub struct RegtestRpc {
     amount: u64,
     tx_in: Vec<TxIn>,
     previous_tx: Vec<Transaction>,
+    address_list: Vec<Address>,
+    client: Client,
 }
 
+pub struct TxHandlar{
+    pub tx_vec: Vec<Transaction>,
+    pub tx_in: Vec<TxIn>,
+}
+
+impl TxHandlar{
+    pub fn new(tx_vec:Vec<Transaction>, tx_in:Vec<TxIn>)->Self{
+        return TxHandlar{
+            tx_vec,
+            tx_in
+        }
+    }
+}
+// type TxManager<'a> = Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>+'a>;  
 impl RpcCall for RegtestRpc {
     fn contract_source(&self) -> Vec<Transaction> {
         return self.previous_tx.clone();
@@ -39,14 +55,6 @@ impl<'a> RegtestRpc {
         )
         .unwrap();
     }
-    // bitcoin-cli -rpcuser=foo -rpcpassword=qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=  -rpcwallet=mywallet generatetodescriptor 100 "addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs"
-
-    // bitcoin-cli -named createwallet wallet_name=mywallet descriptors=true disable_private_keys=true
-    // bitcoin-cli loadwallet mywallet
-    // bitcoin-cli getdescriptorinfo "addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)"
-    // bitcoin-cli -rpcwallet=mywallet importdescriptors '[{"desc":"addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs","timestamp":"now"}]'
-    // bitcoin-cli -rpcwallet=mywallet generatetodescriptor 10 "addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs"
-    // bitcoin-cli -rpcwallet=mywallet listunspent
 
     pub fn create_wallet(
         client: &Client,
@@ -62,17 +70,6 @@ impl<'a> RegtestRpc {
         return result;
     }
 
-    pub fn importdescriptors(client: &Client, address: &Address) {
-        // bitcoin-cli -rpcwallet=mywallet importdescriptors '[{"desc":"addr(bcrt1pp375ce9lvxs8l9rlsl78u4szhqa7za748dfhtjj5ht05lufu4dwsshpxl6)#ngm593tu","timestamp":"now"}]'
-        // let mut arg = [
-
-        // ];
-        //         client.call("importdescriptors", []);
-        //         client
-        //             .import_address(&address, None,None)
-        //             .unwrap();
-    }
-
     pub fn generatetodescriptor(
         client: &Client,
         block_num: u64,
@@ -80,11 +77,12 @@ impl<'a> RegtestRpc {
     ) -> Vec<BlockHash> {
         return client.generate_to_address(block_num, address).unwrap();
     }
+
     pub fn transaction_broadcast(&self, tx: &Transaction) -> Txid {
         return RegtestRpc::get_client().send_raw_transaction(tx).unwrap();
     }
 
-    pub fn from_string(script_list: &'a Vec<String>) -> Box<dyn Fn() -> Self + 'a> {
+    pub fn from_string(script_list: &'a Vec<String>) -> Self {
         let address_list = script_list
             .iter()
             .map(|addr| Address::from_str(addr).unwrap())
@@ -93,65 +91,89 @@ impl<'a> RegtestRpc {
         return regtest;
     }
 
-    pub fn from_address(address_list: Vec<Address>) -> Box<dyn Fn() -> Self + 'a> {
+    pub fn update(&self) -> Self {
+        let tx_in = RegtestRpc::get_txin(&self.client, &self.address_list).to_vec();
+        let previous_tx = RegtestRpc::get_previous_tx(&self.client, &tx_in);
+
+        let amt = RegtestRpc::get_amount(&previous_tx, &self.address_list);
+        return RegtestRpc {
+            amount: amt,
+            tx_in,
+            previous_tx,
+            address_list: self.address_list.clone(),
+            client: RegtestRpc::get_client(),
+        };
+    }
+
+    fn get_txin(client: &Client, address_list: &Vec<Address>) -> Vec<TxIn> {
+        return client
+            .list_unspent(
+                None,
+                None,
+                Some(&address_list.clone().iter().collect::<Vec<&Address>>()),
+                None,
+                None,
+            )
+            .unwrap()
+            .iter()
+            .map(|entry| {
+                return TxIn {
+                    previous_output: OutPoint::new(entry.txid, entry.vout),
+                    script_sig: Script::new(),
+                    sequence: bitcoin::Sequence(0xFFFFFFFF),
+                    witness: Witness::default(),
+                };
+            })
+            .collect::<Vec<TxIn>>();
+    }
+
+    fn get_previous_tx(client: &Client, tx_in: &Vec<TxIn>) -> Vec<Transaction> {
+        return tx_in
+            .iter()
+            .map(|tx_id| {
+                client
+                    .get_transaction(&tx_id.previous_output.txid, Some(true))
+                    .unwrap()
+                    .transaction()
+                    .unwrap()
+            })
+            .collect::<Vec<Transaction>>();
+    }
+
+    fn get_amount(previous_tx: &Vec<Transaction>, address_list: &Vec<Address>) -> u64 {
+        return previous_tx
+            .iter()
+            .map(|tx| {
+                tx.output
+                    .iter()
+                    .filter(|p| {
+                        address_list
+                            .clone()
+                            .iter()
+                            .map(|addr| addr.script_pubkey())
+                            .collect::<Vec<Script>>()
+                            .contains(&p.script_pubkey)
+                    })
+                    .map(|output_tx| output_tx.value)
+                    .sum::<u64>()
+            })
+            .sum::<u64>();
+    }
+// , option_mapper:Option<Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>>>
+    pub fn from_address(address_list: Vec<Address>) -> Self {
         let client = RegtestRpc::get_client();
-        return Box::new(move || {
+        let tx_in = RegtestRpc::get_txin(&client, &address_list).to_vec();
+// option_mapper.map(|mapper)
+        let previous_tx = RegtestRpc::get_previous_tx(&client, &tx_in);
+        let amt = RegtestRpc::get_amount(&previous_tx, &address_list);
+        // previous_tx.iter().zip(tx_in).map(|(tx, b)| {});
 
-            let temp = client
-                .list_unspent(
-                    None,
-                    None,
-                    Some(&address_list.iter().collect::<Vec<&Address>>()),
-                    None,
-                    None,
-                )
-                .unwrap()
-                .iter()
-                .map(|entry| {
-                    return TxIn {
-                        previous_output: OutPoint::new(entry.txid, entry.vout),
-                        script_sig: Script::new(),
-                        sequence: bitcoin::Sequence(0xFFFFFFFF),
-                        witness: Witness::default(),
-                    };
-                })
-                .collect::<Vec<TxIn>>();
-
-                let tx_in=temp[..1].to_vec();
-
-            let previous_tx = tx_in
-                .iter()
-                .map(|tx_id| {
-                    client
-                        .get_transaction(&tx_id.previous_output.txid, Some(true))
-                        .unwrap()
-                        .transaction()
-                        .unwrap()
-                })
-                .collect::<Vec<Transaction>>();
-
-            let amt = previous_tx
-                .iter()
-                .map(|tx| {
-                    tx.output
-                        .iter()
-                        .filter(|p| {
-                            address_list
-                                .iter()
-                                .map(|addr| addr.script_pubkey())
-                                .collect::<Vec<Script>>()
-                                .contains(&p.script_pubkey)
-                        })
-                        .map(|output_tx| output_tx.value)
-                        .sum::<u64>()
-                })
-                .sum::<u64>();
-
-            return RegtestRpc {
-                amount: amt,
-                tx_in,
-                previous_tx,
-            };
-        });
+        return RegtestRpc {
+            amount: amt,
+            tx_in,
+            previous_tx,
+            address_list,
+            client,
+        };
     }
 }

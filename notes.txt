@@ -1,0 +1,18 @@
+docker run --rm -it \
+  -p 18443:18443 \
+  -p 18444:18444 \
+  ruimarinho/bitcoin-core \
+  -printtoconsole \
+  -regtest=1 \
+  -rpcallowip=172.17.0.0/16 \
+  -rpcbind=0.0.0.0 \
+  -rpcauth='foo:7d9ba5ae63c3d4dc30583ff4fe65a67e$9e3634e81c11659e3de036d0bf88f89cd169c1039e6e09607562d54765c649cc'
+
+
+alias bitcoin-cli="bitcoin-cli -regtest"
+bitcoin-cli -named createwallet wallet_name=mywallet descriptors=true disable_private_keys=true
+bitcoin-cli loadwallet mywallet
+bitcoin-cli getdescriptorinfo "addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)"
+bitcoin-cli -rpcwallet=mywallet importdescriptors '[{"desc":"addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs","timestamp":"now"}]'
+bitcoin-cli -rpcwallet=mywallet generatetodescriptor [10, "addr(bcrt1pe6lgv0eucta4l23yk69wmjza4m89w5a8p4g7dhjl4w9jvhj30jjq0cjwxw)#ysp3m4rs]"
+bitcoin-cli -rpcwallet=mywallet listunspent

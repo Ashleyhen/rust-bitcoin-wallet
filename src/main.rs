@@ -65,7 +65,7 @@ pub fn get_base_balance() {
         vec!["bcrt1p5kaqsuted66fldx256lh3en4h9z4uttxuagkwepqlqup6hw639gsm28t6c".to_owned()];
     let reg_test = RegtestRpc::from_string(&address_list);
 
-    dbg!(reg_test().script_get_balance());
+    // dbg!(reg_test().script_get_balance());
 }
 
 // tb1paq75m2jlhjeywx75g3t08d8yplt5w9a0ecar3mdp5ay3laxva7vqng2jak

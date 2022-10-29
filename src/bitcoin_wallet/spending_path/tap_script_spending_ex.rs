@@ -21,7 +21,6 @@ use crate::bitcoin_wallet::{
 
 use super::scripts::TapScripts;
 
-
 pub struct TapScriptSendEx<'a> {
     pub secp: &'a Secp256k1<All>,
 }
@@ -59,13 +58,14 @@ impl<'a> TapScriptSendEx<'a> {
 
     pub fn output_factory(
         &'a self,
-        xinternal: XOnlyPublicKey,
-        xalice: XOnlyPublicKey,
-        xbob: XOnlyPublicKey,
+        xinternal: &'a XOnlyPublicKey,
+        xalice: &'a XOnlyPublicKey,
+        xbob: &'a XOnlyPublicKey,
     ) -> Vec<LockFn<'a>> {
         let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
         let combined_script = vec![(1, bob_script.clone()), (1, alice_script.clone())];
+
         return vec![
             new_tap_internal_key(xinternal),
             insert_tap_key_origin(vec![(1, alice_script)], xalice),
@@ -75,13 +75,27 @@ impl<'a> TapScriptSendEx<'a> {
         ];
     }
 
-    
+    pub fn adaptor_sig(
+        &'a self,
+        xinternal:&'a XOnlyPublicKey,
+        primary_xonly:&'a XOnlyPublicKey,
+        secondary_xonly:&'a XOnlyPublicKey
+    )->Vec<LockFn<'a>>{
+        let delay=TapScripts::delay(primary_xonly);
+        let multi_sig=TapScripts::multi_2_of_2_script(primary_xonly, secondary_xonly);
+        let combined_script = vec![(1, delay.get_script()), (1, multi_sig.get_script())];
+        return vec![
+            new_tap_internal_key(xinternal),
+            insert_tap_tree(combined_script.clone()),
+            insert_tap_key_origin(combined_script, primary_xonly)
+            ];
+    }
 
     pub fn input_factory(
         &'a self,
         bob_keypair: &'a KeyPair,
         internal_key: XOnlyPublicKey,
-    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
+    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<Vec<UnlockFn<'a>>> + 'a> {
         let xbob = bob_keypair.x_only_public_key().0;
         let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
@@ -93,8 +107,9 @@ impl<'a> TapScriptSendEx<'a> {
 
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
-                let mut unlock_vec: Vec<UnlockFn> = vec![];
+                let mut unlock_vec_vec: Vec<Vec<UnlockFn>> = vec![];
                 for (size, prev) in previous_list.iter().enumerate() {
+                    let mut unlock_vec: Vec<UnlockFn> = vec![];
                     unlock_vec.push(insert_control_block(
                         &self.secp,
                         bob_script.clone(),
@@ -109,8 +124,9 @@ impl<'a> TapScriptSendEx<'a> {
                         witness.clone(),
                         bob_script.clone(),
                     ));
+                    unlock_vec_vec.push(unlock_vec);
                 }
-                return unlock_vec;
+                return unlock_vec_vec;
             },
         );
     }

@@ -2,10 +2,8 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction},
-    secp256k1::{
-        ffi::{secp256k1_ec_seckey_tweak_add},
-        All, Secp256k1,
-    }, SchnorrSig, Transaction, TxIn,
+    secp256k1::{ffi::secp256k1_ec_seckey_tweak_add, All, Secp256k1},
+    SchnorrSig, Transaction, TxIn,
 };
 
 use crate::bitcoin_wallet::{constants::NETWORK, input_data::RpcCall};
@@ -16,7 +14,7 @@ pub type LockFn<'a> = Box<dyn FnMut(&mut Output) + 'a>;
 
 pub type CreateTxFn<'a> = Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction + 'a>;
 
-pub type SpendFn<'a> = Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>;
+pub type SpendFn<'a> = Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<Vec<UnlockFn<'a>>> + 'a>;
 
 pub fn create_partially_signed_tx<'a, R>(
     output_vec_vec_func: Vec<Vec<LockFn>>,
@@ -32,14 +30,17 @@ where
         let confirmed = api_call.script_get_balance();
         let previous_tx = api_call.contract_source();
         let tx_in = api_call.prev_input();
+
         let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
 
-        let input_vec = get_input(
-            &unlock_func,
-            previous_tx,
-            &unsigned_tx,
-            &mut Vec::<Input>::new(),
-        );
+        let mut input_vec = Vec::<Input>::new();
+        for func_list in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
+            let mut input = Input::default();
+            for mut func in func_list {
+                func(&mut input);
+            }
+            input_vec.push(input);
+        }
 
         return PartiallySignedTransaction {
             unsigned_tx,
@@ -87,11 +88,13 @@ fn get_input<'a, 'b>(
     unsigned_tx: &Transaction,
     input_vec: &'a mut Vec<Input>,
 ) -> Vec<Input> {
-    let mut input = Input::default();
-    for func in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
-        func(&mut input);
+    for func_list in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
+        let mut input = Input::default();
+        for mut func in func_list {
+            func(&mut input);
+        }
+        input_vec.push(input);
     }
-    input_vec.push(input);
     return input_vec.to_vec();
 }
 

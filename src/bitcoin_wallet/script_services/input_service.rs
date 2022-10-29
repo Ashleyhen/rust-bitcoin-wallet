@@ -154,7 +154,8 @@ pub fn sign_key_sig<'a>(
             sig,
             hash_ty: SchnorrSighashType::AllPlusAnyoneCanPay,
         };
-        // secp.verify_schnorr(&sig, &msg, &key_pair.x_only_public_key().0).unwrap();
+        secp.verify_schnorr(&sig, &msg, &tweaked_pair.to_inner().x_only_public_key().0)
+            .unwrap();
         input.tap_key_sig = Some(schnorrsig);
     });
 }

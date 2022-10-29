@@ -73,16 +73,17 @@ impl P2tr {
         &'a self,
         keypair: &'a KeyPair,
         script_pubkey: Script,
-    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>
-    {
+    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<Vec<UnlockFn<'a>>> + 'a> {
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
                 let prev_output_list = previous_list
                     .iter()
                     .flat_map(|tx| tx.output.clone())
                     .collect::<Vec<TxOut>>();
-                let mut unlock_vec: Vec<UnlockFn> = vec![];
+
+                let mut unlock_vec_vec: Vec<Vec<UnlockFn>> = vec![];
                 for (size, prev) in previous_list.iter().enumerate() {
+                    let mut unlock_vec: Vec<UnlockFn> = vec![];
                     let tx_out = prev
                         .output
                         .iter()
@@ -96,9 +97,11 @@ impl P2tr {
                         prev_output_list.clone(),
                         size,
                     ));
+                    unlock_vec_vec.push(unlock_vec);
                 }
-                return unlock_vec;
+                return unlock_vec_vec;
             },
         );
     }
+    
 }

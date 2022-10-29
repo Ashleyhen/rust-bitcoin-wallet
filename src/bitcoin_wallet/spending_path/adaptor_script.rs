@@ -41,9 +41,9 @@ impl<'a> AdaptorScript<'a> {
         let multi_sig = TapScripts::multi_2_of_2_script(&primary_xonly, &secondary_xonly);
         let combined_script = vec![(1, delay.get_script()), (1, multi_sig.get_script())];
         return vec![
-            new_tap_internal_key(xinternal),
+            // new_tap_internal_key(xinternal),
             insert_tap_tree(combined_script.clone()),
-            insert_tap_key_origin(combined_script, primary_xonly),
+            // insert_tap_key_origin(combined_script, primary_xonly),
             insert_tree_witness(&self.secp),
         ];
     }
