@@ -81,7 +81,7 @@ impl<'a> RegtestRpc {
         return RegtestRpc::get_client().send_raw_transaction(tx).unwrap();
     }
 
-    pub fn from_string(script_list: &'a Vec<String>, optional_filter: OptionFilter) -> Self {
+    pub fn from_string(script_list: &'a Vec<&str>, optional_filter: OptionFilter) -> Self {
         let address_list = script_list
             .iter()
             .map(|addr| Address::from_str(addr).unwrap())
