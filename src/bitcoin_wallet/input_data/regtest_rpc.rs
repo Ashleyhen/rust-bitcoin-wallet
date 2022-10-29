@@ -12,20 +12,19 @@ pub struct RegtestRpc {
     client: Client,
 }
 
-pub struct TxHandlar{
-    pub tx_vec: Vec<Transaction>,
-    pub tx_in: Vec<TxIn>,
+type OptionFilter = Option<Box<dyn Fn(Vec<TxHandlar>) -> Vec<TxHandlar>>>;
+#[derive(Clone)]
+pub struct TxHandlar {
+    pub tx_vec: Transaction,
+    pub tx_in: TxIn,
 }
 
-impl TxHandlar{
-    pub fn new(tx_vec:Vec<Transaction>, tx_in:Vec<TxIn>)->Self{
-        return TxHandlar{
-            tx_vec,
-            tx_in
-        }
+impl TxHandlar {
+    pub fn new(tx_in: TxIn, tx_vec: Transaction) -> Self {
+        return TxHandlar { tx_vec, tx_in };
     }
 }
-// type TxManager<'a> = Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>+'a>;  
+// type TxManager<'a> = Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>+'a>;
 impl RpcCall for RegtestRpc {
     fn contract_source(&self) -> Vec<Transaction> {
         return self.previous_tx.clone();
@@ -82,12 +81,12 @@ impl<'a> RegtestRpc {
         return RegtestRpc::get_client().send_raw_transaction(tx).unwrap();
     }
 
-    pub fn from_string(script_list: &'a Vec<String>) -> Self {
+    pub fn from_string(script_list: &'a Vec<String>, optional_filter: OptionFilter) -> Self {
         let address_list = script_list
             .iter()
             .map(|addr| Address::from_str(addr).unwrap())
             .collect::<Vec<Address>>();
-        let regtest = RegtestRpc::from_address(address_list);
+        let regtest = RegtestRpc::from_address(address_list, optional_filter);
         return regtest;
     }
 
@@ -159,15 +158,24 @@ impl<'a> RegtestRpc {
             })
             .sum::<u64>();
     }
-// , option_mapper:Option<Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>>>
-    pub fn from_address(address_list: Vec<Address>) -> Self {
-        let client = RegtestRpc::get_client();
-        let tx_in = RegtestRpc::get_txin(&client, &address_list).to_vec();
-// option_mapper.map(|mapper)
-        let previous_tx = RegtestRpc::get_previous_tx(&client, &tx_in);
-        let amt = RegtestRpc::get_amount(&previous_tx, &address_list);
-        // previous_tx.iter().zip(tx_in).map(|(tx, b)| {});
 
+    pub fn from_address(address_list: Vec<Address>, option_filter: OptionFilter) -> Self {
+        let client = RegtestRpc::get_client();
+        let tx_input = RegtestRpc::get_txin(&client, &address_list).to_vec();
+        let prev_tx = RegtestRpc::get_previous_tx(&client, &tx_input);
+        let handler_vec: Vec<TxHandlar> = tx_input
+            .iter()
+            .zip(prev_tx.clone())
+            .map(|(tx_in, tx)| TxHandlar::new(tx_in.to_owned(), tx))
+            .collect();
+        let filter_tx_handler = option_filter
+            .map(|mapper| mapper(handler_vec.clone()))
+            .unwrap_or(handler_vec.clone());
+        let (previous_tx, tx_in): (Vec<Transaction>, Vec<TxIn>) = filter_tx_handler
+            .iter()
+            .map(|tx_handler| (tx_handler.tx_vec.clone(), tx_handler.tx_in.clone()))
+            .unzip();
+        let amt = RegtestRpc::get_amount(&previous_tx, &address_list);
         return RegtestRpc {
             amount: amt,
             tx_in,

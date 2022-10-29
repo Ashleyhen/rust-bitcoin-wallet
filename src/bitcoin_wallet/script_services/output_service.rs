@@ -36,7 +36,7 @@ pub fn new_tap_internal_key<'a>(xinternal: &'a XOnlyPublicKey) -> Box<impl Fn(&m
     return Box::new(move |output: &mut Output| output.tap_internal_key = Some(xinternal.clone()));
 }
 
-pub fn insert_tap_tree<'a>(scripts:  Vec<(u32, Script)>) -> Box<impl Fn(&mut Output) + 'a> {
+pub fn insert_tap_tree<'a>(scripts: Vec<(u32, Script)>) -> Box<impl Fn(&mut Output) + 'a> {
     return Box::new(move |output: &mut Output| {
         let builder = TaprootBuilder::with_huffman_tree(scripts.clone()).unwrap();
         output.tap_tree = Some(TapTree::try_from(builder).unwrap());
@@ -96,7 +96,6 @@ fn new_shared_secret<'a>(
         None => SecretKey::from_str(&secret).unwrap(),
     }
 }
-
 
 fn lock_key<'a>(func_list_list: Vec<Vec<Box<dyn Fn(&mut Output)>>>) -> Vec<Output> {
     let mut output_vec = Vec::<Output>::new();

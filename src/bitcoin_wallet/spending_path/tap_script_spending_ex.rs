@@ -77,18 +77,18 @@ impl<'a> TapScriptSendEx<'a> {
 
     pub fn adaptor_sig(
         &'a self,
-        xinternal:&'a XOnlyPublicKey,
-        primary_xonly:&'a XOnlyPublicKey,
-        secondary_xonly:&'a XOnlyPublicKey
-    )->Vec<LockFn<'a>>{
-        let delay=TapScripts::delay(primary_xonly);
-        let multi_sig=TapScripts::multi_2_of_2_script(primary_xonly, secondary_xonly);
+        xinternal: &'a XOnlyPublicKey,
+        primary_xonly: &'a XOnlyPublicKey,
+        secondary_xonly: &'a XOnlyPublicKey,
+    ) -> Vec<LockFn<'a>> {
+        let delay = TapScripts::delay(primary_xonly);
+        let multi_sig = TapScripts::multi_2_of_2_script(primary_xonly, secondary_xonly);
         let combined_script = vec![(1, delay.get_script()), (1, multi_sig.get_script())];
         return vec![
             new_tap_internal_key(xinternal),
             insert_tap_tree(combined_script.clone()),
-            insert_tap_key_origin(combined_script, primary_xonly)
-            ];
+            insert_tap_key_origin(combined_script, primary_xonly),
+        ];
     }
 
     pub fn input_factory(

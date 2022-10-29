@@ -92,7 +92,7 @@ use crate::bitcoin_wallet::{
 //     //
 // }
 
-pub fn single_sign() {
+pub fn key_sign() {
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
     let secp = Secp256k1::new();
     let from_key_pair = KeyPair::from_seckey_str(&secp, &seed.to_string()).unwrap();
@@ -104,11 +104,16 @@ pub fn single_sign() {
 
     let output_factory = || vec![tap_fn.single_output(to_address.clone().script_pubkey())];
     let lock_func = P2tr::single_create_tx();
-    // let temp = ;
+
     let unlock_func = tap_fn.input_factory(&from_key_pair, from_address.script_pubkey());
     let address_list = vec![from_address.clone()].to_vec();
-    let api = RegtestRpc::from_address(address_list);
-
+    let api = RegtestRpc::from_address(address_list, Some(Box::new(|tx_handler|tx_handler[..2].to_vec())));
     let psbt = create_partially_signed_tx(output_factory(), lock_func, unlock_func)(&api);
-    dbg!(psbt.finalize(&secp).unwrap());
+    // dbg!(psbt.finalize(&secp).unwrap());
+    let tx_id=psbt.finalize(&secp).map(|finalized|
+        api.transaction_broadcast(&finalized.extract(&secp).unwrap())
+    ).unwrap();
+    
+    println!("tx broadcasted successfully tx hash: {}",tx_id)
+
 }
