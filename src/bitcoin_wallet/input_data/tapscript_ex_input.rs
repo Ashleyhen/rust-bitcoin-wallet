@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use bitcoin::{hashes::hex::FromHex, psbt::serialize::Deserialize, Transaction, TxIn};
-use electrum_client::{Error, GetBalanceRes};
 
 use super::RpcCall;
 
@@ -10,7 +7,7 @@ pub struct TapscriptExInput();
 
 impl RpcCall for TapscriptExInput {
     fn contract_source(&self) -> Vec<Transaction> {
-        return (vec![get_tx()]);
+        return vec![get_tx()];
     }
 
     fn script_get_balance(&self) -> u64 {

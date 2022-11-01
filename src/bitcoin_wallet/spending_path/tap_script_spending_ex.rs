@@ -9,23 +9,25 @@ use bitcoin::{
 use bitcoin_hashes::Hash;
 
 use crate::bitcoin_wallet::{
-    constants::{NETWORK, TIP},
+    constants::NETWORK,
     script_services::{
-        input_service::{insert_control_block, sign_tapleaf},
+        input_service::{insert_control_block, insert_witness_tx, sign_tapleaf},
         output_service::{
             insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
         },
-        psbt_factory::{CreateTxFn, LockFn, UnlockFn},
+        psbt_factory::{LockFn, UnlockFn},
     },
 };
 
 pub struct TapScriptSendEx<'a> {
     pub secp: &'a Secp256k1<All>,
 }
+
 pub fn get_preimage() -> Vec<u8> {
     return Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f")
         .unwrap();
 }
+
 pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
     let preimage_hash = bitcoin_hashes::sha256::Hash::hash(&get_preimage());
     let bob_script = Builder::new()
@@ -38,6 +40,7 @@ pub fn bob_scripts(x_only: &XOnlyPublicKey) -> Script {
 
     return bob_script;
 }
+
 impl<'a> TapScriptSendEx<'a> {
     pub fn new(secp: &'a Secp256k1<All>) -> Self {
         return TapScriptSendEx { secp };
@@ -53,13 +56,14 @@ impl<'a> TapScriptSendEx<'a> {
 
     pub fn output_factory(
         &'a self,
-        xinternal: XOnlyPublicKey,
-        xalice: XOnlyPublicKey,
-        xbob: XOnlyPublicKey,
+        xinternal: &'a XOnlyPublicKey,
+        xalice: &'a XOnlyPublicKey,
+        xbob: &'a XOnlyPublicKey,
     ) -> Vec<LockFn<'a>> {
         let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
         let combined_script = vec![(1, bob_script.clone()), (1, alice_script.clone())];
+
         return vec![
             new_tap_internal_key(xinternal),
             insert_tap_key_origin(vec![(1, alice_script)], xalice),
@@ -73,8 +77,8 @@ impl<'a> TapScriptSendEx<'a> {
         &'a self,
         bob_keypair: &'a KeyPair,
         internal_key: XOnlyPublicKey,
-    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a> {
-        let xbob = bob_keypair.public_key();
+    ) -> Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<Vec<UnlockFn<'a>>> + 'a> {
+        let xbob = bob_keypair.x_only_public_key().0;
         let bob_script = bob_scripts(&xbob);
         let alice_script = TapScriptSendEx::alice_script();
 
@@ -85,8 +89,21 @@ impl<'a> TapScriptSendEx<'a> {
 
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
-                let mut unlock_vec: Vec<UnlockFn> = vec![];
+                let mut unlock_vec_vec: Vec<Vec<UnlockFn>> = vec![];
+                let prev_output_list = previous_list
+                    .iter()
+                    .flat_map(|tx| tx.output.clone())
+                    .collect::<Vec<TxOut>>();
                 for (size, prev) in previous_list.iter().enumerate() {
+                    let mut unlock_vec: Vec<UnlockFn> = vec![];
+                    let tx_out = prev
+                        .output
+                        .iter()
+                        .find(|t| t.script_pubkey.eq(&witness))
+                        .unwrap();
+
+                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+
                     unlock_vec.push(insert_control_block(
                         &self.secp,
                         bob_script.clone(),
@@ -96,34 +113,15 @@ impl<'a> TapScriptSendEx<'a> {
                         &self.secp,
                         &bob_keypair,
                         current_tx.clone(),
-                        prev.clone().output,
+                        prev_output_list.clone(),
                         size,
-                        witness.clone(),
                         bob_script.clone(),
                     ));
+                    unlock_vec_vec.push(unlock_vec);
                 }
-                return unlock_vec;
+                return unlock_vec_vec;
             },
         );
-    }
-
-    pub fn create_tx() -> CreateTxFn<'a> {
-        return Box::new(move |output_list, tx_in, total| {
-            let addr =
-                Address::from_script(&output_list[0].clone().witness_script.unwrap(), NETWORK)
-                    .unwrap();
-            dbg!(addr.to_string());
-            let tx_out = vec![TxOut {
-                value: total - TIP,
-                script_pubkey: output_list[0].clone().witness_script.unwrap(),
-            }];
-            return Transaction {
-                version: 2,
-                lock_time: 0,
-                input: tx_in,
-                output: tx_out,
-            };
-        });
     }
 
     pub fn get_script_addresses(output_list: Vec<Output>) -> Vec<Address> {
@@ -137,22 +135,44 @@ impl<'a> TapScriptSendEx<'a> {
         psbt: PartiallySignedTransaction,
         x_only: &XOnlyPublicKey,
     ) -> Transaction {
-        let mut witness = Witness::new();
+        let tx = psbt.clone().extract_tx().clone();
+        let tx_in = psbt
+            .inputs
+            .iter()
+            .map(|input| {
+                let mut witness = Witness::new();
 
-        for sig in &psbt.inputs[0].tap_script_sigs {
-            let shnor = sig.1;
-            witness.push(shnor.to_vec());
-        }
-        witness.push(get_preimage());
-        let bob_script = bob_scripts(x_only);
-        witness.push(bob_script.as_bytes());
-        for control in &psbt.inputs[0].tap_scripts {
-            // let control_hash = control.0.merkle_branch.as_inner();
-            witness.push(control.0.serialize());
-        }
+                input.tap_script_sigs.iter().for_each(|sig| {
+                    let shnor = sig.1;
+                    witness.push(shnor.to_vec());
+                });
 
-        let mut tx = psbt.extract_tx();
-        tx.input[0].witness = witness;
-        return tx;
+                witness.push(get_preimage());
+                let bob_script = bob_scripts(x_only);
+                witness.push(bob_script.as_bytes());
+
+                input.tap_scripts.iter().for_each(|control| {
+                    witness.push(control.0.serialize());
+                });
+
+                return witness;
+            })
+            .zip(tx.input)
+            .map(|(witness, tx_input)| {
+                return TxIn {
+                    previous_output: tx_input.previous_output,
+                    script_sig: tx_input.script_sig,
+                    sequence: tx_input.sequence,
+                    witness,
+                };
+            })
+            .collect::<Vec<TxIn>>();
+
+        return Transaction {
+            version: tx.version,
+            lock_time: tx.lock_time,
+            input: tx_in,
+            output: tx.output,
+        };
     }
 }

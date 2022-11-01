@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use bitcoin::{
     psbt::{Input, Output, PartiallySignedTransaction},
@@ -13,27 +13,33 @@ pub type LockFn<'a> = Box<dyn FnMut(&mut Output) + 'a>;
 
 pub type CreateTxFn<'a> = Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction + 'a>;
 
+pub type SpendFn<'a> = Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<Vec<UnlockFn<'a>>> + 'a>;
+
 pub fn create_partially_signed_tx<'a, R>(
     output_vec_vec_func: Vec<Vec<LockFn>>,
     lock_func: CreateTxFn<'a>,
-    unlock_func: Box<dyn Fn(Vec<Transaction>, Transaction) -> Vec<UnlockFn<'a>> + 'a>,
+    unlock_func: SpendFn<'a>,
 ) -> Box<dyn Fn(&R) -> PartiallySignedTransaction + 'a>
 where
     R: RpcCall,
 {
-    let output_vec = get_output(output_vec_vec_func);
-
+    let mut output_list = Vec::<Output>::new();
+    let output_vec = get_output(output_vec_vec_func, &mut output_list);
     return Box::new(move |api_call| {
         let confirmed = api_call.script_get_balance();
         let previous_tx = api_call.contract_source();
         let tx_in = api_call.prev_input();
+
         let unsigned_tx = lock_func(output_vec.clone(), tx_in, confirmed);
-        let mut input_vec: Vec<Input> = Vec::<Input>::new();
-        let mut input = Input::default();
-        for func in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
-            func(&mut input);
+
+        let mut input_vec = Vec::<Input>::new();
+        for func_list in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
+            let mut input = Input::default();
+            for func in func_list {
+                func(&mut input);
+            }
+            input_vec.push(input);
         }
-        input_vec.push(input);
 
         return PartiallySignedTransaction {
             unsigned_tx,
@@ -46,8 +52,11 @@ where
         };
     });
 }
-pub fn get_output<'a>(output_vec_vec_func: Vec<Vec<LockFn>>) -> Vec<Output> {
-    let mut output_vec: Vec<Output> = Vec::<Output>::new();
+
+pub fn get_output<'a>(
+    output_vec_vec_func: Vec<Vec<LockFn>>,
+    output_vec: &'a mut Vec<Output>,
+) -> Vec<Output> {
     for func_list in output_vec_vec_func {
         let mut output = Output::default();
         for mut func in func_list {
@@ -55,5 +64,12 @@ pub fn get_output<'a>(output_vec_vec_func: Vec<Vec<LockFn>>) -> Vec<Output> {
         }
         output_vec.push(output);
     }
-    return output_vec;
+    return output_vec.to_vec();
+}
+
+pub fn default_input() -> Vec<Input> {
+    Vec::new()
+}
+pub fn default_output() -> Vec<Output> {
+    Vec::new()
 }

@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
-use bdk::{keys::GeneratableKey, KeychainKind};
 use bitcoin::{
-    secp256k1::{rand::rngs::OsRng, All, Secp256k1, SecretKey},
+    secp256k1::{All, Scalar, Secp256k1, SecretKey},
     util::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
         taproot::TapBranchHash,
     },
-    Address, KeyPair, XOnlyPublicKey,
+    Address,
 };
 
-use super::constants::{Seed, NETWORK};
+use super::constants::NETWORK;
 
 type AddressMapping = Box<(dyn Fn(&Secp256k1<All>, ExtendedPubKey) -> Address)>;
 type DeriveKeyMapping = Box<(dyn Fn(u32, u32) -> ExtendedPrivKey)>;
@@ -20,7 +19,7 @@ pub fn generate_key_pair(seed: Option<String>) -> ExtendedPrivKey {
         NETWORK,
         &seed
             .map(|f| SecretKey::from_str(&f).unwrap())
-            .unwrap_or(SecretKey::new(&mut OsRng::new().unwrap()))
+            .unwrap_or(SecretKey::from_slice(&Scalar::random().to_be_bytes()).unwrap())
             .secret_bytes(),
     )
     .unwrap();
@@ -53,7 +52,7 @@ pub fn map_seeds_to_scripts<'a>(
 }
 
 pub fn get_derivation_p(purpose: u32, recieve: u32, index: u32) -> DerivationPath {
-    let keychain = KeychainKind::External;
+    let keychain = 1;
     let path = DerivationPath::from(vec![
         ChildNumber::from_hardened_idx(purpose).unwrap(), // purpose
         ChildNumber::from_hardened_idx(recieve).unwrap(), // first recieve

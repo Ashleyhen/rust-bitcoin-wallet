@@ -5,7 +5,6 @@
 &checkmark; combine mutliple utxo's into a single utxo output  
 &checkmark; create a easy to use framework  
 &checkmark; script-spend  
-[ ] multi-sig  
-
-[ ] atomic swap  
+&checkmark; multi-sig  
+&checkmark; atomic swap  
 [ ] access the lighting network  

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
-use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
+use electrum_client::{Client, ElectrumApi};
 
 use super::RpcCall;
 
@@ -56,7 +56,7 @@ impl<'a> ElectrumRpc {
                     return TxIn {
                         previous_output: OutPoint::new(tx.tx_hash, tx.tx_pos.try_into().unwrap()),
                         script_sig: Script::new(), // The scriptSig must be exactly empty or the validation fails (native witness program)
-                        sequence: 0xFFFFFFFF,
+                        sequence: bitcoin::Sequence(0xFFFFFFFF),
                         witness: Witness::default(),
                     };
                 })
