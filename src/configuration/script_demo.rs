@@ -16,14 +16,10 @@ use crate::bitcoin_wallet::{
     address_formats::{
         derive_derivation_path, generate_key_pair, map_seeds_to_scripts, map_tr_address,
     },
-    constants::{NETWORK},
-    input_data::{ regtest_rpc::RegtestRpc},
-    script_services::psbt_factory::{
-        create_partially_signed_tx, default_output, get_output,
-    },
-    spending_path::{
-         p2tr_key_path::P2tr, tap_script_spending_ex::TapScriptSendEx,
-    },
+    constants::NETWORK,
+    input_data::regtest_rpc::RegtestRpc,
+    script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},
+    spending_path::{p2tr_key_path::P2tr, tap_script_spending_ex::TapScriptSendEx},
 };
 
 pub fn script_demo() {
@@ -63,10 +59,10 @@ pub fn script_demo() {
 
     let api = RegtestRpc::from_string(
         &vec!["bcrt1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4qnxemeg"],
-        Some(Box::new(|tx_handler| tx_handler[..1].to_vec())),
+        Some(Box::new(|tx_handler| tx_handler[..3].to_vec())),
     );
 
-    let lock_func = TapScriptSendEx::create_tx();
+    let lock_func = P2tr::single_create_tx();
 
     let unlock_func = || {
         tap_script.input_factory(
@@ -80,7 +76,7 @@ pub fn script_demo() {
         psbt,
         &keys[bob_secret].public_key().x_only_public_key().0,
     );
-    // send bitcoin to this address on testnet bcrt1pp375ce9lvxs8l9rlsl78u4szhqa7za748dfhtjj5ht05lufu4dwsshpxl6
+
     let tx_id = api.transaction_broadcast(&tx);
     println!("tx broadcasted successfully tx hash: {}", tx_id)
 }
@@ -103,10 +99,9 @@ pub fn key_sign() {
     let address_list = vec![from_address.clone()].to_vec();
     let api = RegtestRpc::from_address(
         address_list,
-        Some(Box::new(|tx_handler| tx_handler[..2].to_vec())),
+        Some(Box::new(|tx_handler| tx_handler[..3].to_vec())),
     );
     let psbt = create_partially_signed_tx(output_factory(), lock_func, unlock_func)(&api);
-    // dbg!(psbt.finalize(&secp).unwrap());
     let tx_id = psbt
         .finalize(&secp)
         .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))

@@ -36,7 +36,7 @@ where
         let mut input_vec = Vec::<Input>::new();
         for func_list in unlock_func(previous_tx.clone(), unsigned_tx.clone()) {
             let mut input = Input::default();
-            for mut func in func_list {
+            for func in func_list {
                 func(&mut input);
             }
             input_vec.push(input);

@@ -45,7 +45,7 @@ impl P2tr {
 
     pub fn single_create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
         return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
-            let mut tx_out_vec = vec![TxOut {
+            let tx_out_vec = vec![TxOut {
                 value: total - TIP,
                 script_pubkey: outputs[0].clone().witness_script.unwrap(),
             }];

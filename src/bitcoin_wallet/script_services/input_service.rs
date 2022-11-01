@@ -26,7 +26,7 @@ pub fn insert_control_block<'a>(
             spending_info.output_key().to_inner(),
             &spending_script,
         );
-        print!("is this control block valid {}", verify);
+        println!("is this control block valid {}", verify);
         input.tap_scripts.insert(
             control.unwrap(),
             (spending_script.clone(), LeafVersion::TapScript),
@@ -89,15 +89,16 @@ pub fn sign_tapleaf<'a>(
     secp: &'a Secp256k1<All>,
     key_pair: &'a KeyPair,
     current_tx: Transaction,
-    previous_tx: Vec<TxOut>,
+    prev_out: Vec<TxOut>,
     input_index: usize,
-    witness_script: Script,
     bob_script: Script,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     let x_only = key_pair.public_key().x_only_public_key().0;
     return Box::new(move |input: &mut Input| {
-        let prev = filter_for_wit(&previous_tx, &witness_script);
-
+        let witness_script = input.witness_script.as_ref().unwrap();
+        let prev = filter_for_wit(&prev_out, &witness_script);
+        // dbg!(prev.clone());
+        // dbg!(current_tx.input.clone());
         let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
 
         let tap_sig_hash = SighashCache::new(&current_tx)
@@ -196,7 +197,7 @@ fn filter_for_wit(previous_tx: &Vec<TxOut>, witness: &Script) -> Vec<TxOut> {
 
 fn print_tx_out_addr(prev: &Vec<TxOut>, input: &Vec<TxIn>, witness: &Script, err: Error) -> String {
     eprintln!("ERROR!!! {} ", err.to_string());
-    let mut dbg_err = String::from("\n");
+    let dbg_err = String::from("\n");
 
     eprintln!(
         "witness: {}",
@@ -204,13 +205,11 @@ fn print_tx_out_addr(prev: &Vec<TxOut>, input: &Vec<TxIn>, witness: &Script, err
     );
     eprintln!("previous output: ");
     prev.iter().for_each(|tx_out| {
-        eprintln!(
-            "script {}, amount, {}",
-            Address::from_script(&tx_out.script_pubkey, NETWORK)
-                .unwrap()
-                .to_string(),
-            tx_out.value
-        )
+        let prev_out_addr = Address::from_script(&tx_out.script_pubkey, NETWORK)
+            .map(|a| a.to_string())
+            .unwrap_or(tx_out.script_pubkey.to_string());
+
+        eprintln!("script {}, amount, {}", prev_out_addr, tx_out.value)
     });
 
     eprintln!("current transaction inputs: ");

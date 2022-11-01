@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
@@ -11,7 +13,7 @@ use bitcoin_hashes::Hash;
 use crate::bitcoin_wallet::{
     constants::{NETWORK, TIP},
     script_services::{
-        input_service::{insert_control_block, sign_tapleaf},
+        input_service::{insert_control_block, insert_witness_tx, sign_tapleaf},
         output_service::{
             insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
         },
@@ -108,8 +110,20 @@ impl<'a> TapScriptSendEx<'a> {
         return Box::new(
             move |previous_list: Vec<Transaction>, current_tx: Transaction| {
                 let mut unlock_vec_vec: Vec<Vec<UnlockFn>> = vec![];
+                let prev_output_list = previous_list
+                    .iter()
+                    .flat_map(|tx| tx.output.clone())
+                    .collect::<Vec<TxOut>>();
                 for (size, prev) in previous_list.iter().enumerate() {
                     let mut unlock_vec: Vec<UnlockFn> = vec![];
+                    let tx_out = prev
+                        .output
+                        .iter()
+                        .find(|t| t.script_pubkey.eq(&witness))
+                        .unwrap();
+
+                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+
                     unlock_vec.push(insert_control_block(
                         &self.secp,
                         bob_script.clone(),
@@ -119,9 +133,9 @@ impl<'a> TapScriptSendEx<'a> {
                         &self.secp,
                         &bob_keypair,
                         current_tx.clone(),
-                        prev.clone().output,
+                        prev_output_list.clone(),
                         size,
-                        witness.clone(),
+                        // witness.clone(),
                         bob_script.clone(),
                     ));
                     unlock_vec_vec.push(unlock_vec);
@@ -161,22 +175,69 @@ impl<'a> TapScriptSendEx<'a> {
         psbt: PartiallySignedTransaction,
         x_only: &XOnlyPublicKey,
     ) -> Transaction {
-        let mut witness = Witness::new();
+        let tx = psbt.clone().extract_tx().clone();
+        let tx_in = psbt
+            .inputs
+            .iter()
+            .map(|input| {
+                let mut witness = Witness::new();
 
-        for sig in &psbt.inputs[0].tap_script_sigs {
-            let shnor = sig.1;
-            witness.push(shnor.to_vec());
-        }
-        witness.push(get_preimage());
-        let bob_script = bob_scripts(x_only);
-        witness.push(bob_script.as_bytes());
-        for control in &psbt.inputs[0].tap_scripts {
-            // let control_hash = control.0.merkle_branch.as_inner();
-            witness.push(control.0.serialize());
-        }
+                input.tap_script_sigs.iter().for_each(|sig| {
+                    let shnor = sig.1;
+                    witness.push(shnor.to_vec());
+                });
 
-        let mut tx = psbt.extract_tx();
-        tx.input[0].witness = witness;
-        return tx;
+                witness.push(get_preimage());
+                let bob_script = bob_scripts(x_only);
+                witness.push(bob_script.as_bytes());
+
+                input.tap_scripts.iter().for_each(|control| {
+                    witness.push(control.0.serialize());
+                });
+
+                return witness;
+            })
+            .zip(tx.input)
+            .map(|(witness, tx_input)| {
+                return TxIn {
+                    previous_output: tx_input.previous_output,
+                    script_sig: tx_input.script_sig,
+                    sequence: tx_input.sequence,
+                    witness,
+                };
+            })
+            .collect::<Vec<TxIn>>();
+
+        return Transaction {
+            version: tx.version,
+            lock_time: tx.lock_time,
+            input: tx_in,
+            output: tx.output,
+        };
+
+        // return psbt.extract_tx();
     }
+
+    //   pub fn finialize_script(
+    //     psbt: PartiallySignedTransaction,
+    //     x_only: &XOnlyPublicKey,
+    // ) -> Transaction {
+    //     let mut witness = Witness::new();
+
+    //     for sig in &psbt.inputs[0].tap_script_sigs {
+    //         let shnor = sig.1;
+    //         witness.push(shnor.to_vec());
+    //     }
+    //     witness.push(get_preimage());
+    //     let bob_script = bob_scripts(x_only);
+    //     witness.push(bob_script.as_bytes());
+    //     for control in &psbt.inputs[0].tap_scripts {
+    //         // let control_hash = control.0.merkle_branch.as_inner();
+    //         witness.push(control.0.serialize());
+    //     }
+
+    //     let mut tx = psbt.extract_tx();
+    //     tx.input[0].witness = witness;
+    //     return tx;
+    // }
 }

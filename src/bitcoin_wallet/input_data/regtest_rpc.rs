@@ -130,11 +130,12 @@ impl<'a> RegtestRpc {
         return tx_in
             .iter()
             .map(|tx_id| {
-                client
+                let result = client
                     .get_transaction(&tx_id.previous_output.txid, Some(true))
                     .unwrap()
                     .transaction()
-                    .unwrap()
+                    .unwrap();
+                return result;
             })
             .collect::<Vec<Transaction>>();
     }
@@ -175,7 +176,9 @@ impl<'a> RegtestRpc {
             .iter()
             .map(|tx_handler| (tx_handler.tx_vec.clone(), tx_handler.tx_in.clone()))
             .unzip();
+
         let amt = RegtestRpc::get_amount(&previous_tx, &address_list);
+
         return RegtestRpc {
             amount: amt,
             tx_in,
