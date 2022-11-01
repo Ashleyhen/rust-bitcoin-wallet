@@ -1,11 +1,11 @@
 use bitcoin::{
     psbt::Output,
     secp256k1::{All, Secp256k1},
-    Address, KeyPair, Script, Transaction, TxIn, TxOut,
+    KeyPair, Script, Transaction, TxIn, TxOut,
 };
 
 use crate::bitcoin_wallet::{
-    constants::{NETWORK, TIP},
+    constants::TIP,
     script_services::{
         input_service::{insert_witness_tx, sign_key_sig},
         output_service::new_witness_pub_k,

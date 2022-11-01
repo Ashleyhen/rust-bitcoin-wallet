@@ -24,7 +24,6 @@ impl TxHandlar {
         return TxHandlar { tx_vec, tx_in };
     }
 }
-// type TxManager<'a> = Box<dyn Fn(Vec<Transaction>)->Vec<Transaction>+'a>;
 impl RpcCall for RegtestRpc {
     fn contract_source(&self) -> Vec<Transaction> {
         return self.previous_tx.clone();
@@ -38,10 +37,6 @@ impl RpcCall for RegtestRpc {
         return self.amount.clone();
     }
 }
-// String to be appended to bitcoin.conf:
-// rpcauth=polaruser:bc2c2886919756bb91cd3849ca2ef7a0$1164f3265c8876f9c1081f3fda6195e828f1e85c03f4112ab927f0661aad86e7
-// Your password:
-// -qYFk0IOoOVPRQCaYZpmm95ffPbZq9XPbHwNkYXNwx4=
 
 impl<'a> RegtestRpc {
     pub fn get_client() -> Client {
@@ -63,7 +58,7 @@ impl<'a> RegtestRpc {
         let result = client
             .create_wallet(wallet_name, Some(true), Some(true), None, None)
             .unwrap();
-        if (load_wallet) {
+        if load_wallet {
             return client.load_wallet(wallet_name).unwrap();
         }
         return result;

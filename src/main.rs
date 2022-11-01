@@ -1,5 +1,6 @@
-use configuration::script_demo::{key_sign, script_demo};
 use std::env;
+
+use configuration::script_demo::{key_sign, script_demo};
 
 pub mod bitcoin_wallet;
 pub mod configuration;

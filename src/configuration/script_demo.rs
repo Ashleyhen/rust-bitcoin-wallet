@@ -1,21 +1,12 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    hashes::hex::FromHex,
-    psbt::{Input, Output},
-    secp256k1::{
-        ffi::{secp256k1_ec_seckey_negate, secp256k1_ec_seckey_tweak_add},
-        Scalar, Secp256k1, SecretKey,
-    },
-    util::bip32::{ExtendedPrivKey, ExtendedPubKey},
-    Address, KeyPair, Network, SchnorrSig, Script, TxOut,
+    secp256k1::{Secp256k1, SecretKey},
+    Address, KeyPair,
 };
 use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
-    address_formats::{
-        derive_derivation_path, generate_key_pair, map_seeds_to_scripts, map_tr_address,
-    },
     constants::NETWORK,
     input_data::regtest_rpc::RegtestRpc,
     script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},

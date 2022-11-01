@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
-use electrum_client::{Client, ElectrumApi, Error, GetBalanceRes};
+use electrum_client::{Client, ElectrumApi};
 
 use super::RpcCall;
 

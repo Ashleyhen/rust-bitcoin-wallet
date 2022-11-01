@@ -1,6 +1,4 @@
 use bitcoin::{
-    blockdata::{opcodes, script::Builder},
-    hashes::hex::ToHex,
     secp256k1::{All, Secp256k1},
     util::bip32::ExtendedPrivKey,
     Script, Transaction,
@@ -9,6 +7,8 @@ use bitcoin::{
 use crate::bitcoin_wallet::script_services::{
     input_service::sign_segwit_v0, psbt_factory::UnlockFn,
 };
+
+use super::scripts::p2wpkh_script_code;
 
 pub struct P2wpkh {
     secp: Secp256k1<All>,
@@ -44,14 +44,4 @@ impl P2wpkh {
             },
         );
     }
-}
-
-fn p2wpkh_script_code(script: &Script) -> Script {
-    Builder::new()
-        .push_opcode(opcodes::all::OP_DUP)
-        .push_opcode(opcodes::all::OP_HASH160)
-        .push_slice(&script[2..])
-        .push_opcode(opcodes::all::OP_EQUALVERIFY)
-        .push_opcode(opcodes::all::OP_CHECKSIG)
-        .into_script()
 }

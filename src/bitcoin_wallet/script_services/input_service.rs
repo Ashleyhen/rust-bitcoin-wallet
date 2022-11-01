@@ -1,5 +1,4 @@
 use bitcoin::{
-    blockdata::{opcodes, script::Builder},
     psbt::Input,
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1},
@@ -97,8 +96,6 @@ pub fn sign_tapleaf<'a>(
     return Box::new(move |input: &mut Input| {
         let witness_script = input.witness_script.as_ref().unwrap();
         let prev = filter_for_wit(&prev_out, &witness_script);
-        // dbg!(prev.clone());
-        // dbg!(current_tx.input.clone());
         let tap_leaf_hash = TapLeafHash::from_script(&bob_script, LeafVersion::TapScript);
 
         let tap_sig_hash = SighashCache::new(&current_tx)

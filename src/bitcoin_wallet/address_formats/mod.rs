@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
 use bitcoin::{
-    secp256k1::{rand::rngs::OsRng, All, Scalar, Secp256k1, SecretKey},
+    secp256k1::{All, Scalar, Secp256k1, SecretKey},
     util::{
         bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey},
         taproot::TapBranchHash,
     },
-    Address, KeyPair, XOnlyPublicKey,
+    Address,
 };
 
-use super::constants::{Seed, NETWORK};
+use super::constants::NETWORK;
 
 type AddressMapping = Box<(dyn Fn(&Secp256k1<All>, ExtendedPubKey) -> Address)>;
 type DeriveKeyMapping = Box<(dyn Fn(u32, u32) -> ExtendedPrivKey)>;

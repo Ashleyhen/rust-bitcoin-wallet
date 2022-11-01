@@ -1,14 +1,13 @@
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use bitcoin::{
     psbt::{Output, TapTree},
-    schnorr::TweakedPublicKey,
     secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey},
     util::{
-        bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
+        bip32::{DerivationPath, Fingerprint},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
     },
-    Address, KeyPair, Script, Transaction, TxIn, TxOut, XOnlyPublicKey,
+    Script, XOnlyPublicKey,
 };
 
 use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
@@ -63,20 +62,6 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
     });
 }
 
-pub fn merge_x_only<'a>(
-    secp: &'a Secp256k1<All>,
-    x_only: XOnlyPublicKey,
-    x_only_2: XOnlyPublicKey,
-) -> Box<impl Fn(&mut Output) + 'a> {
-    // let mut shared_x_only=x_only.clone();
-    // shared_x_only.add_tweak(secp, &x_only_2.serialize()).unwrap();
-    return Box::new(move |output: &mut Output| {
-        //     let shared_key=x_only.to_public_key().inner.combine(&x_only_2.to_public_key().inner).unwrap();
-        //     output.witness_script=Some(Script::new_v1_p2tr(secp, shared_key.to_x_only_pubkey(), None));
-        //     output.tap_internal_key=Some(shared_x_only);
-    });
-}
-
 fn new_shared_secret<'a>(
     mut iter: impl Iterator<Item = &'a XOnlyPublicKey>,
     secret: String,
@@ -95,16 +80,4 @@ fn new_shared_secret<'a>(
 
         None => SecretKey::from_str(&secret).unwrap(),
     }
-}
-
-fn lock_key<'a>(func_list_list: Vec<Vec<Box<dyn Fn(&mut Output)>>>) -> Vec<Output> {
-    let mut output_vec = Vec::<Output>::new();
-    for func_list in func_list_list {
-        let mut output = Output::default();
-        for mut func in func_list {
-            func(&mut output);
-        }
-        output_vec.push(output);
-    }
-    return output_vec;
 }

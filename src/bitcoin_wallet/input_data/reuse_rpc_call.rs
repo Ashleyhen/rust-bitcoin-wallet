@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use bitcoin::{psbt::PartiallySignedTransaction, Script, Transaction, TxIn};
-use electrum_client::{Error, GetBalanceRes};
 
 use super::RpcCall;
 pub struct ReUseCall {

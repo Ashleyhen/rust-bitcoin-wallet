@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
@@ -11,17 +9,15 @@ use bitcoin::{
 use bitcoin_hashes::Hash;
 
 use crate::bitcoin_wallet::{
-    constants::{NETWORK, TIP},
+    constants::NETWORK,
     script_services::{
         input_service::{insert_control_block, insert_witness_tx, sign_tapleaf},
         output_service::{
             insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
         },
-        psbt_factory::{CreateTxFn, LockFn, UnlockFn},
+        psbt_factory::{LockFn, UnlockFn},
     },
 };
-
-use super::scripts::TapScripts;
 
 pub struct TapScriptSendEx<'a> {
     pub secp: &'a Secp256k1<All>,
@@ -77,22 +73,6 @@ impl<'a> TapScriptSendEx<'a> {
         ];
     }
 
-    pub fn adaptor_sig(
-        &'a self,
-        xinternal: &'a XOnlyPublicKey,
-        primary_xonly: &'a XOnlyPublicKey,
-        secondary_xonly: &'a XOnlyPublicKey,
-    ) -> Vec<LockFn<'a>> {
-        let delay = TapScripts::delay(primary_xonly);
-        let multi_sig = TapScripts::multi_2_of_2_script(primary_xonly, secondary_xonly);
-        let combined_script = vec![(1, delay.get_script()), (1, multi_sig.get_script())];
-        return vec![
-            new_tap_internal_key(xinternal),
-            insert_tap_tree(combined_script.clone()),
-            insert_tap_key_origin(combined_script, primary_xonly),
-        ];
-    }
-
     pub fn input_factory(
         &'a self,
         bob_keypair: &'a KeyPair,
@@ -135,7 +115,6 @@ impl<'a> TapScriptSendEx<'a> {
                         current_tx.clone(),
                         prev_output_list.clone(),
                         size,
-                        // witness.clone(),
                         bob_script.clone(),
                     ));
                     unlock_vec_vec.push(unlock_vec);
@@ -143,25 +122,6 @@ impl<'a> TapScriptSendEx<'a> {
                 return unlock_vec_vec;
             },
         );
-    }
-
-    pub fn create_tx() -> CreateTxFn<'a> {
-        return Box::new(move |output_list, tx_in, total| {
-            let addr =
-                Address::from_script(&output_list[0].clone().witness_script.unwrap(), NETWORK)
-                    .unwrap();
-            dbg!(addr.to_string());
-            let tx_out = vec![TxOut {
-                value: total - TIP,
-                script_pubkey: output_list[0].clone().witness_script.unwrap(),
-            }];
-            return Transaction {
-                version: 2,
-                lock_time: bitcoin::PackedLockTime(0),
-                input: tx_in,
-                output: tx_out,
-            };
-        });
     }
 
     pub fn get_script_addresses(output_list: Vec<Output>) -> Vec<Address> {
@@ -214,30 +174,5 @@ impl<'a> TapScriptSendEx<'a> {
             input: tx_in,
             output: tx.output,
         };
-
-        // return psbt.extract_tx();
     }
-
-    //   pub fn finialize_script(
-    //     psbt: PartiallySignedTransaction,
-    //     x_only: &XOnlyPublicKey,
-    // ) -> Transaction {
-    //     let mut witness = Witness::new();
-
-    //     for sig in &psbt.inputs[0].tap_script_sigs {
-    //         let shnor = sig.1;
-    //         witness.push(shnor.to_vec());
-    //     }
-    //     witness.push(get_preimage());
-    //     let bob_script = bob_scripts(x_only);
-    //     witness.push(bob_script.as_bytes());
-    //     for control in &psbt.inputs[0].tap_scripts {
-    //         // let control_hash = control.0.merkle_branch.as_inner();
-    //         witness.push(control.0.serialize());
-    //     }
-
-    //     let mut tx = psbt.extract_tx();
-    //     tx.input[0].witness = witness;
-    //     return tx;
-    // }
 }
