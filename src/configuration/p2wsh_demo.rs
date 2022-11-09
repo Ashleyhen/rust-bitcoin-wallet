@@ -1,11 +1,11 @@
-use std::ops::Add;
+use std::{ops::Add, vec};
 
 use bitcoin::{secp256k1::Secp256k1, util::bip32::KeySource, Address, KeyPair, PublicKey, Script};
 use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::{
     constants::NETWORK,
-    script_services::{output_service::segwit_v0, psbt_factory::get_output},
+    script_services::psbt_factory::{default_output, get_output},
     scripts::p2wsh_multi_sig,
     spending_path::{
         get_script_addresses, p2wpkh_script_path::P2wpkh, p2wsh_path::P2wsh, single_create_tx,
@@ -31,6 +31,10 @@ pub fn pay_to_witness_pub_key_hash() {
 
     // single_create_tx();
 
-    // get_output(output_vec_vec_func, output_vec);
-    // get_script_addresses(output_list);
+    let output_vec_vec_func=vec![p2wsh.output_factory(&public_k_list)];
+
+    let output_list=get_output(output_vec_vec_func, &mut default_output());
+
+    let addr = get_script_addresses(output_list);
+    dbg!(addr);
 }

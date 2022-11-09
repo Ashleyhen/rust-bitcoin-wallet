@@ -64,18 +64,26 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
     });
 }
 
-pub fn segwit_v0<'a>(public_k_list: Vec<(PublicKey, KeySource)>) -> Box<impl Fn(&mut Output) + 'a> {
+pub fn segwit_v0_add_key<'a>(
+    key: &'a PublicKey,
+    source: &'a KeySource,
+) -> Box<impl Fn(&mut Output) + 'a> {
     return Box::new(move |output: &mut Output| {
-        public_k_list.iter().for_each(|f| {
-            output.bip32_derivation.insert(f.0, f.1.clone());
-        });
-        let script = p2wsh_multi_sig(
-            &public_k_list
-                .iter()
-                .map(|f| f.0)
-                .collect::<Vec<PublicKey>>(),
-        );
-        output.witness_script = Some(script)
+        output.bip32_derivation.insert(key.clone(), source.clone());
+    });
+}
+
+pub fn segwit_v0_agg_witness<'a>() -> Box<impl Fn(&mut Output) + 'a> {
+    return Box::new(move |output: &mut Output| {
+        let pub_keys = output
+            .bip32_derivation
+            .iter()
+            .map(|(pub_k, _)| pub_k.clone())
+            .collect::<Vec<PublicKey>>();
+
+        let script = p2wsh_multi_sig(&pub_keys);
+        dbg!(script.clone());
+        output.witness_script = Some(script);
     });
 }
 
