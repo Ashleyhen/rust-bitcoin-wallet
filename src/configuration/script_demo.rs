@@ -10,7 +10,10 @@ use crate::bitcoin_wallet::{
     constants::NETWORK,
     input_data::regtest_rpc::RegtestRpc,
     script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},
-    spending_path::{p2tr_key_path::P2tr, tap_script_spending_ex::TapScriptSendEx},
+    spending_path::{
+        get_script_addresses, p2tr_key_path::P2tr, single_create_tx, single_output,
+        tap_script_spending_ex::TapScriptSendEx,
+    },
 };
 
 pub fn script_demo() {
@@ -30,7 +33,6 @@ pub fn script_demo() {
         .collect::<Vec<KeyPair>>();
 
     let tap_script = TapScriptSendEx::new(&secp);
-    let tap_key = P2tr::new(&secp);
 
     let my_add = Address::from_str(
         &"tb1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4q7lnavj".to_string(),
@@ -38,13 +40,13 @@ pub fn script_demo() {
     .unwrap()
     .script_pubkey();
 
-    let output_factory = || vec![tap_key.single_output(my_add.clone())];
+    let output_factory = || vec![single_output(my_add.clone())];
     let x_internal = keys[internal_secret].public_key().x_only_public_key().0;
     let x_alice = keys[alice_secret].public_key().x_only_public_key().0;
     let x_bob = &keys[bob_secret].public_key().x_only_public_key().0;
     let output_func = tap_script.output_factory(&x_internal, &x_alice, &x_bob);
 
-    TapScriptSendEx::get_script_addresses(get_output(vec![output_func], &mut default_output()))
+    get_script_addresses(get_output(vec![output_func], &mut default_output()))
         .iter()
         .for_each(|f| println!("target address {}", f.to_string()));
 
@@ -53,7 +55,7 @@ pub fn script_demo() {
         Some(Box::new(|tx_handler| tx_handler[..3].to_vec())),
     );
 
-    let lock_func = P2tr::single_create_tx();
+    let lock_func = single_create_tx();
 
     let unlock_func = || {
         tap_script.input_factory(
@@ -83,8 +85,8 @@ pub fn key_sign() {
             .unwrap();
     let tap_fn = P2tr::new(&secp);
 
-    let output_factory = || vec![tap_fn.single_output(to_address.clone().script_pubkey())];
-    let lock_func = P2tr::single_create_tx();
+    let output_factory = || vec![single_output(to_address.clone().script_pubkey())];
+    let lock_func = single_create_tx();
 
     let unlock_func = tap_fn.input_factory(&from_key_pair, from_address.script_pubkey());
     let address_list = vec![from_address.clone()].to_vec();

@@ -43,30 +43,11 @@ impl P2tr {
         });
     }
 
-    pub fn single_create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-        return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
-            let tx_out_vec = vec![TxOut {
-                value: total - TIP,
-                script_pubkey: outputs[0].clone().witness_script.unwrap(),
-            }];
-            return Transaction {
-                version: 2,
-                lock_time: bitcoin::PackedLockTime(0),
-                input: tx_in,
-                output: tx_out_vec,
-            };
-        });
-    }
-
     pub fn output_factory<'a>(&'a self, change: Script, send: Script) -> Vec<Vec<LockFn<'a>>> {
         return vec![
             vec![new_witness_pub_k(change)],
             vec![new_witness_pub_k(send)],
         ];
-    }
-
-    pub fn single_output<'a>(&'a self, send: Script) -> Vec<LockFn<'a>> {
-        return vec![new_witness_pub_k(send)];
     }
 
     pub fn input_factory<'a>(

@@ -2,15 +2,17 @@ use std::str::FromStr;
 
 use bitcoin::{
     psbt::{Output, TapTree},
-    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey},
+    secp256k1::{ecdh::SharedSecret, All, Parity, PublicKey, Secp256k1, SecretKey},
     util::{
-        bip32::{DerivationPath, Fingerprint},
+        bip32::{DerivationPath, Fingerprint, KeySource},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
     },
-    Script, XOnlyPublicKey,
+    Address, Script, XOnlyPublicKey,
 };
 
-use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
+use crate::bitcoin_wallet::{
+    constants::NETWORK, scripts::p2wsh_multi_sig, spending_path::p2tr_key_path::P2tr,
+};
 
 pub struct OutputService(pub P2tr);
 
@@ -59,6 +61,21 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
             .merkle_root()
             .unwrap();
         output.witness_script = Some(Script::new_v1_p2tr(&secp, internal_key, Some(branch)));
+    });
+}
+
+pub fn segwit_v0<'a>(public_k_list: Vec<(PublicKey, KeySource)>) -> Box<impl Fn(&mut Output) + 'a> {
+    return Box::new(move |output: &mut Output| {
+        public_k_list.iter().for_each(|f| {
+            output.bip32_derivation.insert(f.0, f.1.clone());
+        });
+        let script = p2wsh_multi_sig(
+            &public_k_list
+                .iter()
+                .map(|f| f.0)
+                .collect::<Vec<PublicKey>>(),
+        );
+        output.witness_script = Some(script)
     });
 }
 

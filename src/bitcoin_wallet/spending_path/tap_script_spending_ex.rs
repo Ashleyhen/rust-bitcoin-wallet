@@ -124,13 +124,6 @@ impl<'a> TapScriptSendEx<'a> {
         );
     }
 
-    pub fn get_script_addresses(output_list: Vec<Output>) -> Vec<Address> {
-        return output_list
-            .iter()
-            .map(|f| Address::from_script(&f.witness_script.as_ref().unwrap(), NETWORK).unwrap())
-            .collect::<Vec<Address>>();
-    }
-
     pub fn finialize_script(
         psbt: PartiallySignedTransaction,
         x_only: &XOnlyPublicKey,
