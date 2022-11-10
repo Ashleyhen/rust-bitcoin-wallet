@@ -4,9 +4,17 @@
 user=foo
 password=qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
 url=http://127.0.0.1:18443/
-address='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)"';
-descriptor='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)#3gv8dgag"';
+
+#p2tr script 
+# address='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)"';
+# descriptor='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)#3gv8dgag"';
+
+# p2tr key
 # descriptor='"addr(bcrt1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4qnxemeg)#hzc3j2sf"'
+
+# p2wsh
+address='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)"'
+descriptor='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)#wzu7wz9t"'
 
 function invoke {
 	echo $1

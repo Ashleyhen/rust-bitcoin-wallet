@@ -1,6 +1,8 @@
 use std::env;
 
-use configuration::{script_demo::{key_sign, script_demo}, p2wsh_demo::pay_to_witness_pub_key_hash};
+use configuration::{
+    p2wsh_demo::pay_to_witness_pub_key_hash,
+};
 
 pub mod bitcoin_wallet;
 pub mod configuration;

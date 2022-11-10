@@ -32,10 +32,10 @@ impl P2wpkh {
                     unlock_vec.push(sign_segwit_v0(
                         &self.secp,
                         current.clone(),
-                        tx_out.clone(),
+                        tx_out.value,
                         input_index,
                         p2wpkh_script_code(&script).clone(),
-                        ext_prv,
+                        ext_prv.private_key,
                     ));
                 }
                 return unlock_vec;

@@ -1,13 +1,14 @@
 use bitcoin::{
     psbt::Input,
     schnorr::TapTweak,
-    secp256k1::{All, Message, Secp256k1},
+    secp256k1::{All, Message, Secp256k1, SecretKey},
     util::{
         bip32::ExtendedPrivKey,
         sighash::{Error, Prevouts, ScriptPath, SighashCache},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
-    Address, EcdsaSig, KeyPair, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut,
+    Address, EcdsaSig, KeyPair, PrivateKey, SchnorrSig, SchnorrSighashType, Script, Transaction,
+    TxIn, TxOut,
 };
 
 use crate::bitcoin_wallet::constants::NETWORK;
@@ -161,24 +162,25 @@ pub fn sign_key_sig<'a>(
 pub fn sign_segwit_v0<'a>(
     secp: &'a Secp256k1<All>,
     current_tx: Transaction,
-    tx_out: TxOut,
+    sats: u64,
     input_index: usize,
     script_code: Script,
-    extended_priv_k: ExtendedPrivKey,
+    priv_k: SecretKey,
 ) -> Box<impl FnOnce(&mut Input) + 'a> {
     Box::new(move |input: &mut Input| {
-        let public_key = bitcoin::PublicKey::from_private_key(secp, &extended_priv_k.to_priv());
+        let public_key =
+            bitcoin::PublicKey::from_private_key(secp, &PrivateKey::new(priv_k, NETWORK));
         let sig_hash = SighashCache::new(&mut current_tx.clone())
             .segwit_signature_hash(
                 input_index,
                 &script_code,
-                tx_out.value,
+                sats,
                 bitcoin::EcdsaSighashType::All,
             )
             .unwrap();
 
         let msg = Message::from_slice(&sig_hash).unwrap();
-        let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg, &extended_priv_k.private_key));
+        let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg, &priv_k));
 
         input.partial_sigs.insert(public_key, sig);
     })

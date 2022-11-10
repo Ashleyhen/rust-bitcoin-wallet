@@ -1,15 +1,15 @@
 use std::{ops::Add, vec};
 
 use bitcoin::{secp256k1::Secp256k1, util::bip32::KeySource, Address, KeyPair, PublicKey, Script};
-use miniscript::ToPublicKey;
+use miniscript::{ToPublicKey, psbt::PsbtExt};
 
 use crate::bitcoin_wallet::{
     constants::NETWORK,
-    script_services::psbt_factory::{default_output, get_output},
+    script_services::psbt_factory::{default_output, get_output, create_partially_signed_tx},
     scripts::p2wsh_multi_sig,
     spending_path::{
         get_script_addresses, p2wpkh_script_path::P2wpkh, p2wsh_path::P2wsh, single_create_tx,
-    },
+    }, input_data::regtest_rpc::RegtestRpc,
 };
 
 pub fn pay_to_witness_pub_key_hash() {
@@ -24,17 +24,26 @@ pub fn pay_to_witness_pub_key_hash() {
         (alice_key_pair.public_key(), KeySource::default()),
         (bob_key_pair.public_key(), KeySource::default()),
     ];
-
-    // segwit_v0(public_k_list);
-    //
+    let api = RegtestRpc::from_string(
+        &vec!["bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg"],
+        Some(Box::new(|tx_handler| tx_handler[..1].to_vec())),
+    );
     let p2wsh = P2wsh::new(&secp);
 
-    // single_create_tx();
+    let output_vec_vec_func = ||vec![p2wsh.output_factory(&public_k_list)];
 
-    let output_vec_vec_func=vec![p2wsh.output_factory(&public_k_list)];
+    let unlock_func=p2wsh.input_factory(bob_key_pair.secret_key(), alice_key_pair.secret_key());
 
-    let output_list=get_output(output_vec_vec_func, &mut default_output());
+    let psbt = create_partially_signed_tx(output_vec_vec_func(), single_create_tx(), unlock_func)(&api);
 
-    let addr = get_script_addresses(output_list);
-    dbg!(addr);
+    let output_list = get_output(output_vec_vec_func(), &mut default_output());
+    get_script_addresses(output_list).iter().for_each(|addr| {
+        dbg!(addr.to_string());
+    });
+    // dbg!(psbt);
+let final_tx=psbt.finalize(&secp).unwrap();
+    // dbg!(psbt.extract_tx());
+    dbg!(final_tx);
+
+
 }

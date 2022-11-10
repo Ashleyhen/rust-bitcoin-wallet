@@ -1,6 +1,7 @@
-use std::str::FromStr;
+use std::{hash::BuildHasher, str::FromStr};
 
 use bitcoin::{
+    blockdata::{opcodes::all, script::Builder},
     psbt::{Output, TapTree},
     secp256k1::{ecdh::SharedSecret, All, Parity, PublicKey, Secp256k1, SecretKey},
     util::{
@@ -9,9 +10,12 @@ use bitcoin::{
     },
     Address, Script, XOnlyPublicKey,
 };
+use bitcoin_hashes::{sha256, Hash, HashEngine};
 
 use crate::bitcoin_wallet::{
-    constants::NETWORK, scripts::p2wsh_multi_sig, spending_path::p2tr_key_path::P2tr,
+    constants::NETWORK,
+    scripts::p2wsh_multi_sig,
+    spending_path::{p2tr_key_path::P2tr, p2wpkh_script_path::P2wpkh, p2wsh_path::P2wsh},
 };
 
 pub struct OutputService(pub P2tr);
@@ -80,9 +84,7 @@ pub fn segwit_v0_agg_witness<'a>() -> Box<impl Fn(&mut Output) + 'a> {
             .iter()
             .map(|(pub_k, _)| pub_k.clone())
             .collect::<Vec<PublicKey>>();
-
-        let script = p2wsh_multi_sig(&pub_keys);
-        dbg!(script.clone());
+        let script = P2wsh::witness_program_fmt(p2wsh_multi_sig(&pub_keys));
         output.witness_script = Some(script);
     });
 }
