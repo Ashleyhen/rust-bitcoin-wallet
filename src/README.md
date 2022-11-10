@@ -7,4 +7,9 @@
 &checkmark; script-spend  
 &checkmark; multi-sig  
 &checkmark; atomic swap  
-[ ] access the lighting network  
+[ ] access the lighting network 
+
+
+1) start a bitcoin node
+2) send some bitcoin to the addresses in the ``config-node.bash``
+3) run the following: ``cargo run``

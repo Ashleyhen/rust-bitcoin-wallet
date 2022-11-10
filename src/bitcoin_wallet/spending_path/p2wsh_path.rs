@@ -2,15 +2,13 @@ use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     secp256k1::{All, PublicKey, Secp256k1, SecretKey},
     util::bip32::KeySource,
-    Address, PrivateKey, Script, Transaction,
+    Script, Transaction,
 };
 use bitcoin_hashes::{sha256, Hash, HashEngine};
-use miniscript::ToPublicKey;
 
 use crate::bitcoin_wallet::{
-    constants::NETWORK,
     script_services::{
-        input_service::{sign_segwit_v0, insert_witness_tx},
+        input_service::{insert_witness, insert_witness_tx_out, sign_segwit_v0},
         output_service::{segwit_v0_add_key, segwit_v0_agg_witness},
         psbt_factory::{LockFn, UnlockFn},
     },
@@ -36,25 +34,24 @@ impl P2wsh {
                 let pub_key = PublicKey::from_secret_key(&self.secp, &secret_key_1);
                 let pub_key_2 = PublicKey::from_secret_key(&self.secp, &secret_key_2);
                 let pub_keys = vec![pub_key, pub_key_2];
-                let script =
-                P2wsh::witness_program_fmt(p2wsh_multi_sig(&pub_keys));
+                let musig_script = p2wsh_multi_sig(&pub_keys);
                 let mut unlock_vec_vec: Vec<Vec<UnlockFn>> = vec![];
                 for (input_index, prev) in previous_list.iter().enumerate() {
                     let mut unlock_vec: Vec<UnlockFn> = vec![];
                     let tx_out = prev
                         .output
                         .iter()
-                        .find(|t| 
-                            t.script_pubkey.eq(&script)
-                        )
+                        .find(|t| t.script_pubkey.eq(&musig_script.to_v0_p2wsh()))
                         .expect("missing expected witness");
-                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+
+                    unlock_vec.push(insert_witness_tx_out(tx_out.clone()));
+                    unlock_vec.push(insert_witness(musig_script.clone()));
                     unlock_vec.push(sign_segwit_v0(
                         &self.secp,
                         current.clone(),
                         tx_out.value,
                         input_index,
-                        P2wsh::witness_program_fmt(p2wsh_multi_sig(&pub_keys)),
+                        musig_script.clone(),
                         secret_key_2,
                     ));
 
@@ -63,7 +60,7 @@ impl P2wsh {
                         current.clone(),
                         tx_out.value,
                         input_index,
-                        P2wsh::witness_program_fmt(p2wsh_multi_sig(&pub_keys)),
+                        musig_script.clone(),
                         secret_key_1,
                     ));
 

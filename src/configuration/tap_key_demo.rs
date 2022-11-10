@@ -1,9 +1,14 @@
 use std::str::FromStr;
 
-use bitcoin::{secp256k1::Secp256k1, KeyPair, Address};
+use bitcoin::{secp256k1::Secp256k1, Address, KeyPair};
 use miniscript::psbt::PsbtExt;
 
-use crate::bitcoin_wallet::{spending_path::{p2tr_key_path::P2tr, single_create_tx, single_output}, input_data::regtest_rpc::RegtestRpc, script_services::psbt_factory::create_partially_signed_tx, constants::NETWORK};
+use crate::bitcoin_wallet::{
+    constants::NETWORK,
+    input_data::regtest_rpc::RegtestRpc,
+    script_services::psbt_factory::create_partially_signed_tx,
+    spending_path::{p2tr_key_path::P2tr, single_create_tx, single_output},
+};
 
 pub fn key_sign() {
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";

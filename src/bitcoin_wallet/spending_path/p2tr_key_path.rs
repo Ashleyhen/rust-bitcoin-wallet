@@ -7,7 +7,7 @@ use bitcoin::{
 use crate::bitcoin_wallet::{
     constants::TIP,
     script_services::{
-        input_service::{insert_witness_tx, sign_key_sig},
+        input_service::{insert_witness, insert_witness_tx_out, sign_key_sig},
         output_service::new_witness_pub_k,
         psbt_factory::{LockFn, UnlockFn},
     },
@@ -70,7 +70,8 @@ impl P2tr {
                         .iter()
                         .find(|t| t.script_pubkey.eq(&script_pubkey))
                         .unwrap();
-                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+                    unlock_vec.push(insert_witness_tx_out(tx_out.clone()));
+                    unlock_vec.push(insert_witness(tx_out.clone().script_pubkey));
                     unlock_vec.push(sign_key_sig(
                         &self.secp,
                         &keypair,

@@ -1,21 +1,18 @@
-use std::{hash::BuildHasher, str::FromStr};
+use std::str::FromStr;
 
 use bitcoin::{
-    blockdata::{opcodes::all, script::Builder},
     psbt::{Output, TapTree},
     secp256k1::{ecdh::SharedSecret, All, Parity, PublicKey, Secp256k1, SecretKey},
     util::{
         bip32::{DerivationPath, Fingerprint, KeySource},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
     },
-    Address, Script, XOnlyPublicKey,
+    Script, XOnlyPublicKey,
 };
-use bitcoin_hashes::{sha256, Hash, HashEngine};
 
 use crate::bitcoin_wallet::{
-    constants::NETWORK,
     scripts::p2wsh_multi_sig,
-    spending_path::{p2tr_key_path::P2tr, p2wpkh_script_path::P2wpkh, p2wsh_path::P2wsh},
+    spending_path::{p2tr_key_path::P2tr, p2wsh_path::P2wsh},
 };
 
 pub struct OutputService(pub P2tr);

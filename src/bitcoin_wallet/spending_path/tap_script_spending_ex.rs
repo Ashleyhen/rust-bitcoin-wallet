@@ -1,22 +1,19 @@
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
     hashes::hex::FromHex,
-    psbt::{Output, PartiallySignedTransaction},
+    psbt::PartiallySignedTransaction,
     secp256k1::{All, Secp256k1},
     util::taproot::TaprootBuilder,
-    Address, KeyPair, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+    KeyPair, Script, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
 };
 use bitcoin_hashes::Hash;
 
-use crate::bitcoin_wallet::{
-    constants::NETWORK,
-    script_services::{
-        input_service::{insert_control_block, insert_witness_tx, sign_tapleaf},
-        output_service::{
-            insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
-        },
-        psbt_factory::{LockFn, UnlockFn},
+use crate::bitcoin_wallet::script_services::{
+    input_service::{insert_control_block, insert_witness, insert_witness_tx_out, sign_tapleaf},
+    output_service::{
+        insert_tap_key_origin, insert_tap_tree, insert_tree_witness, new_tap_internal_key,
     },
+    psbt_factory::{LockFn, UnlockFn},
 };
 
 pub struct TapScriptSendEx<'a> {
@@ -102,7 +99,8 @@ impl<'a> TapScriptSendEx<'a> {
                         .find(|t| t.script_pubkey.eq(&witness))
                         .unwrap();
 
-                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+                    unlock_vec.push(insert_witness_tx_out(tx_out.clone()));
+                    unlock_vec.push(insert_witness(tx_out.clone().script_pubkey));
 
                     unlock_vec.push(insert_control_block(
                         &self.secp,

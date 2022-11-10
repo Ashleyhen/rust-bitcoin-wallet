@@ -4,14 +4,12 @@ use bitcoin::{
     secp256k1::{Secp256k1, SecretKey},
     Address, KeyPair,
 };
-use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
-    constants::NETWORK,
     input_data::regtest_rpc::RegtestRpc,
     script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},
     spending_path::{
-        get_script_addresses, p2tr_key_path::P2tr, single_create_tx, single_output,
+        get_script_addresses, single_create_tx, single_output,
         tap_script_spending_ex::TapScriptSendEx,
     },
 };
@@ -73,4 +71,3 @@ pub fn script_demo() {
     let tx_id = api.transaction_broadcast(&tx);
     println!("tx broadcasted successfully tx hash: {}", tx_id)
 }
-

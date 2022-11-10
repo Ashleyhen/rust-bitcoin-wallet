@@ -3,7 +3,6 @@ use bitcoin::{
     schnorr::TapTweak,
     secp256k1::{All, Message, Secp256k1, SecretKey},
     util::{
-        bip32::ExtendedPrivKey,
         sighash::{Error, Prevouts, ScriptPath, SighashCache},
         taproot::{LeafVersion, TapLeafHash, TaprootSpendInfo},
     },
@@ -38,13 +37,17 @@ pub fn insert_control_block<'a>(
     });
 }
 
-pub fn insert_witness_tx<'a>(tx_out: TxOut) -> Box<impl FnOnce(&mut Input) + 'a> {
+pub fn insert_witness_tx_out<'a>(tx_out: TxOut) -> Box<impl FnOnce(&mut Input) + 'a> {
     return Box::new(move |input: &mut Input| {
-        input.witness_script = Some(tx_out.clone().script_pubkey);
         input.witness_utxo = Some(tx_out);
     });
 }
 
+pub fn insert_witness<'a>(script: Script) -> Box<impl FnOnce(&mut Input) + 'a> {
+    return Box::new(move |input: &mut Input| {
+        input.witness_script = Some(script.clone());
+    });
+}
 pub fn sign_2_of_2<'a>(
     secp: &'a Secp256k1<All>,
     current_tx: Transaction,

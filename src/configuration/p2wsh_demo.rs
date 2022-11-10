@@ -1,15 +1,13 @@
-use std::{ops::Add, vec};
+use std::vec;
 
-use bitcoin::{secp256k1::Secp256k1, util::bip32::KeySource, Address, KeyPair, PublicKey, Script};
-use miniscript::{ToPublicKey, psbt::PsbtExt};
+use bitcoin::{secp256k1::Secp256k1, util::bip32::KeySource, KeyPair};
+use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
-    constants::NETWORK,
-    script_services::psbt_factory::{default_output, get_output, create_partially_signed_tx},
-    scripts::p2wsh_multi_sig,
-    spending_path::{
-        get_script_addresses, p2wpkh_script_path::P2wpkh, p2wsh_path::P2wsh, single_create_tx,
-    }, input_data::regtest_rpc::RegtestRpc,
+    constants::LOG,
+    input_data::regtest_rpc::RegtestRpc,
+    script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},
+    spending_path::{get_script_addresses, p2wsh_path::P2wsh, single_create_tx},
 };
 
 pub fn pay_to_witness_pub_key_hash() {
@@ -26,24 +24,27 @@ pub fn pay_to_witness_pub_key_hash() {
     ];
     let api = RegtestRpc::from_string(
         &vec!["bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg"],
-        Some(Box::new(|tx_handler| tx_handler[..1].to_vec())),
+        Some(Box::new(|tx_handler| tx_handler[..2].to_vec())),
     );
     let p2wsh = P2wsh::new(&secp);
 
-    let output_vec_vec_func = ||vec![p2wsh.output_factory(&public_k_list)];
+    let output_vec_vec_func = || vec![p2wsh.output_factory(&public_k_list)];
 
-    let unlock_func=p2wsh.input_factory(bob_key_pair.secret_key(), alice_key_pair.secret_key());
+    let unlock_func = p2wsh.input_factory(bob_key_pair.secret_key(), alice_key_pair.secret_key());
 
-    let psbt = create_partially_signed_tx(output_vec_vec_func(), single_create_tx(), unlock_func)(&api);
+    let psbt =
+        create_partially_signed_tx(output_vec_vec_func(), single_create_tx(), unlock_func)(&api);
 
-    let output_list = get_output(output_vec_vec_func(), &mut default_output());
-    get_script_addresses(output_list).iter().for_each(|addr| {
-        dbg!(addr.to_string());
-    });
-    // dbg!(psbt);
-let final_tx=psbt.finalize(&secp).unwrap();
-    // dbg!(psbt.extract_tx());
-    dbg!(final_tx);
+    if LOG {
+        let output_list = get_output(output_vec_vec_func(), &mut default_output());
+        get_script_addresses(output_list).iter().for_each(|addr| {
+            dbg!(addr.script_pubkey());
+        });
+    }
+    let tx_id = psbt
+        .finalize(&secp)
+        .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
+        .unwrap();
 
-
+    println!("tx broadcasted successfully tx hash: {}", tx_id)
 }
