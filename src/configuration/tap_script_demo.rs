@@ -38,7 +38,7 @@ pub fn script_demo() {
     .unwrap()
     .script_pubkey();
 
-    let output_factory = || vec![single_output(my_add.clone())];
+    let output_factory = || vec![single_output(&my_add)];
     let x_internal = keys[internal_secret].public_key().x_only_public_key().0;
     let x_alice = keys[alice_secret].public_key().x_only_public_key().0;
     let x_bob = &keys[bob_secret].public_key().x_only_public_key().0;

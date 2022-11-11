@@ -20,8 +20,8 @@ pub fn key_sign() {
         Address::from_str("bcrt1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4qnxemeg")
             .unwrap();
     let tap_fn = P2tr::new(&secp);
-
-    let output_factory = || vec![single_output(to_address.clone().script_pubkey())];
+    let addr = to_address.script_pubkey();
+    let output_factory = || vec![single_output(&addr)];
     let lock_func = single_create_tx();
 
     let unlock_func = tap_fn.input_factory(&from_key_pair, from_address.script_pubkey());
