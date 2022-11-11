@@ -7,7 +7,7 @@ use bitcoin::{
 use crate::bitcoin_wallet::{
     constants::TIP,
     script_services::{
-        input_service::{insert_witness_tx, sign_key_sig},
+        input_service::{insert_witness, insert_witness_tx_out, sign_key_sig},
         output_service::new_witness_pub_k,
         psbt_factory::{LockFn, UnlockFn},
     },
@@ -43,30 +43,11 @@ impl P2tr {
         });
     }
 
-    pub fn single_create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transaction> {
-        return Box::new(move |outputs: Vec<Output>, tx_in: Vec<TxIn>, total: u64| {
-            let tx_out_vec = vec![TxOut {
-                value: total - TIP,
-                script_pubkey: outputs[0].clone().witness_script.unwrap(),
-            }];
-            return Transaction {
-                version: 2,
-                lock_time: bitcoin::PackedLockTime(0),
-                input: tx_in,
-                output: tx_out_vec,
-            };
-        });
-    }
-
     pub fn output_factory<'a>(&'a self, change: Script, send: Script) -> Vec<Vec<LockFn<'a>>> {
         return vec![
             vec![new_witness_pub_k(change)],
             vec![new_witness_pub_k(send)],
         ];
-    }
-
-    pub fn single_output<'a>(&'a self, send: Script) -> Vec<LockFn<'a>> {
-        return vec![new_witness_pub_k(send)];
     }
 
     pub fn input_factory<'a>(
@@ -89,7 +70,8 @@ impl P2tr {
                         .iter()
                         .find(|t| t.script_pubkey.eq(&script_pubkey))
                         .unwrap();
-                    unlock_vec.push(insert_witness_tx(tx_out.clone()));
+                    unlock_vec.push(insert_witness_tx_out(tx_out.clone()));
+                    unlock_vec.push(insert_witness(tx_out.clone().script_pubkey));
                     unlock_vec.push(sign_key_sig(
                         &self.secp,
                         &keypair,

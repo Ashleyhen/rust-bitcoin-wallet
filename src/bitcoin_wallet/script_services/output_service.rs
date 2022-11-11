@@ -2,15 +2,18 @@ use std::str::FromStr;
 
 use bitcoin::{
     psbt::{Output, TapTree},
-    secp256k1::{ecdh::SharedSecret, All, Parity, Secp256k1, SecretKey},
+    secp256k1::{ecdh::SharedSecret, All, Parity, PublicKey, Secp256k1, SecretKey},
     util::{
-        bip32::{DerivationPath, Fingerprint},
+        bip32::{DerivationPath, Fingerprint, KeySource},
         taproot::{LeafVersion, TapLeafHash, TaprootBuilder},
     },
     Script, XOnlyPublicKey,
 };
 
-use crate::bitcoin_wallet::spending_path::p2tr_key_path::P2tr;
+use crate::bitcoin_wallet::{
+    scripts::p2wsh_multi_sig,
+    spending_path::{p2tr_key_path::P2tr, p2wsh_path::P2wsh},
+};
 
 pub struct OutputService(pub P2tr);
 
@@ -59,6 +62,27 @@ pub fn insert_tree_witness<'a>(secp: &'a Secp256k1<All>) -> Box<impl Fn(&mut Out
             .merkle_root()
             .unwrap();
         output.witness_script = Some(Script::new_v1_p2tr(&secp, internal_key, Some(branch)));
+    });
+}
+
+pub fn segwit_v0_add_key<'a>(
+    key: &'a PublicKey,
+    source: &'a KeySource,
+) -> Box<impl Fn(&mut Output) + 'a> {
+    return Box::new(move |output: &mut Output| {
+        output.bip32_derivation.insert(key.clone(), source.clone());
+    });
+}
+
+pub fn segwit_v0_agg_witness<'a>() -> Box<impl Fn(&mut Output) + 'a> {
+    return Box::new(move |output: &mut Output| {
+        let pub_keys = output
+            .bip32_derivation
+            .iter()
+            .map(|(pub_k, _)| pub_k.clone())
+            .collect::<Vec<PublicKey>>();
+        let script = P2wsh::witness_program_fmt(p2wsh_multi_sig(&pub_keys));
+        output.witness_script = Some(script);
     });
 }
 

@@ -4,11 +4,10 @@ use bitcoin::{
     Script, Transaction,
 };
 
-use crate::bitcoin_wallet::script_services::{
-    input_service::sign_segwit_v0, psbt_factory::UnlockFn,
+use crate::bitcoin_wallet::{
+    script_services::{input_service::sign_segwit_v0, psbt_factory::UnlockFn},
+    scripts::p2wpkh_script_code,
 };
-
-use super::scripts::p2wpkh_script_code;
 
 pub struct P2wpkh {
     secp: Secp256k1<All>,
@@ -22,7 +21,6 @@ impl P2wpkh {
         return Box::new(
             move |previous_list: Vec<Transaction>, current: Transaction| {
                 let pubkey = bitcoin::PublicKey::from_private_key(&self.secp, &ext_prv.to_priv());
-
                 let script = Script::new_v0_p2wpkh(&pubkey.wpubkey_hash().unwrap());
                 let mut unlock_vec: Vec<UnlockFn> = vec![];
                 for (input_index, prev) in previous_list.iter().enumerate() {
@@ -34,10 +32,10 @@ impl P2wpkh {
                     unlock_vec.push(sign_segwit_v0(
                         &self.secp,
                         current.clone(),
-                        tx_out.clone(),
+                        tx_out.value,
                         input_index,
                         p2wpkh_script_code(&script).clone(),
-                        ext_prv,
+                        ext_prv.private_key,
                     ));
                 }
                 return unlock_vec;
