@@ -6,7 +6,10 @@ use bitcoin::{
 
 use crate::bitcoin_wallet::{
     constants::NETWORK,
-    script_services::{input_service::sign_segwit_v0, psbt_factory::UnlockFn},
+    script_services::{
+        input_service::{insert_witness, insert_witness_tx_out, sign_segwit_v0},
+        psbt_factory::UnlockFn,
+    },
     scripts::p2wpkh_script_code,
 };
 
@@ -37,6 +40,9 @@ impl P2wpkh {
                         .iter()
                         .find(|t| t.script_pubkey.eq(&script))
                         .expect("missing expected witness");
+
+                    unlock_vec.push(insert_witness_tx_out(tx_out.clone()));
+                    unlock_vec.push(insert_witness(tx_out.script_pubkey.to_owned()));
                     unlock_vec.push(sign_segwit_v0(
                         &self.secp,
                         current.clone(),

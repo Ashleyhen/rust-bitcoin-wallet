@@ -10,11 +10,16 @@ url=http://127.0.0.1:18443/
 # descriptor='"addr(bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj)#3gv8dgag"';
 
 # p2tr key
+# address='"addr(bcrt1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4qnxemeg)"'
 # descriptor='"addr(bcrt1ppjj995khlhftanw7ak4zyzu3650rlmpfr9p4tafegw3u38h7vx4qnxemeg)#hzc3j2sf"'
 
 # p2wsh
-address='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)"'
-descriptor='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)#wzu7wz9t"'
+# address='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)"'
+# descriptor='"addr(bcrt1q8sjkz7a37sy08u27r58c584gwdjmtp7g8erd3f4f9frmnnvfwfqsss86dg)#wzu7wz9t"'
+
+# p2wphk
+address='"addr(bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d)"'
+descriptor='"addr(bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d)#u9v08nwa"'
 
 function invoke {
 	echo $1
@@ -44,6 +49,7 @@ function generatetodescriptor {
 	JSON_STRING='{"jsonrpc": "1.0", "id": "curltest", "method":  "generatetodescriptor", "params": ['$1', '$2']}'
 	invoke "${JSON_STRING}" 
 }
+
 function listunspent {
 # curl --user $user:$password --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method":  "listunspent", "params": []}' -H 'content-type: text/plain;' $url | python -mjson.tool
 	JSON_STRING='{"jsonrpc": "1.0", "id": "curltest", "method":  "listunspent", "params": []}'
@@ -61,13 +67,13 @@ case $1 in
 		listunspent
     ;;
 
-  addr)
+  setup)
 	importdescriptors $descriptor
 	generatetodescriptor 50 $descriptor 
-	listunspent
+	# listunspent
   ;;
 
-  descinfo) 
+  desc) 
 	getdescriptorinfo $address
 	;;
 	

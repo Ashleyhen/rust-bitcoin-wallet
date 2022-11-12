@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{
     secp256k1::{Secp256k1, SecretKey},
-    Address, PrivateKey, PublicKey, Script, WPubkeyHash,
+    Address, PrivateKey, PublicKey, Script,
 };
 use miniscript::psbt::PsbtExt;
 
@@ -19,9 +19,8 @@ pub fn pay_to_witness_pub_key_hash() {
     let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094"; //alice
     let secp = Secp256k1::new();
     let secret_key = SecretKey::from_str(seed).unwrap();
-    let pubkey_hash = PublicKey::from_private_key(&secp, &PrivateKey::from_str(seed).unwrap());
+    let pubkey_hash = PublicKey::from_private_key(&secp, &PrivateKey::new(secret_key, NETWORK));
 
-    // WPubkeyHash::f
     let script = Script::new_v0_p2wpkh(&pubkey_hash.wpubkey_hash().unwrap());
     let address = Address::from_script(&script, NETWORK).unwrap();
 
@@ -29,7 +28,7 @@ pub fn pay_to_witness_pub_key_hash() {
 
     let api = RegtestRpc::from_address(
         vec![address],
-        Some(Box::new(|tx_handler| tx_handler[..1].to_vec())),
+        Some(Box::new(|tx_handler| tx_handler[..2].to_vec())),
     );
 
     let single_tx = single_create_tx();
@@ -43,10 +42,11 @@ pub fn pay_to_witness_pub_key_hash() {
             dbg!(addr.script_pubkey());
         });
     }
+
     let tx_id = psbt
         .finalize(&secp)
         .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
         .unwrap();
 
-    println!("p2wpk tx broadcasted successfully tx hash: {}", tx_id)
+    println!("p2wpkh tx broadcasted successfully tx hash: {}", tx_id)
 }

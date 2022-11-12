@@ -41,6 +41,7 @@ pub fn pay_to_witness_pub_script_hash() {
             dbg!(addr.script_pubkey());
         });
     }
+
     let tx_id = psbt
         .finalize(&secp)
         .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
