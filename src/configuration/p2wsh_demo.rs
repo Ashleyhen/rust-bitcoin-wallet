@@ -10,7 +10,7 @@ use crate::bitcoin_wallet::{
     spending_path::{get_script_addresses, p2wsh_path::P2wsh, single_create_tx},
 };
 
-pub fn pay_to_witness_pub_key_hash() {
+pub fn pay_to_witness_pub_script_hash() {
     let alice_seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094"; //alice
     let bob_seed = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9"; //bob
     let secp = Secp256k1::new();
@@ -41,10 +41,11 @@ pub fn pay_to_witness_pub_key_hash() {
             dbg!(addr.script_pubkey());
         });
     }
+
     let tx_id = psbt
         .finalize(&secp)
         .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
         .unwrap();
 
-    println!("tx broadcasted successfully tx hash: {}", tx_id)
+    println!("p2wsh tx broadcasted successfully tx hash: {}", tx_id)
 }

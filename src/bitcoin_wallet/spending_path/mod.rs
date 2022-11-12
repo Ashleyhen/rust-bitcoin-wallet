@@ -24,8 +24,8 @@ pub fn single_create_tx() -> Box<dyn Fn(Vec<Output>, Vec<TxIn>, u64) -> Transact
         };
     });
 }
-pub fn single_output<'a>(send: Script) -> Vec<LockFn<'a>> {
-    return vec![new_witness_pub_k(send)];
+pub fn single_output<'a>(send: &'a Script) -> Vec<LockFn<'a>> {
+    return vec![new_witness_pub_k(send.clone())];
 }
 
 pub fn get_script_addresses(output_list: Vec<Output>) -> Vec<Address> {
