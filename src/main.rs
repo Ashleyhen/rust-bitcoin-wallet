@@ -14,7 +14,9 @@ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     // testrpc();
 
-    TLSCertificate::from_path("/home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert").unwrap();
+    let cert=TLSCertificate::from_path("/home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert").unwrap();
+    // cert.into_tls("https://localhost:8081/v1/fees");
+    cert.temp();
 }
 
 fn layer1() {
