@@ -1,4 +1,7 @@
 use httpbis::ClientTlsOption;
+use hyper::Client;
+use hyper::client::HttpConnector;
+use hyper_rustls::HttpsConnector;
 use rustls::{
     Certificate, ClientConfig, ClientConnection, ConfigBuilder, RootCertStore, ServerConfig,
     ServerName,
@@ -40,14 +43,26 @@ impl TLSCertificate {
     }
 
     /// Creates the tls using this certificate
-    pub fn into_tls(self, host: &str) -> ClientConnection {
+    pub fn into_tls(self, host: &str) -> hyper::Client<HttpsConnector<HttpConnector>> {
         let mut root = RootCertStore::empty();
         root.add(&self.raw);
-        let mut builder = ClientConfig::builder()
+
+        let mut config = ClientConfig::builder()
             .with_safe_defaults()
-            .with_root_certificates(root);
-        let config = Arc::new(builder.with_no_client_auth());
-        let ip = IpAddr::from_str(host).unwrap();
-        return ClientConnection::new(config, ServerName::IpAddress(ip)).unwrap();
+            .with_root_certificates(root)
+            .with_no_client_auth();
+        
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+        let url = ("https://hyper.rs").parse().unwrap();
+
+        let https = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_tls_config(config)
+            .https_only()
+            .enable_http1()
+            .build();
+
+        let client: Client<_, hyper::Body> = Client::builder().build(https);
+        let res = rt.block_on(client.get(url)).unwrap();
+        return client;
     }
 }
