@@ -2,6 +2,7 @@ use bitcoin::consensus::ReadExt;
 use futures::FutureExt;
 use httpbis::{ClientTlsOption, HeaderValue};
 use hyper::client::HttpConnector;
+use hyper::header::HeaderName;
 use hyper::{Client, HeaderMap};
 use hyper_rustls::HttpsConnector;
 use rustls::{
@@ -70,17 +71,17 @@ impl TLSCertificate {
     }
     pub fn temp(self) {
         let mut cert_file = vec![];
-        let mut macroon_file = "".to_string();
+        // let mut macroon_file = vec![];
         let rt = tokio::runtime::Runtime::new().unwrap();
         File::open("/home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert").unwrap().read_to_end(&mut cert_file).unwrap();
-        File::open("/home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert").unwrap().read_to_string(&mut macroon_file).unwrap();
+        let macroon="/home/ash/.polar/networks/1/volumes/lnd/alice/data/chain/bitcoin/regtest/admin.macaroon";
+        // File::open(macroon).unwrap().read_to_end(&mut macroon_file).unwrap();
     
         let cert =reqwest::Certificate::from_pem(&cert_file).unwrap();
 
         let mut headers =HeaderMap::new();
-        // HeaderValue::
 
-        headers.append("MACAROON_HEADER", macroon_file.parse().unwrap());
+        headers.append("MACAROON_HEADER", macroon.parse().unwrap());
 
         
 
