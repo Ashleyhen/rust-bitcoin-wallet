@@ -1,6 +1,5 @@
 use bitcoin::{
     secp256k1::{All, Secp256k1, SecretKey},
-    util::bip32::ExtendedPrivKey,
     PrivateKey, Script, Transaction,
 };
 

@@ -13,3 +13,8 @@ echo tap --privkey=$privkey --tx=$tx --txin=$txin $pubkey 2 $script_alice $scrip
 echo
 echo tap --tx=$tx --txin=$txin $pubkey 2 $script_alice $script_bob 1
 # tap $pubkey 2 $script_alice $script_bob
+
+MACAROON_HEADER="Grpc-Metadata-macaroon: $(xxd -ps -u -c 1000 /home/ash/.polar/networks/1/volumes/lnd/alice/data/chain/bitcoin/regtest/admin.macaroon)"
+curl -X GET --cacert /home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert --header "$MACAROON_HEADER" https://localhost:8080/v1/fees 
+
+curl -X GET --cacert /home/ash/.polar/networks/1/volumes/lnd/alice/tls.cert  https://localhost:8080/v1/fees 

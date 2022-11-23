@@ -21,13 +21,11 @@ edition = "2021"
 
 
 
-# bdk={version="0.18.0"}
-miniscript={version="8.0.0"}
-# lightning = "0.0.105"
+miniscript={version="9.0.0"}
+lightning = "0.0.112"
 bitcoin={ version = "0.29.1", features=["rand","std"]}
 bitcoin_hashes = { version = "0.11.0", default-features = false }
 # bdk={version="0.22.0"}
-# bitcoin={git="https://github.com/rust-bitcoin/rust-bitcoin.git",features=["rand"] }
 
 # [dependencies.electrum-client]
 # electrum-client={version="0.10.0"}
@@ -45,3 +43,22 @@ bitcoincore-rpc = "0.16.0"
 # # electrum-client = "0.9.0"
 # schnorr_fun = "0.7"
 # sha2 = "0.10.5"
+
+
+# protobuf = "3.2.0"
+# httpbis = "0.9.1"
+#  grpc = "0.8.3"
+#  tls-api = "0.9.0"
+#  bytes = "1.2.1"
+
+ tls-api-native-tls = "0.9.0"
+futures = "0.3.25"
+futures-cpupool = "0.1"
+rustls = "0.20.7"
+hyper-rustls = "0.23.1"
+hyper = "0.14.23"
+tokio = "1.22.0"
+reqwest = "0.11.13"
+[build-dependencies]
+# protoc-rust-grpc = "0.8.3"
+hex = "0.4.3"
