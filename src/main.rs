@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, str::from_utf8};
 
 use configuration::{
     p2wpkh_demo::pay_to_witness_pub_key_hash, p2wsh_demo::pay_to_witness_pub_script_hash,
@@ -8,10 +8,11 @@ use configuration::{
 pub mod bitcoin_wallet;
 pub mod configuration;
 
-fn main() {
+ fn main() {
     env::set_var("RUST_BACKTRACE", "full");
     key_sign();
     script_demo();
     pay_to_witness_pub_script_hash();
     pay_to_witness_pub_key_hash();
+    
 }
