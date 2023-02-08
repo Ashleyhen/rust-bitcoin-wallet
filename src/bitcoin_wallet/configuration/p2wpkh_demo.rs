@@ -4,10 +4,9 @@ use bitcoin::{
     secp256k1::{Secp256k1, SecretKey},
     Address, PrivateKey, PublicKey, Script,
 };
-use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
-    constants::{LOG, NETWORK},
+    constants::{LOG, NETWORK, SEED},
     input_data::regtest_rpc::RegtestRpc,
     script_services::psbt_factory::{create_partially_signed_tx, default_output, get_output},
     spending_path::{
@@ -15,11 +14,15 @@ use crate::bitcoin_wallet::{
     },
 };
 
+pub fn get_private_key_from_seed()->PrivateKey{
+    let secret_key = SecretKey::from_str(SEED).unwrap();
+     return PrivateKey::new(secret_key, NETWORK);
+}
 pub fn pay_to_witness_pub_key_hash() {
-    let seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094"; //alice
     let secp = Secp256k1::new();
-    let secret_key = SecretKey::from_str(seed).unwrap();
-    let pubkey_hash = PublicKey::from_private_key(&secp, &PrivateKey::new(secret_key, NETWORK));
+    
+    let private_key  =get_private_key_from_seed();
+    let pubkey_hash = PublicKey::from_private_key(&secp,&private_key );
 
     let script = Script::new_v0_p2wpkh(&pubkey_hash.wpubkey_hash().unwrap());
     let address = Address::from_script(&script, NETWORK).unwrap();
@@ -33,7 +36,7 @@ pub fn pay_to_witness_pub_key_hash() {
 
     let single_tx = single_create_tx();
     let output_vec_vec_func = || vec![single_output(&script)];
-    let unlock_func = p2wpkh.input_factory(secret_key);
+    let unlock_func = p2wpkh.input_factory(private_key.inner);
     let psbt = create_partially_signed_tx(output_vec_vec_func(), single_tx, unlock_func)(&api);
 
     if LOG {
@@ -43,10 +46,9 @@ pub fn pay_to_witness_pub_key_hash() {
         });
     }
 
-    let tx_id = psbt
-        .finalize(&secp)
-        .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
-        .unwrap();
+    // let tx_id = psbt
+    //     .finalize(&secp)
+    //     .map(|finalized| api.transaction_broadcast(&finalized.extract(&secp).unwrap()))
+    //     .unwrap();
 
-    println!("p2wpkh tx broadcasted successfully tx hash: {}", tx_id)
 }

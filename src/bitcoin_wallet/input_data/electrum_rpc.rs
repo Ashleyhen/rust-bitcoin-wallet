@@ -36,7 +36,7 @@ impl RpcCall for ElectrumRpc {
 }
 
 pub fn get_client() -> Client {
-    return Client::new("ssl://electrum.blockstream.info:60002").unwrap();
+    return Client::new("ssl://electrum.blockstream.info:50002").unwrap();
 }
 impl<'a> ElectrumRpc {
     fn update(script_pub_k: &'a Script) -> Box<dyn Fn() -> Self + 'a> {
