@@ -1,8 +1,7 @@
-use std::sync::Arc;
+use std::{ops::Mul, sync::Arc};
 
 use bitcoin::{OutPoint, Script, Transaction, TxIn, Txid, Witness};
 use electrum_client::{Client, ElectrumApi};
-
 use super::RpcCall;
 
 pub struct ElectrumRpc {
@@ -33,6 +32,17 @@ impl RpcCall for ElectrumRpc {
     fn prev_input(&self) -> Vec<TxIn> {
         return self.tx_in.clone();
     }
+
+    fn fee(&self) -> u64 {
+        return 3551;
+    }
+
+    fn broadcasts_transacton(&self,tx:&Transaction) {
+        let tx_id=get_client().transaction_broadcast(&tx).unwrap();
+        println!("transaction send transaction id is: {}", tx_id)
+    }
+
+    
 }
 
 pub fn get_client() -> Client {

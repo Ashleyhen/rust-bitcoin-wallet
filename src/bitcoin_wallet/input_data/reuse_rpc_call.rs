@@ -26,4 +26,11 @@ impl RpcCall for ReUseCall {
     fn prev_input(&self) -> Vec<TxIn> {
         return self.psbt.clone().extract_tx().clone().input;
     }
+
+    fn fee(&self) -> u64 {
+        return 2000;
+    }
+    fn broadcasts_transacton(&self,tx:&Transaction) {
+        
+    }
 }

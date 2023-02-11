@@ -17,6 +17,13 @@ impl RpcCall for TapscriptExInput {
     fn prev_input(&self) -> Vec<TxIn> {
         return get_tx().input;
     }
+
+    fn fee(&self) -> u64 {
+        return 2000;
+    }
+
+    fn broadcasts_transacton(&self,transaction: &Transaction) {
+    }
 }
 
 impl TapscriptExInput {

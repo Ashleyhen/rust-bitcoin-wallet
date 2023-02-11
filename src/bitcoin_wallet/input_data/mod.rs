@@ -1,4 +1,4 @@
-use bitcoin::{Transaction, TxIn};
+use bitcoin::{Transaction, TxIn, Txid, blockdata::transaction};
 
 pub mod electrum_rpc;
 pub mod regtest_rpc;
@@ -9,4 +9,6 @@ pub trait RpcCall {
     fn contract_source(&self) -> Vec<Transaction>;
     fn prev_input(&self) -> Vec<TxIn>;
     fn script_get_balance(&self) -> u64;
+    fn fee(&self) -> u64;
+    fn broadcasts_transacton(&self,transaction: &Transaction);
 }

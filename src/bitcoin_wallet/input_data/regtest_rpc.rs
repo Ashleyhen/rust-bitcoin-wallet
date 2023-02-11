@@ -36,6 +36,14 @@ impl RpcCall for RegtestRpc {
     fn script_get_balance(&self) -> u64 {
         return self.amount.clone();
     }
+
+    fn fee(&self) -> u64 {
+        return 2000;
+    }
+    fn broadcasts_transacton(&self,tx:&Transaction) {
+        let tx_id=RegtestRpc::get_client().send_raw_transaction(tx).unwrap();
+        println!("transaction send transaction id is: {}", tx_id)
+    }
 }
 
 impl<'a> RegtestRpc {
