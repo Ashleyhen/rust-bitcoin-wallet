@@ -1,15 +1,14 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{str::FromStr};
 
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
-    psbt::{Input, PartiallySignedTransaction, Prevouts},
-    schnorr::TapTweak,
+    psbt::{Input, PartiallySignedTransaction},
     secp256k1::{All, Message, Scalar, Secp256k1, SecretKey},
     util::sighash::SighashCache,
-    Address, EcdsaSig, EcdsaSighashType, KeyPair, Network, OutPoint, PackedLockTime, PrivateKey,
-    PublicKey, SchnorrSig, Script, Transaction, TxIn, TxOut, Witness,
+    Address, EcdsaSig, EcdsaSighashType, PackedLockTime, PrivateKey,
+    PublicKey, Transaction, TxOut,
 };
-use bitcoincore_rpc::{Auth, Client, RpcApi};
+
 use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
