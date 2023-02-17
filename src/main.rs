@@ -3,7 +3,7 @@ use std::{env};
 use bitcoin_wallet::{
     constants::SEED, input_data::regtest_call::RegtestCall,
 };
-use simple_wallet::{p2tr::p2tr, p2wpkh::p2wpkh};
+use simple_wallet::{p2tr_key::p2tr, p2wpkh::p2wpkh};
 
 pub mod bitcoin_wallet;
 pub mod simple_wallet;
