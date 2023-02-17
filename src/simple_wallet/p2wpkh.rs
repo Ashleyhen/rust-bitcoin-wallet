@@ -14,10 +14,10 @@ use miniscript::psbt::PsbtExt;
 
 use crate::bitcoin_wallet::{
     constants::NETWORK,
-    input_data::{electrum_rpc::ElectrumRpc, RpcCall},
+    input_data::{RpcCall},
 };
 
-pub fn p2wpkh(secret_string: Option<&str>) {
+pub fn p2wpkh(secret_string: Option<&str>, client: impl RpcCall) {
     let secp = Secp256k1::new();
     let private_key = from_seed(&secret_string);
     let address = Address::p2wpkh(&private_key.public_key(&secp), NETWORK).unwrap();
@@ -27,8 +27,6 @@ pub fn p2wpkh(secret_string: Option<&str>) {
     if (secret_string.is_none()) {
         return;
     }
-
-    let client = ElectrumRpc::new(&address.script_pubkey());
 
     let tx_in_list = client.prev_input();
 
@@ -42,8 +40,25 @@ pub fn p2wpkh(secret_string: Option<&str>) {
 
     let total: u64 = prevouts.iter().map(|tx_out| tx_out.value).sum();
 
-    let send_amt = (total - client.fee()) / 2;
+    let out_put = create_output(total, &client);
 
+    let unsigned_tx = Transaction {
+        version: 2,
+        lock_time: PackedLockTime(0),
+        input: tx_in_list,
+        output: out_put,
+    };
+
+    let mut psbt = PartiallySignedTransaction::from_unsigned_tx(unsigned_tx.clone()).unwrap();
+
+    psbt.inputs = sign_all_unsigned_tx(&secp, &prevouts, &unsigned_tx, &private_key);
+
+    let transaction = psbt.finalize(&secp).unwrap().extract_tx();
+    client.broadcasts_transacton(&transaction);
+}
+
+fn create_output<'a>(total: u64, client: &'a impl RpcCall) -> Vec<TxOut> {
+    let send_amt = (total - client.fee()) / 2;
     let out_put = vec![
         TxOut {
             value: send_amt,
@@ -60,24 +75,7 @@ pub fn p2wpkh(secret_string: Option<&str>) {
                 .script_pubkey(),
         },
     ];
-
-    let unsigned_tx = Transaction {
-        version: 2,
-        lock_time: PackedLockTime(0),
-        input: tx_in_list,
-        output: out_put,
-    };
-
-    let mut psbt = PartiallySignedTransaction::from_unsigned_tx(unsigned_tx.clone()).unwrap();
-
-    psbt.inputs = sign_all_unsigned_tx(&secp, &prevouts, &unsigned_tx, &private_key);
-
-    let tx = psbt.finalize(&secp).unwrap().extract_tx();
-    dbg!(tx.clone());
-
-    // RegtestRpc::get_client().send_raw_transaction(&tx).map(|tx|println!("transaction send transaction id is: {}",tx)).unwrap();
-    println!("transaction sent transacton id is: {}",client.transaction_broadcast(tx))
-    
+    out_put
 }
 
 fn sign_all_unsigned_tx(

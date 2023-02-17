@@ -30,7 +30,5 @@ impl RpcCall for ReUseCall {
     fn fee(&self) -> u64 {
         return 2000;
     }
-    fn broadcasts_transacton(&self,tx:&Transaction) {
-        
-    }
+    fn broadcasts_transacton(&self, tx: &Transaction) {}
 }

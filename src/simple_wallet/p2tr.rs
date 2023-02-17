@@ -1,20 +1,24 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{ str::FromStr};
 
 use bitcoin::{
-    blockdata::{opcodes::all, script::Builder},
     psbt::{Input, PartiallySignedTransaction, Prevouts},
     schnorr::TapTweak,
     secp256k1::{All, Message, Scalar, Secp256k1, SecretKey},
-    util::sighash::SighashCache,
-    Address, KeyPair, Network, OutPoint, PackedLockTime, SchnorrSig, Script, Transaction, TxIn,
-    TxOut, Witness,
+    util::{
+        bip32::{ExtendedPrivKey, ExtendedPubKey},
+        sighash::SighashCache,
+    },
+    Address, KeyPair, PackedLockTime, SchnorrSig, Transaction,
+    TxOut, 
 };
-use bitcoincore_rpc::{Auth, Client, RpcApi};
 use miniscript::psbt::PsbtExt;
 
-use crate::bitcoin_wallet::input_data::{regtest_rpc::RegtestRpc, RpcCall};
+use crate::bitcoin_wallet::{
+    constants::NETWORK,
+    input_data::{regtest_call::RegtestCall, RpcCall},
+};
 
-pub fn p2tr(secret_string: Option<&str>) {
+pub fn p2tr(secret_string: Option<&str>, client: impl RpcCall) {
     let secp = Secp256k1::new();
     let scalar = Scalar::random();
     let secret = match secret_string {
@@ -30,19 +34,25 @@ pub fn p2tr(secret_string: Option<&str>) {
 
     let (x_only, _) = key_pair.x_only_public_key();
 
-    let address = Address::p2tr(&secp, x_only, None, Network::Regtest);
+    let address = Address::p2tr(&secp, x_only, None, NETWORK);
 
     println!("address {}", address.to_string());
+
+    let ext_pub = ExtendedPubKey::from_priv(
+        &secp,
+        &ExtendedPrivKey::new_master(NETWORK, &secret.secret_bytes()).unwrap(),
+    );
+
+    println!("xpub {}", ext_pub.to_string());
 
     if (secret_string.is_none()) {
         return;
     }
 
-    let regtest = RegtestRpc::from_string(&vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"], None);
+  
+    let tx_in_list = client.prev_input();
 
-    let tx_in_list = regtest.prev_input();
-
-    let transaction_list = regtest.contract_source();
+    let transaction_list = client.contract_source();
 
     let prevouts = transaction_list
         .iter()
@@ -52,14 +62,7 @@ pub fn p2tr(secret_string: Option<&str>) {
 
     let total: u64 = prevouts.iter().map(|tx_out| tx_out.value).sum();
 
-    let out_put = vec![TxOut {
-        value: total - 100000,
-        script_pubkey: Address::from_str(
-            "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj",
-        )
-        .unwrap()
-        .script_pubkey(),
-    }];
+    let out_put = create_output(total,&client);
 
     let unsigned_tx = Transaction {
         version: 2,
@@ -74,7 +77,19 @@ pub fn p2tr(secret_string: Option<&str>) {
 
     let tx = psbt.finalize(&secp).unwrap().extract_tx();
 
-    regtest.transaction_broadcast(&tx);
+    client.broadcasts_transacton(&tx);
+}
+
+fn create_output<'a>(total:u64, client: &'a impl RpcCall) -> Vec<TxOut> {
+    let out_put = vec![TxOut {
+        value: total - client.fee(),
+        script_pubkey: Address::from_str(
+            "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj",
+        )
+        .unwrap()
+        .script_pubkey(),
+    }];
+    out_put
 }
 
 fn sign_all_unsigned_tx(

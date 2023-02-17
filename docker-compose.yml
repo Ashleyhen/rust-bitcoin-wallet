@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  bitcoind:
+    container_name: bitcoind
+    restart: always
+    image: btcpayserver/bitcoin:24.0.1-1
+    ports:
+      - 18443:18443
+      - 18444:18444
+      - 18445:18445
+    environment:
+      BITCOIN_NETWORK: regtest
+      BITCOIN_EXTRA_ARGS: |
+        server=1
+        debug=1
+        rpcbind=bitcoind
+        rpcport=18443
+        rpcauth=foo:7d9ba5ae63c3d4dc30583ff4fe65a67e$$9e3634e81c11659e3de036d0bf88f89cd169c1039e6e09607562d54765c649cc
+        rpcallowip=0.0.0.0/0
+
+    

@@ -1,20 +1,42 @@
 use std::{env, str::from_utf8};
 
-use bitcoin_wallet::{configuration::{
-    p2wpkh_demo::pay_to_witness_pub_key_hash, p2wsh_demo::pay_to_witness_pub_script_hash,
-    tap_key_demo::key_sign, tap_script_demo::script_demo,
-}, constants::SEED};
-use simple_wallet::p2wpkh;
+use bitcoin_wallet::{
+    constants::SEED, input_data::regtest_call::RegtestCall,
+};
+use simple_wallet::{p2tr::p2tr, p2wpkh};
 
 pub mod bitcoin_wallet;
 pub mod simple_wallet;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    // key_sign();
-    // script_demo();
-    // pay_to_witness_pub_script_hash();
-    // pay_to_witness_pub_key_hash();
-    p2wpkh::p2wpkh(Some(SEED));
-    // p2wpkh();
+
+    let client = RegtestCall::init(
+        &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
+        "my_wallet",
+        150,
+    );
+
+    p2tr(Some(SEED), client);
 }
+
+#[test]
+fn test_tap_root_key_sig(){
+    let client = RegtestCall::init(
+        &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
+        "my_wallet",
+        150,
+    );
+    p2tr(Some(SEED), client);
+}
+
+#[test]
+fn test_pay_2_witness_public_key_hash(){
+    let client = RegtestCall::init(
+        &vec!["bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d"],
+        "my_wallet",
+        150,
+    );
+    p2wpkh::p2wpkh(Some(SEED), client);
+}
+

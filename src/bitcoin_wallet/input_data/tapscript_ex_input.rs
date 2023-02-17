@@ -22,8 +22,7 @@ impl RpcCall for TapscriptExInput {
         return 2000;
     }
 
-    fn broadcasts_transacton(&self,transaction: &Transaction) {
-    }
+    fn broadcasts_transacton(&self, transaction: &Transaction) {}
 }
 
 impl TapscriptExInput {
