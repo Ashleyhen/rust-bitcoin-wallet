@@ -1,9 +1,8 @@
-use std::{env};
+use std::env;
 
-use bitcoin_wallet::{
-    constants::SEED, input_data::regtest_call::RegtestCall,
-};
-use simple_wallet::{p2tr_key::p2tr, p2wpkh::p2wpkh};
+use bitcoin_wallet::{constants::SEED, input_data::regtest_call::RegtestCall};
+
+use crate::simple_wallet::{p2tr_key::P2TR, p2wpkh::P2WPKH, p2wsh::P2WSH, Wallet};
 
 pub mod bitcoin_wallet;
 pub mod simple_wallet;
@@ -11,34 +10,85 @@ pub mod simple_wallet;
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
 
-    let client = RegtestCall::init(
-        &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
-        "my_wallet",
-        150,
-    );
+    println!("Testing layer 1 pay to witness public key signature");
 
-    p2tr(Some(SEED), client);
+    let alice_seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
+
+    let bob_seed = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
+
+    type P2wsh<'a> = P2WSH<'a, RegtestCall>;
+
+    let alice_pub_key = P2wsh::seed_to_pubkey(&Some(alice_seed));
+
+    let bob_pub_key = P2wsh::seed_to_pubkey(&Some(bob_seed));
+
+    let target_address = P2wsh::sum_multi_sig(&vec![alice_pub_key, bob_pub_key]);
+
+    println!("target address {}", target_address.to_string());
+
+    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 1);
+
+    let alice_psbt = P2WSH::new(&Some(alice_seed), &client).parital_sig(&target_address, None);
+
+    let bob =
+        P2WSH::new(&Some(bob_seed), &client);
+
+    let bob_psbt= bob.parital_sig(&target_address, Some(alice_psbt));
+    bob.broadcasted(bob_psbt);
+
+
 }
 
 #[test]
-fn test_tap_root_key_sig(){
+fn test_tap_root_key_sig() {
     println!("Testing layer 1 pay to tap root with key signature");
     let client = RegtestCall::init(
         &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
         "my_wallet",
         150,
     );
-    p2tr(Some(SEED), client);
+
+    P2TR::new(Some(SEED), &client).send();
 }
 
 #[test]
-fn test_pay_2_witness_public_key_hash(){
+fn test_pay_2_witness_public_key_hash() {
     println!("Testing layer 1 pay to witness public key signature");
     let client = RegtestCall::init(
         &vec!["bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d"],
         "my_wallet",
         150,
     );
-    p2wpkh(Some(SEED), client);
+    P2WPKH::new(Some(SEED), &client).send();
 }
 
+#[test]
+fn test_pay_2_witness_script_hash() {
+    println!("Testing layer 1 pay to witness public key signature");
+
+    let alice_seed = "1d454c6ab705f999d97e6465300a79a9595fb5ae1186ae20e33e12bea606c094";
+
+    let bob_seed = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
+
+    type P2wsh<'a> = P2WSH<'a, RegtestCall>;
+
+    let alice_pub_key = P2wsh::seed_to_pubkey(&Some(alice_seed));
+
+    let bob_pub_key = P2wsh::seed_to_pubkey(&Some(bob_seed));
+
+    let target_address = P2wsh::sum_multi_sig(&vec![alice_pub_key, bob_pub_key]);
+
+    println!("target address {}", target_address.to_string());
+
+    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 1);
+
+    let alice_psbt = P2WSH::new(&Some(alice_seed), &client).parital_sig(&target_address, None);
+
+    let bob =
+        P2WSH::new(&Some(bob_seed), &client);
+
+    let bob_psbt= bob.parital_sig(&target_address, Some(alice_psbt));
+    bob.broadcasted(bob_psbt);
+
+    
+}

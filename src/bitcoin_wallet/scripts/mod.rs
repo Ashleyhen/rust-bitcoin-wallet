@@ -47,15 +47,19 @@ pub fn p2wpkh_script_code(script: &Script) -> Script {
 }
 
 pub fn p2wsh_multi_sig(pub_keys: &Vec<PublicKey>) -> Script {
-    fn partial_p2wsh_multi_sig<'a>(mut iter: impl Iterator<Item = &'a PublicKey>) -> Builder {
+    fn partial_p2wsh_multi_sig<'a>(
+        mut iter: impl Iterator<Item = &'a PublicKey>,
+        len: i64,
+    ) -> Builder {
         match iter.next() {
-            Some(pub_k) => partial_p2wsh_multi_sig(iter).push_key(&pub_k.to_public_key()),
-            None => Builder::new().push_int(2),
+            Some(pub_k) => partial_p2wsh_multi_sig(iter, len).push_key(&pub_k.to_public_key()),
+            None => Builder::new().push_int(len),
         }
     }
 
-    return partial_p2wsh_multi_sig(pub_keys.iter())
-        .push_int(2)
+    let len = pub_keys.len();
+    return partial_p2wsh_multi_sig(pub_keys.iter(), len.try_into().unwrap())
+        .push_int(len.try_into().unwrap())
         .push_opcode(all::OP_CHECKMULTISIG)
         .into_script();
 }

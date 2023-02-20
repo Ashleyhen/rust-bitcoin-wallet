@@ -13,7 +13,7 @@ pub struct RegtestCall {
     amount: u64,
     tx_in: Vec<TxIn>,
     previous_tx: Vec<Transaction>,
-    address_list: Vec<Address>,
+    pub address_list: Vec<Address>,
     client: Client,
 }
 
@@ -51,7 +51,7 @@ impl<'a> RegtestCall {
         .unwrap();
     }
 
-    pub fn init(address_list: &Vec<&str>, wallet_name: &str, mine: u8)->Self {
+    pub fn init(address_list: &Vec<&str>, wallet_name: &str, mine: u8) -> Self {
         let client = RegtestCall::get_client();
 
         address_list.iter().for_each(|address| {
@@ -64,11 +64,11 @@ impl<'a> RegtestCall {
                 .map(|desc| {
                     let descriptor = desc.descriptor;
                     println!("assigned a descriptor {} ", descriptor);
-                    create_wallet(&client, wallet_name, mine,&descriptor)
+                    create_wallet(&client, wallet_name, mine, &descriptor)
                 })
                 .unwrap();
         });
-			return RegtestCall::from_string(address_list);
+        return RegtestCall::from_string(address_list);
     }
 
     pub fn generatetodescriptor(
@@ -80,9 +80,9 @@ impl<'a> RegtestCall {
     }
 
     pub fn transaction_broadcast(&self, tx: &Transaction) -> Txid {
-		let tx_id=RegtestCall::get_client().send_raw_transaction(tx).unwrap();
-		println!("transaction id: {}", &tx_id);
-        return tx_id ;
+        let tx_id = RegtestCall::get_client().send_raw_transaction(tx).unwrap();
+        println!("transaction id: {}", &tx_id);
+        return tx_id;
     }
 
     pub fn from_string(address_list: &'a Vec<&str>) -> RegtestCall {
@@ -179,11 +179,15 @@ impl<'a> RegtestCall {
     }
 }
 
-fn create_wallet(client: &Client, wallet_name: &str, mine: u8,desc: &String) {
-	if client.list_wallets().unwrap().contains(&wallet_name.to_owned()){
-		importdescriptors(client, desc, mine);
-		return;
-	}
+fn create_wallet(client: &Client, wallet_name: &str, mine: u8, desc: &String) {
+    if client
+        .list_wallets()
+        .unwrap()
+        .contains(&wallet_name.to_owned())
+    {
+        importdescriptors(client, desc, mine);
+        return;
+    }
     client
         .create_wallet(wallet_name, Some(true), Some(true), None, Some(false))
         .map(|load_wallet| {
@@ -229,5 +233,5 @@ fn mine_to_descriptors(client: &Client, mine: u8, desc: &String) {
     client
         .call::<Vec<BlockHash>>("generatetodescriptor", &[json!(mine), json!(desc)])
         .unwrap();
-	println!("successfully mined blocks");
+    println!("successfully mined blocks");
 }
