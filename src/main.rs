@@ -18,7 +18,7 @@ fn test_tap_root_key_sig() {
     let client = RegtestCall::init(
         &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
         "my_wallet",
-        150,
+        110,
     );
 
     P2TR::new(Some(SEED), &client).send();
@@ -30,7 +30,7 @@ fn test_pay_2_witness_public_key_hash() {
     let client = RegtestCall::init(
         &vec!["bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d"],
         "my_wallet",
-        150,
+        110,
     );
     P2WPKH::new(Some(SEED), &client).send();
 }
@@ -54,7 +54,7 @@ fn test_pay_2_witness_script_hash() {
 
     println!("target address {}", target_address.to_string());
 
-    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 1);
+    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 110);
 
     let alice_psbt = P2WSH::new(&Some(alice_seed), &client).parital_sig(&pub_keys, None);
 
@@ -63,7 +63,6 @@ fn test_pay_2_witness_script_hash() {
 
     let bob_psbt= bob.parital_sig(&pub_keys, Some(alice_psbt));
 
-    dbg!(bob_psbt.clone());
     bob.broadcasted(bob_psbt);
     
 }
