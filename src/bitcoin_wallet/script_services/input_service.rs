@@ -9,6 +9,7 @@ use bitcoin::{
     Address, EcdsaSig, KeyPair, PrivateKey, SchnorrSig, SchnorrSighashType, Script, Transaction,
     TxIn, TxOut,
 };
+use bitcoin_hashes::hex::ToHex;
 
 use crate::bitcoin_wallet::constants::NETWORK;
 
@@ -183,9 +184,10 @@ pub fn sign_segwit_v0<'a>(
             .unwrap();
 
         let msg = Message::from_slice(&sig_hash).unwrap();
-        let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg, &priv_k));
+        let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg.clone(), &priv_k));
 
         input.partial_sigs.insert(public_key, sig);
+
     })
 }
 

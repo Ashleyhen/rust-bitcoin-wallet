@@ -48,6 +48,7 @@ where
         }
     }
 }
+
 impl<'a, R> P2WPKH<'a, R>
 where
     R: RpcCall,
