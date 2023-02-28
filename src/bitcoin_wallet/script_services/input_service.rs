@@ -187,7 +187,6 @@ pub fn sign_segwit_v0<'a>(
         let sig = EcdsaSig::sighash_all(secp.sign_ecdsa(&msg.clone(), &priv_k));
 
         input.partial_sigs.insert(public_key, sig);
-
     })
 }
 

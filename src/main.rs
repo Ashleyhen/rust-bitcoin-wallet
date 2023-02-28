@@ -2,14 +2,13 @@ use std::{env, rc::Rc, str::FromStr, sync::Arc};
 
 use bitcoin::{Address, Script, XOnlyPublicKey};
 use bitcoin_hashes::hex::{FromHex, ToHex};
-use bitcoin_wallet::{
-    configuration::{p2wpkh_demo, p2wsh_demo, tap_script_demo::script_demo},
-    constants::SEED,
-    input_data::regtest_call::RegtestCall,
-};
+use bitcoin_wallet::configuration::tap_script_demo::script_demo;
 
 use crate::{
-    bitcoin_wallet::constants::NETWORK,
+    bitcoin_wallet::{
+        constants::{NETWORK, SEED},
+        input_data::regtest_call::RegtestCall,
+    },
     simple_wallet::{
         p2tr_key::P2TR,
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
@@ -24,17 +23,6 @@ pub mod simple_wallet;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    // let script=Script::from_hex(
-    //         "029000b275209997a497d964fc1a62885b05a51166a65a90df00492c8d7cf61d6accf54803beac",
-    //     ).unwrap();
-
-    // let x =XOnlyPublicKey::from_str("9997a497d964fc1a62885b05a51166a65a90df00492c8d7cf61d6accf54803be").unwrap();
-    // dbg!(x);
-
-    // dbg!(alice(x));
-
-    // dbg!(script);
-    // Test();
     script_demo();
 }
 
@@ -118,20 +106,4 @@ fn test_pay_2_taproot_script() {
     let bob_wallet = P2trs::new(bob_seed, bob_image, &client);
 
     bob_wallet.sign(&output, single_output());
-
-    // let bob_seed=P2trs::new(Some(bob_seed) , &client);
-
-    // let target_address = p2tr_script::get_address(&alice_pub_key,&bob_pub_key,&internal_pub_key);
-
-    // println!("target address {}", target_address.to_string());
-
-    // let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 110);
-    // let output = single_output();
-    // let alice_psbt = P2WSH::new(&Some(alice_seed), &client).parital_sig(&pub_keys, None, &output);
-
-    // let bob = P2WSH::new(&Some(bob_seed), &client);
-
-    // let bob_psbt = bob.parital_sig(&pub_keys, Some(alice_psbt), &output);
-
-    // bob.broadcasted(bob_psbt);
 }

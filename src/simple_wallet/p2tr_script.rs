@@ -1,4 +1,4 @@
-use std::{str::FromStr};
+use std::str::FromStr;
 
 use bitcoin::{
     blockdata::{opcodes::all, script::Builder},
@@ -12,15 +12,9 @@ use bitcoin::{
     Address, KeyPair, PackedLockTime, SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn,
     TxOut, Witness, XOnlyPublicKey,
 };
-use bitcoin_hashes::{
-    hex::{FromHex},
-    Hash,
-};
+use bitcoin_hashes::{hex::FromHex, Hash};
 
-use crate::bitcoin_wallet::{
-    constants::NETWORK,
-    input_data::{ RpcCall},
-};
+use crate::bitcoin_wallet::{constants::NETWORK, input_data::RpcCall};
 
 pub struct P2TRS<'a, R: RpcCall> {
     secret_key: SecretKey,
@@ -141,7 +135,9 @@ where
             &bob_script,
         );
 
-        println!("is this control block valid {}", verify);
+        if (!verify) {
+            panic!("invalid block {:#?}", control.unwrap());
+        }
 
         let sighash = SighashCache::new(unsigned_tx)
             .taproot_script_spend_signature_hash(
@@ -209,7 +205,6 @@ where
             })
             .zip(tx.input)
             .map(|(witness, tx_input)| {
-
                 return TxIn {
                     previous_output: tx_input.previous_output,
                     script_sig: tx_input.script_sig,

@@ -62,5 +62,4 @@ pub fn p2wsh_multi_sig(pub_keys: &Vec<PublicKey>) -> Script {
         .push_int(len.try_into().unwrap())
         .push_opcode(all::OP_CHECKMULTISIG)
         .into_script();
-    
 }
