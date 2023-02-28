@@ -53,7 +53,7 @@ impl<'a, R> P2WPKH<'a, R>
 where
     R: RpcCall,
 {
-    pub fn send(&self) {
+    pub fn send(&self, send_to: Box<dyn Fn(u64) -> Vec<TxOut>>) {
         let private_key = PrivateKey::new(self.secret_key, NETWORK);
         let address = Address::p2wpkh(&private_key.public_key(&self.secp), NETWORK).unwrap();
 
@@ -69,7 +69,7 @@ where
 
         let total: u64 = prevouts.iter().map(|tx_out| tx_out.value).sum();
 
-        let out_put = create_output(total, self.client);
+        let out_put = send_to(total - self.client.fee());
 
         let unsigned_tx = Transaction {
             version: 2,

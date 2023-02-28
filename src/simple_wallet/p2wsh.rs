@@ -9,7 +9,7 @@ use bitcoin::{
     Transaction, TxOut,
 };
 
-use bitcoin_hashes::{sha256, hex::ToHex};
+use bitcoin_hashes::{hex::ToHex, sha256};
 use miniscript::{psbt::PsbtExt, ToPublicKey};
 
 use crate::bitcoin_wallet::{constants::NETWORK, input_data::RpcCall};
@@ -57,8 +57,8 @@ where
         &self,
         pub_ks: &Vec<PublicKey>,
         maybe_psbt: Option<PartiallySignedTransaction>,
+        send_to: &Box<dyn Fn(u64) -> Vec<TxOut>>,
     ) -> PartiallySignedTransaction {
-
         let private_key = PrivateKey::new(self.secret_key, NETWORK);
 
         let tx_in_list = self.client.prev_input();
@@ -68,12 +68,16 @@ where
         let prevouts = transaction_list
             .iter()
             .flat_map(|tx| tx.output.clone())
-            .filter(|p| Self::multi_sig_address(pub_ks).script_pubkey().eq(&p.script_pubkey))
+            .filter(|p| {
+                Self::multi_sig_address(pub_ks)
+                    .script_pubkey()
+                    .eq(&p.script_pubkey)
+            })
             .collect::<Vec<TxOut>>();
 
         let total: u64 = prevouts.iter().map(|tx_out| tx_out.value).sum();
 
-        let out_put = create_output(total, self.client);
+        let out_put = send_to(total - self.client.fee());
 
         let unsigned_tx = Transaction {
             version: 2,
@@ -92,7 +96,7 @@ where
             &unsigned_tx,
             &private_key,
             psbt.inputs,
-            pub_ks
+            pub_ks,
         );
 
         return psbt;
@@ -108,12 +112,8 @@ where
     }
 
     pub fn seed_to_pubkey(secret_string: &Option<&str>) -> PublicKey {
-        let secp = Secp256k1::new();
-        return from_seed(&secret_string).public_key(&secp);
-    }
-
-    fn from_seed(secret_string: &Option<&str>) -> PrivateKey {
         let scalar = Scalar::random();
+        let secp = Secp256k1::new();
         let secret = match secret_string {
             Some(sec_str) => SecretKey::from_str(&sec_str).unwrap(),
             None => {
@@ -122,15 +122,13 @@ where
                 secret_key
             }
         };
-        return PrivateKey::new(secret, NETWORK);
+        return PrivateKey::new(secret, NETWORK).public_key(&secp);
     }
 
-    pub fn multi_sig_address(pub_keys: &Vec<PublicKey>)->Address{
-        return Address::p2wsh(&multi_sig_script(pub_keys), NETWORK)
+    pub fn multi_sig_address(pub_keys: &Vec<PublicKey>) -> Address {
+        return Address::p2wsh(&multi_sig_script(pub_keys), NETWORK);
     }
-
 }
-
 
 pub fn multi_sig_script(pub_keys: &Vec<PublicKey>) -> Script {
     fn partial_p2wsh_multi_sig<'a>(
@@ -148,7 +146,6 @@ pub fn multi_sig_script(pub_keys: &Vec<PublicKey>) -> Script {
         .push_int(len.try_into().unwrap())
         .push_opcode(all::OP_CHECKMULTISIG)
         .into_script();
-    
 }
 
 fn create_output<'a>(total: u64, client: &'a impl RpcCall) -> Vec<TxOut> {
@@ -184,7 +181,16 @@ fn sign_all_unsigned_tx(
         .iter()
         .enumerate()
         .map(|(index, tx_out)| {
-            sign_tx(secp, index, unsigned_tx, private_key, tx_out, input.get(index).cloned(),pub_ks).clone()
+            sign_tx(
+                secp,
+                index,
+                unsigned_tx,
+                private_key,
+                tx_out,
+                input.get(index).cloned(),
+                pub_ks,
+            )
+            .clone()
         })
         .collect();
 }
@@ -198,9 +204,8 @@ fn sign_tx(
     maybe_input: Option<Input>,
     pub_ks: &Vec<PublicKey>,
 ) -> Input {
-    
     let hash_ty = EcdsaSighashType::All;
-    let witness_script=multi_sig_script(pub_ks).clone();
+    let witness_script = multi_sig_script(pub_ks).clone();
     let sighash = SighashCache::new(&mut unsigned_tx.clone())
         .segwit_signature_hash(index, &witness_script, tx_out.value, hash_ty)
         .unwrap();
@@ -211,18 +216,14 @@ fn sign_tx(
 
     let ecdsa_sig = EcdsaSig::sighash_all(sig);
 
-    let mut input =maybe_input.unwrap_or(Input::default());
-    
+    let mut input = maybe_input.unwrap_or(Input::default());
+
     input.witness_script = Some(witness_script);
-    
-let pub_key=bitcoin::PublicKey::from_private_key(&secp, private_key);
-    input
-        .partial_sigs
-        .insert(pub_key, ecdsa_sig);
+
+    let pub_key = bitcoin::PublicKey::from_private_key(&secp, private_key);
+    input.partial_sigs.insert(pub_key, ecdsa_sig);
 
     input.witness_utxo = Some(tx_out.clone());
-    // dbg!(input.clone());
 
-    
     return input.clone();
 }
