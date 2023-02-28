@@ -81,8 +81,6 @@ where
 
         psbt.outputs = vec![output.clone()];
 
-        dbg!(psbt.clone());
-
         let tx = self.finialize_script(psbt);
 
         self.client.broadcasts_transacton(&tx);

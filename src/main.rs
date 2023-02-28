@@ -7,7 +7,6 @@ use bitcoin_wallet::{
     constants::SEED,
     input_data::regtest_call::RegtestCall,
 };
-use simple_wallet::tapscript_example_with_tap::Test;
 
 use crate::{
     bitcoin_wallet::constants::NETWORK,
@@ -114,7 +113,7 @@ fn test_pay_2_taproot_script() {
 
     let address = Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
 
-    let client = RegtestCall::init(&vec![&address.to_string()], "my_wallet", 1);
+    let client = RegtestCall::init(&vec![&address.to_string()], "my_wallet", 110);
 
     let bob_wallet = P2trs::new(bob_seed, bob_image, &client);
 
