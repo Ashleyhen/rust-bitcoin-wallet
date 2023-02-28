@@ -17,7 +17,7 @@ use crate::bitcoin_wallet::{
     input_data::{regtest_call::RegtestCall, RpcCall},
 };
 
-use super::Wallet;
+use super::{SendToImpl, Wallet};
 pub struct P2TR<'a, R: RpcCall> {
     secret_key: SecretKey,
     secp: Secp256k1<All>,
@@ -67,7 +67,7 @@ impl<'a, R> P2TR<'a, R>
 where
     R: RpcCall,
 {
-    pub fn send(&self) {
+    pub fn send(&self, send_to: Box<dyn Fn(u64) -> Vec<TxOut>>) {
         let key_pair = KeyPair::from_secret_key(&self.secp, &self.secret_key);
 
         let (x_only, _) = key_pair.x_only_public_key();
@@ -86,7 +86,7 @@ where
 
         let total: u64 = prevouts.iter().map(|tx_out| tx_out.value).sum();
 
-        let out_put = create_output(total, self.client);
+        let out_put = send_to(total - self.client.fee());
 
         let unsigned_tx = Transaction {
             version: 2,
@@ -105,9 +105,9 @@ where
     }
 }
 
-fn create_output<'a>(total: u64, client: &'a impl RpcCall) -> Vec<TxOut> {
+fn create_output<'a>(total: u64, fee: u64) -> Vec<TxOut> {
     let out_put = vec![TxOut {
-        value: total - client.fee(),
+        value: total - fee,
         script_pubkey: Address::from_str(
             "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj",
         )
