@@ -23,13 +23,14 @@ services:
         zmqpubrawtx=tcp://0.0.0.0:28335
         zmqpubhashblock=tcp://0.0.0.0:28336
 
-  lightning:
-    container_name: lightning
+  lightningd:
+    container_name: lightningd
     restart: always
     image: elementsproject/lightningd:latest
     expose:
       - 9735
       - 11001
+      - 4001
     environment:
       LIGHTNINGD_CHAIN: btc
       LIGHTNINGD_NETWORK: regtest
@@ -43,7 +44,11 @@ services:
         - --log-level=debug
         - --bitcoin-rpcconnect=bitcoind
         - --grpc-port=11001
+    volumes:
+      - ~/.docker/volumes/lightningd_data:/root/.lightning/regtest:rw
 
+volumes:
+  lightningd_data:
   #   lightningd
   # --alias={{name}}
   # --addr={{name}}
