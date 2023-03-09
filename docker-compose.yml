@@ -5,11 +5,14 @@ services:
     container_name: bitcoind
     restart: always
     image: btcpayserver/bitcoin:24.0.1-1
-    ports:
-      - 18443:18443
-      - 18444:18444
-      - 18445:18445
-      - 8332:8332
+    expose:
+      - 18443
+      - 18444
+      - 18445
+      - 8332
+      - 28334
+      - 28335
+      - 28336
     environment:
       BITCOIN_NETWORK: regtest
       BITCOIN_EXTRA_ARGS: |
@@ -22,6 +25,8 @@ services:
         zmqpubrawblock=tcp://0.0.0.0:28334
         zmqpubrawtx=tcp://0.0.0.0:28335
         zmqpubhashblock=tcp://0.0.0.0:28336
+    networks:
+      lightningd_network:
 
   lightningd:
     container_name: lightningd
@@ -30,7 +35,6 @@ services:
     expose:
       - 9735
       - 11001
-      - 4001
     environment:
       LIGHTNINGD_CHAIN: btc
       LIGHTNINGD_NETWORK: regtest
@@ -46,21 +50,65 @@ services:
         - --grpc-port=11001
     volumes:
       - ~/.docker/volumes/lightningd_data:/root/.lightning/regtest:rw
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.5
+
+  lnd:
+    container_name: lnd
+    restart: always
+    image:  lightninglabs/lnd:v0.16.0-beta.rc2
+    expose:
+      - 9730
+      - 8080
+      - 10009
+    command:
+        - --noseedbackup
+        - --trickledelay=5000
+        - --listen=0.0.0.0:9730
+        - --rpclisten=0.0.0.0:10009
+        - --restlisten=0.0.0.0:8080
+        - --bitcoin.active
+        - --bitcoin.regtest
+        - --bitcoin.node=bitcoind
+        - --bitcoind.rpchost=bitcoind:18443 
+        - --bitcoind.rpcuser=foo
+        - --bitcoind.rpcpass=qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
+        - --bitcoind.zmqpubrawblock=tcp://bitcoind:28334
+        - --bitcoind.zmqpubrawtx=tcp://bitcoind:28335
+    volumes:
+      - ~/.docker/volumes/lnd_data:/root/.lnd/data/chain/bitcoin/regtest:rw
+
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.6
 
 volumes:
   lightningd_data:
-  #   lightningd
+  lnd_data:
+
+networks:
+  lightningd_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+
+  #  lnd
+  # --noseedbackup
+  # --trickledelay=5000
   # --alias={{name}}
-  # --addr={{name}}
-  # --network=regtest
-  # --bitcoin-rpcuser={{rpcUser}}
-  # --bitcoin-rpcpassword={{rpcPass}}
-  # --bitcoin-rpcconnect={{backendName}}
-  # --bitcoin-rpcport=18443
-  # --log-level=debug
-  # --dev-bitcoind-poll=2
-  # --dev-fast-gossip
-  # --grpc-port=11001
-  # --plugin=/opt/c-lightning-rest/plugin.js
-  # --rest-port=8080
-  # --rest-protocol=http
+  # --externalip={{name}}
+  # --tlsextradomain={{name}}
+  # --tlsextradomain={{containerName}}
+  # --listen=0.0.0.0:9735
+  # --rpclisten=0.0.0.0:10009
+  # --restlisten=0.0.0.0:8080
+  # --bitcoin.active
+  # --bitcoin.regtest
+  # --bitcoin.node=bitcoind
+  # --bitcoind.rpchost={{backendName}}
+  # --bitcoind.rpcuser={{rpcUser}}
+  # --bitcoind.rpcpass={{rpcPass}}
+  # --bitcoind.zmqpubrawblock=tcp://{{backendName}}:28334
+  # --bitcoind.zmqpubrawtx=tcp://{{backendName}}:28335

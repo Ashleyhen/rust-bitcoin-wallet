@@ -3,6 +3,7 @@ use std::{env, rc::Rc, str::FromStr, sync::Arc};
 use bitcoin::{Address, Script, XOnlyPublicKey};
 use bitcoin_hashes::hex::{FromHex, ToHex};
 use bitcoin_wallet::configuration::tap_script_demo::script_demo;
+use clightningrpc::client::Client;
 
 use crate::{
     bitcoin_wallet::{
@@ -19,11 +20,33 @@ use crate::{
 };
 
 pub mod bitcoin_wallet;
+pub mod lighting;
 pub mod simple_wallet;
-
-fn main() {
+// sudo chmod 777 ~/.docker/volumes/lightningd_data/* && sudo chmod 777 ~/.docker/volumes/lightningd2_data/* 
+#[tokio::main]
+async fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    script_demo();
+
+
+    
+    // dbg!(client.fundchannel(&id, clightningrpc::requests::AmountOrAll::Amount(250000), Some(253)).unwrap());
+
+    // dbg!(client.listpeers(None , None).unwrap());
+
+    // dbg!(client.listchannels(None).unwrap());
+    
+    // dbg!(client.listpeers(Some("02e22256030b1791d6344dd26168fa2c05645b4adc7f2da6d88cea1f0399733e41") , None).unwrap());
+    // dbg!(client.listchannels(Some("02e222")).unwrap());
+    
+    
+
+
+    // client.fundchannel(id, satoshi, feerate)
+    // client.connect(id, host)
+    // dbg!(client.listpeers(None , None).unwrap());
+    
+    
+    
 }
 
 #[test]
