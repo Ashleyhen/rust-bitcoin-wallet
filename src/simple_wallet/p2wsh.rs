@@ -22,11 +22,11 @@ pub struct P2WSH<'a, R: RpcCall> {
     client: &'a R,
 }
 
-impl<'a, R> P2WSH<'a, R>
+impl<'a, R> Wallet<'a, R> for P2WSH<'a, R>
 where
     R: RpcCall,
 {
-    pub fn new(secret_string: &Option<&str>, client: &'a R) -> Self
+    fn new(secret_string: Option<&str>, client: &'a R) -> Self
     where
         R: RpcCall,
     {

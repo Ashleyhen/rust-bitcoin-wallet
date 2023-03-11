@@ -42,13 +42,24 @@ impl RpcCall for RegtestCall {
 impl<'a> RegtestCall {
     pub fn get_client() -> Client {
         return Client::new(
-            "http://127.0.0.1:18443",
+            "http://10.5.0.2:18443",
             bitcoincore_rpc::Auth::UserPass(
                 "foo".to_string(),
                 "qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=".to_owned(),
             ),
         )
         .unwrap();
+    }
+
+    pub fn mine(&self, mine: u8) {
+        let mut addr = "addr(".to_owned();
+        addr.push_str(&self.address_list[0].to_string());
+        addr.push_str(")");
+        let desc = self.client.get_descriptor_info(&addr).unwrap().descriptor;
+        self.client
+            .call::<Vec<BlockHash>>("generatetodescriptor", &[json!(mine), json!(desc)])
+            .unwrap();
+        println!("successfully mined blocks");
     }
 
     pub fn init(address_list: &Vec<&str>, wallet_name: &str, mine: u8) -> Self {
@@ -229,7 +240,7 @@ fn importdescriptors(client: &Client, desc: &String, mine: u8) {
         .unwrap()
 }
 
-fn mine_to_descriptors(client: &Client, mine: u8, desc: &String) {
+pub fn mine_to_descriptors(client: &Client, mine: u8, desc: &String) {
     client
         .call::<Vec<BlockHash>>("generatetodescriptor", &[json!(mine), json!(desc)])
         .unwrap();

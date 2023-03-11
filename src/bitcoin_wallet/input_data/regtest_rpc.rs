@@ -49,7 +49,7 @@ impl RpcCall for RegtestRpc {
 impl<'a> RegtestRpc {
     pub fn get_client() -> Client {
         return Client::new(
-            "http://127.0.0.1:18443",
+            "http://10.5.0.2:18443",
             bitcoincore_rpc::Auth::UserPass(
                 "foo".to_string(),
                 "qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=".to_owned(),
