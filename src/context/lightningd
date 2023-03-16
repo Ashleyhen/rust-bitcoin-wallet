@@ -10,7 +10,7 @@ ENV LIGHTNINGD_RPC_PORT=18443
 RUN mkdir shared 
 
 ENTRYPOINT  ( \ 
-        sleep 30s && \
+        sleep 15s && \
         chmod -R 777 /root/.lightning/regtest/*  \
         # cp -r /root/.lightning/regtest/* /shared/ && \ 
         # ln -s /root/.lightning/regtest/lightning-rpc /shared/ && \

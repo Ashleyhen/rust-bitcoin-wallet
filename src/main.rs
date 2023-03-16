@@ -12,7 +12,6 @@ use traproot_bdk::{
     },
 };
 
-use crate::lighting::clighting::connect_lnd_and_lightingd;
 use crate::{
     bitcoin_wallet::{
         constants::{NETWORK, SEED},
@@ -29,11 +28,11 @@ use crate::{
 pub mod bitcoin_wallet;
 pub mod lighting;
 pub mod simple_wallet;
-// sudo chmod 777 ~/.docker/volumes/lightningd_data/* && sudo chmod 777 ~/.docker/volumes/lnd_data/tls.key
+// rm -rf ~/.docker/volumes/lightningd_data/ && rm -rf ~/.docker/volumes/lnd_data/
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    connect_lnd_and_lightingd().await;
+    // connect_lnd_and_lightingd().await;
 
     // let mut lnd = connect_lightning(
     //     "10.5.0.6".to_string(),
