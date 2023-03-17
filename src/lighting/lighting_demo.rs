@@ -22,7 +22,7 @@ use crate::{
 use super::{clighting::Lightingd, lnd::Lnd, RLightningCli};
 
 #[tokio::test]
-pub async fn run_me() {
+pub async fn lnd_sends_open_channel_request() {
     let mut lnd = Lnd::new().await;
     let mut lightingd = Lightingd::new().await;
     let get_info = lightingd.get_info().await;
