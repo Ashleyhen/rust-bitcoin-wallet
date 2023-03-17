@@ -7,7 +7,7 @@ pub mod lnd;
 #[async_trait]
 pub trait WLightningCli<R, F, I> {
     async fn connect(&mut self, id: String, host: String) -> R;
-    async fn new_address(&mut self) -> String;
+    async fn new_address(&mut self, address_type: AddrType) -> String;
     async fn open_channel(&mut self, id: String, amt: Option<u64>) -> F;
     async fn create_invoice(
         &mut self,
@@ -24,4 +24,10 @@ pub trait RLightningCli<G, P, C, I> {
     async fn list_peers(&mut self) -> P;
     async fn list_channels(&mut self) -> C;
     async fn list_invoices(&mut self) -> I;
+}
+
+pub enum AddrType {
+    Bech32,
+    TR,
+    P2SH,
 }

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bitcoin_hashes::Hash;
 use hex::FromHex;
 use tonic::{async_trait, codegen::InterceptedService, Response, Streaming};
+use tower::util::Optional;
 use traproot_bdk::{
     connect_lightning,
     lnrpc::{
@@ -15,7 +16,7 @@ use traproot_bdk::{
     MacaroonInterceptor, MyChannel,
 };
 
-use super::{RLightningCli, WLightningCli};
+use super::{AddrType, RLightningCli, WLightningCli};
 
 pub struct Lnd {
     client: LightningClient<InterceptedService<MyChannel, MacaroonInterceptor>>,
@@ -56,12 +57,18 @@ impl
         return self.client.connect_peer(connect_req).await.unwrap();
     }
 
-    async fn new_address(&mut self) -> String {
+    async fn new_address(&mut self, address_type: AddrType) -> String {
+        let address = match address_type {
+            AddrType::Bech32 => 0,
+            AddrType::P2SH => 1,
+            AddrType::TR => 4,
+        };
+
         return self
             .client
             .new_address(NewAddressRequest {
                 account: "".to_string(),
-                r#type: 4,
+                r#type: address,
             })
             .await
             .unwrap()
