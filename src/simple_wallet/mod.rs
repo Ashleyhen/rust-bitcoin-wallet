@@ -30,3 +30,15 @@ pub fn single_output() -> Box<dyn Fn(u64) -> Vec<TxOut>> {
         out_put
     });
 }
+
+pub fn single_output_with_value(string: String) -> Box<dyn Fn(u64) -> Vec<TxOut>> {
+    return Box::new(move |total| {
+        let out_put = vec![TxOut {
+            value: total,
+            script_pubkey: Address::from_str(&string.to_string())
+                .unwrap()
+                .script_pubkey(),
+        }];
+        out_put
+    });
+}
