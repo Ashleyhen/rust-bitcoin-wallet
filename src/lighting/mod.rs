@@ -1,6 +1,7 @@
 use tonic::async_trait;
 
 pub mod clighting;
+pub mod lighting_demo;
 pub mod lnd;
 
 #[async_trait]
@@ -18,7 +19,7 @@ pub trait WLightningCli<R, F, I> {
 }
 
 #[async_trait]
-pub trait RLightningCli<G,P,C,I>{
+pub trait RLightningCli<G, P, C, I> {
     async fn get_info(&mut self) -> G;
     async fn list_peers(&mut self) -> P;
     async fn list_channels(&mut self) -> C;

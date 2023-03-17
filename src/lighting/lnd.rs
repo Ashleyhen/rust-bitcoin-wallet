@@ -4,19 +4,38 @@ use bitcoin_hashes::Hash;
 use hex::FromHex;
 use tonic::{async_trait, codegen::InterceptedService, Response, Streaming};
 use traproot_bdk::{
+    connect_lightning,
     lnrpc::{
-        lightning_client::LightningClient, AddInvoiceResponse, ConnectPeerRequest,
-        ConnectPeerResponse, Invoice, LightningAddress, NewAddressRequest, OpenChannelRequest,
-        OpenStatusUpdate, GetInfoRequest, GetInfoResponse, Channel, Peer, ListPeersResponse, ListPeersRequest, ListChannelsResponse, ListChannelsRequest, ListInvoiceResponse, ListInvoiceRequest,
+        lightning_client::LightningClient, AddInvoiceResponse, Channel, ConnectPeerRequest,
+        ConnectPeerResponse, GetInfoRequest, GetInfoResponse, Invoice, LightningAddress,
+        ListChannelsRequest, ListChannelsResponse, ListInvoiceRequest, ListInvoiceResponse,
+        ListPeersRequest, ListPeersResponse, NewAddressRequest, OpenChannelRequest,
+        OpenStatusUpdate, Peer,
     },
     MacaroonInterceptor, MyChannel,
 };
 
-use super::{WLightningCli, RLightningCli};
+use super::{RLightningCli, WLightningCli};
 
 pub struct Lnd {
     client: LightningClient<InterceptedService<MyChannel, MacaroonInterceptor>>,
-    peer:Vec<u8>
+    peer: Vec<u8>,
+}
+
+impl Lnd {
+    pub async fn new() -> Self {
+        return Lnd {
+            client: connect_lightning(
+                "10.5.0.6".to_string(),
+                10006,
+                "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
+                "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+            )
+            .await
+            .expect("failed to connect"),
+            peer: vec![],
+        };
+    }
 }
 
 #[async_trait]
@@ -98,7 +117,17 @@ impl
     ) -> Response<AddInvoiceResponse> {
         let description_hash =
             bitcoin_hashes::sha256::Hash::hash(&Vec::from_hex(description).unwrap()).to_vec();
-        let invoice =Self::new_invoice(label.to_string(), vec![], value.try_into().unwrap(), description_hash, expiry.unwrap_or(0).try_into().unwrap(), "bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d".to_string(), 100, false, false);
+        let invoice = Self::new_invoice(
+            label.to_string(),
+            vec![],
+            value.try_into().unwrap(),
+            description_hash,
+            expiry.unwrap_or(0).try_into().unwrap(),
+            "bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d".to_string(),
+            100,
+            false,
+            false,
+        );
         let invoice = self.client.add_invoice(invoice).await.unwrap();
         println!("invoice response {:#?}", invoice);
         return invoice;
@@ -146,7 +175,6 @@ impl Lnd {
             amp_invoice_state: HashMap::new(),
         };
     }
-
 }
 
 #[async_trait]
@@ -156,38 +184,45 @@ impl
         Response<ListPeersResponse>,
         Response<ListChannelsResponse>,
         Response<ListInvoiceResponse>,
-
     > for Lnd
 {
-    async fn get_info(&mut self) -> Response<GetInfoResponse>{
-        return self.client.get_info(GetInfoRequest{}).await.unwrap();
+    async fn get_info(&mut self) -> Response<GetInfoResponse> {
+        return self.client.get_info(GetInfoRequest {}).await.unwrap();
     }
-    
-    async fn list_peers(&mut self)->Response<ListPeersResponse>{
-        return self.client.list_peers(ListPeersRequest{
-            latest_error:true
-        }).await.unwrap();
 
+    async fn list_peers(&mut self) -> Response<ListPeersResponse> {
+        return self
+            .client
+            .list_peers(ListPeersRequest { latest_error: true })
+            .await
+            .unwrap();
     }
-    
-    async fn list_channels(&mut self)->Response<ListChannelsResponse>{
-        return self.client.list_channels(ListChannelsRequest{
-            active_only:true,
-            inactive_only:false,
-            public_only:false,
-            private_only:false,
-            peer:self.peer.clone()
-        }).await.unwrap();
 
+    async fn list_channels(&mut self) -> Response<ListChannelsResponse> {
+        return self
+            .client
+            .list_channels(ListChannelsRequest {
+                active_only: true,
+                inactive_only: false,
+                public_only: false,
+                private_only: false,
+                peer: self.peer.clone(),
+            })
+            .await
+            .unwrap();
     }
-    async fn list_invoices(&mut self)->Response<ListInvoiceResponse>{
-        return self.client.list_invoices(ListInvoiceRequest{
-            pending_only:false,
-            index_offset:0,
-            num_max_invoices:100,
-            reversed:false,
-            creation_date_end:0,
-            creation_date_start:0
-        }).await.unwrap();
+    async fn list_invoices(&mut self) -> Response<ListInvoiceResponse> {
+        return self
+            .client
+            .list_invoices(ListInvoiceRequest {
+                pending_only: false,
+                index_offset: 0,
+                num_max_invoices: 100,
+                reversed: false,
+                creation_date_end: 0,
+                creation_date_start: 0,
+            })
+            .await
+            .unwrap();
     }
 }
