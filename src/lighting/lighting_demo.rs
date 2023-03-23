@@ -1,6 +1,7 @@
 use std::{collections::HashMap, thread, time::Duration};
 
-use bitcoin_hashes::Hash;
+use bitcoin::secp256k1::Scalar;
+use bitcoin_hashes::{hex::ToHex, Hash};
 use clightningrpc::LightningRPC;
 use hex::FromHex;
 use tonic::codegen::InterceptedService;
@@ -46,16 +47,17 @@ pub async fn lnd_sends_open_channel_request() {
     client.mine(20);
     let new_address = lnd.new_address(AddrType::TR).await;
     P2TR::new(Some(SEED), &client).send(single_output_with_value(new_address.clone()));
-    client.mine(20);
+    client.mine(100);
 
     println!(
         "clighting and lnd channel multi-sig address \n {}",
         new_address.clone()
     );
 
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(3));
+
     let open_channel_response = lnd
-        .open_channel(lightingd.get_info().await.id, Some(1000000))
+        .open_channel(lightingd.get_info().await.id, Some(10000000))
         .await;
 
     println!("open channel request {:#?}", open_channel_response);
@@ -65,7 +67,12 @@ pub async fn lnd_sends_open_channel_request() {
     thread::sleep(Duration::from_secs(2));
 
     let invoice = lightingd
-        .create_invoice(1000, "invoice from lightingd", "payment description!", Some(7200))
+        .create_invoice(
+            1000,
+            "invoice from lightingd",
+            "payment description!",
+            Some(7200),
+        )
         .await;
 
     println!("print out invoice {:#?}", invoice);
@@ -104,37 +111,82 @@ pub async fn clighting_sends_open_channel_request() {
     let new_address = lightingd.new_address(AddrType::Bech32).await;
 
     P2WPKH::new(Some(SEED), &client).send(single_output_with_value(new_address.clone()));
-    client.mine(50);
+    client.mine(100);
 
     println!(
         "clighting and lnd channel multi-sig address \n {}",
         new_address.clone()
     );
 
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(3));
     let open_channel_response = lightingd
         .open_channel(
             lnd.get_info().await.get_ref().identity_pubkey.clone(),
-            Some(1000000),
+            None,
         )
         .await;
 
+    client.mine(20);
     println!("open channel request {:#?}", open_channel_response);
+}
 
-    // client.mine(20);
+#[tokio::test]
+pub async fn lnd_list_peer() {
+    let mut lnd = Lnd::new().await;
+    dbg!(lnd.list_channels().await);
+}
 
-    // thread::sleep(Duration::from_secs(2));
+#[tokio::test]
+pub async fn lightingd_create_invoice_and_pay() {
+    let mut lighting_d = Lightingd::new().await;
+    let mut lnd = Lnd::new().await;
 
-    // let invoice = lnd
-    //     .create_invoice(1000, "invoice from lightingd", "payment description!", Some(7200))
-    //     .await;
+    let random_data = Scalar::random().to_be_bytes().to_hex();
 
-    // println!("print out invoice {:#?}", invoice);
+    let invoice = lighting_d
+        .create_invoice(1000, &random_data, "some description", None)
+        .await;
 
-    // let list_peer_request = lightingd.list_peers().await;
+    thread::sleep(Duration::from_secs(2));
 
-    // println!("list peers {:#?}", list_peer_request);
+    dbg!(invoice.clone());
 
-    // println!("Testing layer 1 pay to tap root with key signature");
 
+    let payment_response = lnd
+        .send_payment(
+            invoice.bolt11
+        )
+        .await;
+
+    println!("invoice paid: {:#?}",payment_response);
+}
+
+#[tokio::test]
+pub async fn lnd_create_invoice_and_pay(){
+
+    let mut lighting_d = Lightingd::new().await;
+    let mut lnd = Lnd::new().await;
+
+    let random_data = Scalar::random().to_be_bytes().to_hex();
+
+    let invoice = lnd
+        .create_invoice(20000, &random_data, "some description", None)
+        .await;
+
+    thread::sleep(Duration::from_secs(2));
+
+    dbg!(invoice.get_ref().clone());
+
+    dbg!(&lnd.get_info().await.get_ref().identity_pubkey);
+
+    let payment_response = lighting_d
+        .send_payment(
+            &invoice.get_ref().clone().payment_request
+        )
+        .await;
+
+    println!("invoice paid: {:#?}",payment_response);
+}
+pub fn quick_pay(){
+    
 }

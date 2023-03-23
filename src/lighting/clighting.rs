@@ -7,11 +7,13 @@ use std::{
 use bitcoin_hashes::{hex::FromHex, Hash};
 use bitcoincore_rpc::jsonrpc::serde_json::{self, json};
 use clightningrpc::{
-    requests::AmountOrAll,
-    responses::FundChannel,
-    responses::{Connect, GetInfo, ListChannels, ListInvoice, ListInvoices, ListPeers},
+    lightningrpc::PayOptions,
+    requests::{self, AmountOrAll},
+    responses::{FundChannel, Pay},
+    responses::{self, Connect, GetInfo, ListChannels, ListInvoice, ListInvoices, ListPeers},
     Error, LightningRPC, Response,
 };
+use hyper::http::response;
 use serde::{Deserialize, Serialize};
 use tokio::task;
 use tonic::{async_trait, codegen::InterceptedService};
@@ -33,15 +35,6 @@ use super::{AddrType, RLightningCli, WLightningCli};
 
 pub struct Lightingd {
     client: LightningRPC,
-}
-impl Lightingd {
-    pub async fn new() -> Self {
-        return Lightingd {
-            client: clightningrpc::LightningRPC::new(
-                "/home/ash/.docker/volumes/lightningd_data/lightning-rpc",
-            ),
-        };
-    }
 }
 
 #[async_trait]
@@ -68,7 +61,8 @@ impl WLightningCli<Connect, FundChannel, clightningrpc::responses::Invoice> for 
             .client
             .client()
             .send_request("fundchannel", request.clone());
-        return result.unwrap().result.unwrap();
+
+        return result.unwrap().clone().result.unwrap();
     }
 
     async fn create_invoice(
@@ -113,7 +107,7 @@ pub async fn clighting_sends_open_channel_request() {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 
 // [feerate] [announce] [minconf] [utxos] [push_msat] [close_to] [request_amt] [compact_lease] [reserve]
-pub struct OpenChannel<'a, 'b,  'd, 'e, 'g> {
+pub struct OpenChannel<'a, 'b, 'c, 'd, 'e> {
     pub id: &'a str,
     pub amount: &'b str,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -122,21 +116,21 @@ pub struct OpenChannel<'a, 'b,  'd, 'e, 'g> {
     pub minconf: u64,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub utxos:  Vec<String>,
+    pub utxos: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub push_msat: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub close_to: Option<&'d str>,
+    pub close_to: Option<&'c str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub request_amt: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub compact_lease: Option<&'e str>,
+    pub compact_lease: Option<&'d str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reserve: Option<&'g str>,
+    pub reserve: Option<&'e str>,
 }
 
-impl<'a, 'b,  'd, 'e, 'g> OpenChannel<'a, 'b,  'd, 'e, 'g> {
-    pub fn new(id: &'a str, amount:&'b str) -> OpenChannel <'a, 'b,  'd, 'e, 'g>{
+impl<'a, 'b, 'c, 'd, 'e> OpenChannel<'a, 'b, 'c, 'd, 'e> {
+    pub fn new(id: &'a str, amount: &'b str) -> OpenChannel<'a, 'b, 'c, 'd, 'e> {
         return OpenChannel {
             id,
             amount,
@@ -148,7 +142,21 @@ impl<'a, 'b,  'd, 'e, 'g> OpenChannel<'a, 'b,  'd, 'e, 'g> {
             close_to: None,
             request_amt: None,
             compact_lease: None,
-            reserve: None,
+            reserve: Some("10000"),
         };
+    }
+}
+impl Lightingd {
+    pub async fn new() -> Self {
+        return Lightingd {
+            client: clightningrpc::LightningRPC::new(
+                "/home/ash/.docker/volumes/lightningd_data/lightning-rpc",
+            ),
+        };
+    }
+
+    pub async fn send_payment(&mut self, bolt11: &str)->Pay {
+        let result =self.client.pay(bolt11, Default::default());
+        return result.unwrap();
     }
 }
