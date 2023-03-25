@@ -41,9 +41,9 @@ pub fn Test() {
         SecretKey::from_str("1229101a0fcf2104e8808dab35661134aa5903867d44deb73ce1c7e4eb925be8")
             .unwrap();
 
-    let alice = KeyPair::from_secret_key(&secp, alice_secret);
-    let bob = KeyPair::from_secret_key(&secp, bob_secret);
-    let internal = KeyPair::from_secret_key(&secp, internal_secret);
+    let alice = KeyPair::from_secret_key(&secp, &alice_secret);
+    let bob = KeyPair::from_secret_key(&secp, &bob_secret);
+    let internal = KeyPair::from_secret_key(&secp, &internal_secret);
     let preimage =
         Vec::from_hex("107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f").unwrap();
 

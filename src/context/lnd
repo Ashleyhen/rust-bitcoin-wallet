@@ -12,6 +12,7 @@ ENTRYPOINT ( \
      ) & \
         lnd \
         --bitcoin.active \
+        --accept-amp \
         --bitcoin.node=bitcoind \
         --bitcoin.regtest \
         --bitcoind.rpchost=bitcoind:18443 \ 
@@ -25,3 +26,4 @@ ENTRYPOINT ( \
         --restlisten=0.0.0.0:8080 \
         --rpclisten=0.0.0.0:10006 \
         --trickledelay=5000 \
+        --minchansize=0
