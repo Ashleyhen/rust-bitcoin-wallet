@@ -12,6 +12,7 @@ ENTRYPOINT ( \
      ) & \
         lnd \
         --bitcoin.active \
+        --accept-amp \
         --bitcoin.node=bitcoind \
         --bitcoin.regtest \
         --bitcoind.rpchost=bitcoind:18443 \ 

@@ -16,13 +16,13 @@ use traproot_bdk::{
 
 use crate::{
     bitcoin_wallet::{constants::SEED, input_data::regtest_call::RegtestCall},
-    lighting::{AddrType, WLightningCli},
+    lighting::{AddrType, CommonLightning },
     simple_wallet::{
         p2tr_key::P2TR, p2wpkh::P2WPKH, single_output, single_output_with_value, Wallet,
     },
 };
 
-use super::{clighting::Lightingd, lnd::Lnd, RLightningCli};
+use super::{clighting::Lightingd, lnd::Lnd };
 
 #[tokio::test]
 pub async fn lnd_sends_open_channel_request() {
@@ -154,7 +154,7 @@ pub async fn lightingd_create_invoice_and_pay() {
 
     let payment_response = lnd
         .send_payment(
-            invoice.bolt11
+            &invoice.bolt11
         )
         .await;
 

@@ -9,7 +9,7 @@ use bitcoincore_rpc::jsonrpc::serde_json::{self, json};
 use clightningrpc::{
     lightningrpc::PayOptions,
     requests::{self, AmountOrAll},
-    responses::{FundChannel, Pay},
+    responses::{FundChannel, Pay, Invoice},
     responses::{self, Connect, GetInfo, ListChannels, ListInvoice, ListInvoices, ListPeers},
     Error, LightningRPC, Response,
 };
@@ -20,7 +20,7 @@ use tonic::{async_trait, codegen::InterceptedService};
 use traproot_bdk::{
     connect_lightning,
     lnrpc::{
-        lightning_client::LightningClient, ConnectPeerRequest, Invoice, LightningAddress,
+        lightning_client::LightningClient, ConnectPeerRequest,  LightningAddress,
         ListInvoiceRequest, ListPeersRequest, NewAddressRequest, OpenChannelRequest,
     },
     MacaroonInterceptor, MyChannel,
@@ -31,14 +31,14 @@ use crate::{
     simple_wallet::{p2tr_key::P2TR, single_output_with_value, Wallet},
 };
 
-use super::{AddrType, RLightningCli, WLightningCli};
+use super::{AddrType, CommonLightning};
 
 pub struct Lightingd {
     client: LightningRPC,
 }
 
 #[async_trait]
-impl WLightningCli<Connect, FundChannel, clightningrpc::responses::Invoice> for Lightingd {
+impl CommonLightning<Connect, FundChannel, Invoice,GetInfo, ListPeers, ListChannels, ListInvoices,Pay> for Lightingd {
     async fn connect(&mut self, id: String, host: String) -> Connect {
         return self.client.connect(&id, Some(&host)).unwrap();
     }
@@ -77,10 +77,7 @@ impl WLightningCli<Connect, FundChannel, clightningrpc::responses::Invoice> for 
             .invoice(msatoshi, label, description, expiry)
             .unwrap();
     }
-}
 
-#[async_trait]
-impl RLightningCli<GetInfo, ListPeers, ListChannels, ListInvoices> for Lightingd {
     async fn get_info(&mut self) -> GetInfo {
         return self.client.getinfo().unwrap();
     }
@@ -95,6 +92,11 @@ impl RLightningCli<GetInfo, ListPeers, ListChannels, ListInvoices> for Lightingd
 
     async fn list_invoices(&mut self) -> ListInvoices {
         return self.client.listinvoices(None).unwrap();
+    }
+
+    async fn send_payment<'a>(&mut self, bolt11: &'a String)->Pay {
+        let result =self.client.pay(bolt11, Default::default());
+        return result.unwrap();
     }
 }
 
@@ -155,8 +157,8 @@ impl Lightingd {
         };
     }
 
-    pub async fn send_payment(&mut self, bolt11: &str)->Pay {
-        let result =self.client.pay(bolt11, Default::default());
-        return result.unwrap();
+    // pub async fn send_payment(&mut self, bolt11: &str)->Pay {
+    //     let result =self.client.pay(bolt11, Default::default());
+    //     return result.unwrap();
     }
-}
+
