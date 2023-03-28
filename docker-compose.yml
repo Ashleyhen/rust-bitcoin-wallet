@@ -55,6 +55,23 @@ services:
     networks:
       lightningd_network:
         ipv4_address: 10.5.0.6
+  
+  lnd_2:
+    container_name: lnd_2
+    restart: always
+    build: 
+      context: ./src/context
+      dockerfile: lnd
+    
+    volumes:
+      - ~/.docker/volumes/lnd_data2/:/shared/
+
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.7
+
+  # docker pull 
+
 
 volumes:
   lightningd_data:

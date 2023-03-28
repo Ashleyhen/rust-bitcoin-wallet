@@ -3,6 +3,9 @@ FROM lightninglabs/lnd:v0.16.0-beta.rc2
 EXPOSE 9730 8080 10006
 
 RUN mkdir shared 
+RUN cd  && \
+   echo 'alias lncli="lncli --network regtest --rpcserver localhost:10006"' >> .bashrc && \
+   source .bashrc
 
 ENTRYPOINT ( \ 
         sleep 10 && \
@@ -13,6 +16,7 @@ ENTRYPOINT ( \
         lnd \
         --bitcoin.active \
         --accept-amp \
+        --debuglevel=debug \
         --bitcoin.node=bitcoind \
         --bitcoin.regtest \
         --bitcoind.rpchost=bitcoind:18443 \ 
