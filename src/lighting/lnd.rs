@@ -6,29 +6,38 @@ use hex::FromHex;
 use tonic::{async_trait, codegen::InterceptedService, Response, Streaming};
 use tower::util::Optional;
 use traproot_bdk::{
-    connect_lightning, connect_router,
+    connect_invoices, connect_lightning, connect_peers, connect_router,
     lnrpc::{
-        lightning_client::LightningClient, AddInvoiceResponse, Channel, ConnectPeerRequest,
-        ConnectPeerResponse, GetInfoRequest, GetInfoResponse, Invoice, LightningAddress,
-        ListChannelsRequest, ListChannelsResponse, ListInvoiceRequest, ListInvoiceResponse,
-        ListPeersRequest, ListPeersResponse, NewAddressRequest, OpenChannelRequest,
-        OpenStatusUpdate, Peer, SendRequest, SendResponse,
+        invoice, lightning_client::LightningClient, AddInvoiceResponse, Channel,
+        ConnectPeerRequest, ConnectPeerResponse, GetInfoRequest, GetInfoResponse, Invoice,
+        LightningAddress, ListChannelsRequest, ListChannelsResponse, ListInvoiceRequest,
+        ListInvoiceResponse, ListPeersRequest, ListPeersResponse, NewAddressRequest,
+        OpenChannelRequest, OpenStatusUpdate, Peer, SendRequest, SendResponse, Payment,
     },
-    routerrpc::SendPaymentRequest,
-    MacaroonInterceptor, MyChannel,
+    routerrpc::{router_client::RouterClient, SendPaymentRequest},
+    LndRouterClient, MacaroonInterceptor, MyChannel,
 };
 
-use super::{AddrType, CommonLightning};
+use super::{AddrType, LNChannel, LNCommon, LNInvoice, LNPeers};
 
 pub struct Lnd {
     client: LightningClient<InterceptedService<MyChannel, MacaroonInterceptor>>,
-    peer: Vec<u8>,
+    router: LndRouterClient,
 }
 
 impl Lnd {
     pub async fn new() -> Self {
-      
+        let router = connect_router(
+            "10.5.0.6".to_string(),
+            10006,
+            "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
+            "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+        )
+        .await
+        .expect("failed to connect");
+
         return Lnd {
+            router,
             client: connect_lightning(
                 "10.5.0.6".to_string(),
                 10006,
@@ -37,24 +46,36 @@ impl Lnd {
             )
             .await
             .expect("failed to connect"),
-            peer: vec![],
+        };
+    }
+
+    pub async fn new_1() -> Self {
+        let router = connect_router(
+            "10.5.0.6".to_string(),
+            10006,
+            "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
+            "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+        )
+        .await
+        .expect("failed to connect");
+
+        return Lnd {
+            router,
+
+            client: connect_lightning(
+                "10.5.0.7".to_string(),
+                10006,
+                "/home/ash/.docker/volumes/lnd_data2/tls.cert".to_owned(),
+                "/home/ash/.docker/volumes/lnd_data2/admin.macaroon".to_owned(),
+            )
+            .await
+            .expect("failed to connect"),
         };
     }
 }
 
 #[async_trait]
-impl
-    CommonLightning<
-        Response<ConnectPeerResponse>,
-        Response<Streaming<OpenStatusUpdate>>,
-        Response<AddInvoiceResponse>,
-        Response<GetInfoResponse>,
-        Response<ListPeersResponse>,
-        Response<ListChannelsResponse>,
-        Response<ListInvoiceResponse>,
-        SendResponse
-    > for Lnd
-{
+impl LNPeers<Response<ConnectPeerResponse>, Response<ListPeersResponse>> for Lnd {
     async fn connect(&mut self, id: String, host: String) -> Response<ConnectPeerResponse> {
         let lightning_address = LightningAddress { pubkey: id, host };
         let connect_req = ConnectPeerRequest {
@@ -65,6 +86,16 @@ impl
         return self.client.connect_peer(connect_req).await.unwrap();
     }
 
+    async fn list_peers(&mut self) -> Response<ListPeersResponse> {
+        return self
+            .client
+            .list_peers(ListPeersRequest { latest_error: true })
+            .await
+            .unwrap();
+    }
+}
+#[async_trait]
+impl LNChannel<Response<Streaming<OpenStatusUpdate>>, Response<ListChannelsResponse>> for Lnd {
     async fn new_address(&mut self, address_type: AddrType) -> String {
         let address = match address_type {
             AddrType::Bech32 => 0,
@@ -113,7 +144,7 @@ impl
             commitment_type: 0,
             zero_conf: false,
             scid_alias: false,
-            base_fee: 700,
+            base_fee: 0,
             fee_rate: 0,
             use_base_fee: false,
             use_fee_rate: false,
@@ -122,15 +153,30 @@ impl
         return self.client.open_channel(open_channel_req).await.unwrap();
     }
 
+    async fn list_channels(&mut self) -> Response<ListChannelsResponse> {
+        return self
+            .client
+            .list_channels(ListChannelsRequest {
+                active_only: true,
+                inactive_only: false,
+                public_only: false,
+                private_only: false,
+                peer: vec![],
+            })
+            .await
+            .unwrap();
+    }
+}
+
+#[async_trait]
+impl LNInvoice<Response<AddInvoiceResponse>, Response<ListInvoiceResponse>, SendResponse> for Lnd {
     async fn create_invoice(
         &mut self,
         value: u64,
         label: &str,
-        description: &str,
+        _description: &str,
         expiry: Option<u64>,
     ) -> Response<AddInvoiceResponse> {
-        // let description_hash =
-        //     bitcoin_hashes::sha256::Hash::hash(&Vec::from_hex(description).unwrap()).to_vec();
         let invoice = Self::new_invoice(
             label.to_string(),
             vec![],
@@ -149,31 +195,6 @@ impl
         return invoice;
     }
 
-    async fn get_info(&mut self) -> Response<GetInfoResponse> {
-        return self.client.get_info(GetInfoRequest {}).await.unwrap();
-    }
-
-    async fn list_peers(&mut self) -> Response<ListPeersResponse> {
-        return self
-            .client
-            .list_peers(ListPeersRequest { latest_error: true })
-            .await
-            .unwrap();
-    }
-
-    async fn list_channels(&mut self) -> Response<ListChannelsResponse> {
-        return self
-            .client
-            .list_channels(ListChannelsRequest {
-                active_only: true,
-                inactive_only: false,
-                public_only: false,
-                private_only: false,
-                peer: self.peer.clone(),
-            })
-            .await
-            .unwrap();
-    }
     async fn list_invoices(&mut self) -> Response<ListInvoiceResponse> {
         return self
             .client
@@ -189,14 +210,10 @@ impl
             .unwrap();
     }
 
-    async fn send_payment<'a>(
-        &mut self,
-        bolt11:&'a String
-    ) -> SendResponse {
-
+    async fn send_payment<'a>(&mut self, bolt11: &'a String) -> SendResponse {
         let send_req = SendRequest {
             allow_self_payment: true,
-            amt:0,
+            amt: 0,
             amt_msat: 0,
             cltv_limit: 0,
             dest: vec![],
@@ -208,11 +225,10 @@ impl
             last_hop_pubkey: vec![],
             outgoing_chan_id: 0,
             payment_addr: vec![],
-            payment_hash:vec![],
+            payment_hash: vec![],
             payment_hash_string: "".to_string(),
             payment_request: bolt11.clone(),
         };
-
 
         return self
             .client
@@ -222,7 +238,13 @@ impl
             .get_ref()
             .clone();
     }
+}
 
+#[async_trait]
+impl LNCommon<Response<GetInfoResponse>> for Lnd {
+    async fn get_info(&mut self) -> Response<GetInfoResponse> {
+        return self.client.get_info(GetInfoRequest {}).await.unwrap();
+    }
 }
 
 impl Lnd {
@@ -267,6 +289,39 @@ impl Lnd {
             amp_invoice_state: HashMap::new(),
         };
     }
-
 }
+impl Lnd {
+    pub async fn send_amp_payment<'a>(
+        &mut self,
+        dest: Vec<u8>,
+        amt: i64,
+    ) -> Response<Streaming<Payment>> {
 
+        let send_payment_request = SendPaymentRequest {
+            dest,
+            amt,
+            amt_msat: 0,
+            payment_hash: vec![],
+            final_cltv_delta: 1000,
+            payment_addr: vec![],
+            payment_request: "".to_owned(),
+            timeout_seconds: 30,
+            fee_limit_sat: 10000,
+            fee_limit_msat: 0,
+            outgoing_chan_id: 0,
+            outgoing_chan_ids: vec![],
+            last_hop_pubkey: vec![],
+            cltv_limit: 0,
+            route_hints: vec![],
+            dest_custom_records: HashMap::new(),
+            allow_self_payment: true,
+            dest_features: vec![],
+            max_parts: 10,
+            no_inflight_updates: true,
+            max_shard_size_msat: 0,
+            amp: true,
+            time_pref: 1.0,
+        };
+        return self.router.send_payment_v2(send_payment_request).await.unwrap();
+    }
+}

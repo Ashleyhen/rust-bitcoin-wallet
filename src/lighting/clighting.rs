@@ -9,8 +9,8 @@ use bitcoincore_rpc::jsonrpc::serde_json::{self, json};
 use clightningrpc::{
     lightningrpc::PayOptions,
     requests::{self, AmountOrAll},
-    responses::{FundChannel, Pay, Invoice},
     responses::{self, Connect, GetInfo, ListChannels, ListInvoice, ListInvoices, ListPeers},
+    responses::{FundChannel, Invoice, Pay},
     Error, LightningRPC, Response,
 };
 use hyper::http::response;
@@ -20,7 +20,7 @@ use tonic::{async_trait, codegen::InterceptedService};
 use traproot_bdk::{
     connect_lightning,
     lnrpc::{
-        lightning_client::LightningClient, ConnectPeerRequest,  LightningAddress,
+        lightning_client::LightningClient, ConnectPeerRequest, LightningAddress,
         ListInvoiceRequest, ListPeersRequest, NewAddressRequest, OpenChannelRequest,
     },
     MacaroonInterceptor, MyChannel,
@@ -31,18 +31,31 @@ use crate::{
     simple_wallet::{p2tr_key::P2TR, single_output_with_value, Wallet},
 };
 
-use super::{AddrType, CommonLightning};
+use super::{AddrType, LNChannel, LNCommon, LNInvoice, LNPeers};
 
 pub struct Lightingd {
     client: LightningRPC,
 }
 
 #[async_trait]
-impl CommonLightning<Connect, FundChannel, Invoice,GetInfo, ListPeers, ListChannels, ListInvoices,Pay> for Lightingd {
+impl LNCommon<GetInfo> for Lightingd {
+    async fn get_info(&mut self) -> GetInfo {
+        return self.client.getinfo().unwrap();
+    }
+}
+#[async_trait]
+impl LNPeers<Connect, ListPeers> for Lightingd {
     async fn connect(&mut self, id: String, host: String) -> Connect {
         return self.client.connect(&id, Some(&host)).unwrap();
     }
 
+    async fn list_peers(&mut self) -> ListPeers {
+        return self.client.listpeers(None, None).unwrap();
+    }
+}
+
+#[async_trait]
+impl LNChannel<FundChannel, ListChannels> for Lightingd {
     async fn new_address(&mut self, addr_type: AddrType) -> String {
         let address_mapping = |address: &str| self.client.newaddr(Some(address)).unwrap();
 
@@ -65,6 +78,13 @@ impl CommonLightning<Connect, FundChannel, Invoice,GetInfo, ListPeers, ListChann
         return result.unwrap().clone().result.unwrap();
     }
 
+    async fn list_channels(&mut self) -> ListChannels {
+        return self.client.listchannels(None).unwrap();
+    }
+}
+
+#[async_trait]
+impl LNInvoice<Invoice, ListInvoices, Pay> for Lightingd {
     async fn create_invoice(
         &mut self,
         msatoshi: u64,
@@ -78,24 +98,12 @@ impl CommonLightning<Connect, FundChannel, Invoice,GetInfo, ListPeers, ListChann
             .unwrap();
     }
 
-    async fn get_info(&mut self) -> GetInfo {
-        return self.client.getinfo().unwrap();
-    }
-
-    async fn list_peers(&mut self) -> ListPeers {
-        return self.client.listpeers(None, None).unwrap();
-    }
-
-    async fn list_channels(&mut self) -> ListChannels {
-        return self.client.listchannels(None).unwrap();
-    }
-
     async fn list_invoices(&mut self) -> ListInvoices {
         return self.client.listinvoices(None).unwrap();
     }
 
-    async fn send_payment<'a>(&mut self, bolt11: &'a String)->Pay {
-        let result =self.client.pay(bolt11, Default::default());
+    async fn send_payment<'a>(&mut self, bolt11: &'a String) -> Pay {
+        let result = self.client.pay(bolt11, Default::default());
         return result.unwrap();
     }
 }
@@ -160,5 +168,4 @@ impl Lightingd {
     // pub async fn send_payment(&mut self, bolt11: &str)->Pay {
     //     let result =self.client.pay(bolt11, Default::default());
     //     return result.unwrap();
-    }
-
+}

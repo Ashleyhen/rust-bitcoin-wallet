@@ -145,7 +145,9 @@ fn test_pay_2_witness_public_key_hash() {
         "my_wallet",
         110,
     );
-    P2WPKH::new(Some(SEED), &client).send(single_output());
+    P2WPKH::new(Some(SEED), &client).send(single_output_with_value(
+        "bcrt1pz7f9jke4mpa6gfwgcqn370ajpk8jz484yfyypy3mqwnqjtj9vhdqf0rrnp".to_owned(),
+    ));
 }
 
 #[test]
