@@ -105,18 +105,6 @@ where
     }
 }
 
-fn create_output<'a>(total: u64, fee: u64) -> Vec<TxOut> {
-    let out_put = vec![TxOut {
-        value: total - fee,
-        script_pubkey: Address::from_str(
-            "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj",
-        )
-        .unwrap()
-        .script_pubkey(),
-    }];
-    out_put
-}
-
 fn sign_all_unsigned_tx(
     secp: &Secp256k1<All>,
     prevouts: &Vec<TxOut>,
@@ -127,28 +115,18 @@ fn sign_all_unsigned_tx(
         .iter()
         .enumerate()
         .map(|(index, tx_out)| {
-            sign_tx(secp, index, unsigned_tx, &prevouts, key_pair, tx_out).clone()
+        let message=create_message(index, unsigned_tx, &prevouts);
+            sign_tx(secp, message, key_pair, tx_out).clone()
         })
         .collect();
 }
 
 fn sign_tx(
     secp: &Secp256k1<All>,
-    index: usize,
-    unsigned_tx: &Transaction,
-    prevouts: &Vec<TxOut>,
+    message:Message,
     key_pair: &KeyPair,
     tx_out: &TxOut,
 ) -> Input {
-    let sighash = SighashCache::new(&mut unsigned_tx.clone())
-        .taproot_key_spend_signature_hash(
-            index,
-            &Prevouts::All(&prevouts),
-            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-        )
-        .unwrap();
-
-    let message = Message::from_slice(&sighash).unwrap();
 
     let tweaked_key_pair = key_pair.tap_tweak(&secp, None);
 
@@ -175,4 +153,16 @@ fn sign_tx(
     input.witness_utxo = Some(tx_out.clone());
 
     return input;
+}
+
+pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
+    let sighash = SighashCache::new(&mut unsigned_tx.clone())
+        .taproot_key_spend_signature_hash(
+            index,
+            &Prevouts::All(&prevouts),
+            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+        )
+        .unwrap();
+    let message = Message::from_slice(&sighash).unwrap();
+    return message;
 }
