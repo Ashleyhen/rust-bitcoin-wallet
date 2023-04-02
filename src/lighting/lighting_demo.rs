@@ -68,7 +68,6 @@ pub async fn connect_open_channel<R, P, F, C, L>(
     println!("Testing layer 1 pay to tap root with key signature");
 }
 
-
 #[tokio::test]
 pub async fn open_channel_request() {
     let lnd_client = Lnd::new().await;
@@ -133,8 +132,6 @@ pub async fn clighting_sends_open_channel_request() {
     println!("open channel request {:#?}", open_channel_response);
 }
 
-
-
 #[tokio::test]
 pub async fn lnd_sends_open_channel_request() {
     let mut lnd = Lnd::new().await;
@@ -195,10 +192,6 @@ pub async fn lnd_sends_open_channel_request() {
     println!("Testing layer 1 pay to tap root with key signature");
 }
 
-
-
-
-
 #[tokio::test]
 pub async fn lnd_list_peer() {
     let mut lnd = Lnd::new().await;
@@ -254,10 +247,15 @@ pub async fn quick_pay() {
     let mut lnd_client = Lnd::new().await;
     let mut lnd_client_1 = Lnd::new_1().await;
 
-    let pub_key_1 =lnd_client_1.get_info().await.get_ref().identity_pubkey.clone();
-     
-    let result =lnd_client.send_amp_payment(Vec::from_hex(pub_key_1).unwrap(),10000).await;
+    let pub_key_1 = lnd_client_1
+        .get_info()
+        .await
+        .get_ref()
+        .identity_pubkey
+        .clone();
+
+    let result = lnd_client
+        .send_amp_payment(Vec::from_hex(pub_key_1).unwrap(), 10000)
+        .await;
     dbg!(result);
-
-
 }

@@ -12,7 +12,7 @@ use traproot_bdk::{
         ConnectPeerRequest, ConnectPeerResponse, GetInfoRequest, GetInfoResponse, Invoice,
         LightningAddress, ListChannelsRequest, ListChannelsResponse, ListInvoiceRequest,
         ListInvoiceResponse, ListPeersRequest, ListPeersResponse, NewAddressRequest,
-        OpenChannelRequest, OpenStatusUpdate, Peer, SendRequest, SendResponse, Payment,
+        OpenChannelRequest, OpenStatusUpdate, Payment, Peer, SendRequest, SendResponse,
     },
     routerrpc::{router_client::RouterClient, SendPaymentRequest},
     LndRouterClient, MacaroonInterceptor, MyChannel,
@@ -296,7 +296,6 @@ impl Lnd {
         dest: Vec<u8>,
         amt: i64,
     ) -> Response<Streaming<Payment>> {
-
         let send_payment_request = SendPaymentRequest {
             dest,
             amt,
@@ -322,6 +321,10 @@ impl Lnd {
             amp: true,
             time_pref: 1.0,
         };
-        return self.router.send_payment_v2(send_payment_request).await.unwrap();
+        return self
+            .router
+            .send_payment_v2(send_payment_request)
+            .await
+            .unwrap();
     }
 }
