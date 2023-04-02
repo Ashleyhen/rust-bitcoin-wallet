@@ -2,22 +2,21 @@ use std::str::FromStr;
 
 use bitcoin::{
     psbt::{Input, PartiallySignedTransaction, Prevouts},
-    schnorr::TapTweak,
+    schnorr::{TapTweak, TweakedKeyPair},
     secp256k1::{All, Message, Scalar, Secp256k1, SecretKey},
     util::{
         bip32::{ExtendedPrivKey, ExtendedPubKey},
         sighash::SighashCache,
+        taproot::TapTweakHash,
     },
     Address, KeyPair, PackedLockTime, SchnorrSig, Transaction, TxOut,
 };
+use bitcoin_hashes::{Hash, HashEngine};
 use miniscript::psbt::PsbtExt;
 
-use crate::bitcoin_wallet::{
-    constants::NETWORK,
-    input_data::{regtest_call::RegtestCall, RpcCall},
-};
+use crate::bitcoin_wallet::{constants::NETWORK, input_data::RpcCall};
 
-use super::{SendToImpl, Wallet};
+use super::Wallet;
 pub struct P2TR<'a, R: RpcCall> {
     secret_key: SecretKey,
     secp: Secp256k1<All>,
@@ -115,29 +114,25 @@ fn sign_all_unsigned_tx(
         .iter()
         .enumerate()
         .map(|(index, tx_out)| {
-        let message=create_message(index, unsigned_tx, &prevouts);
+            let message = create_message(index, unsigned_tx, &prevouts);
             sign_tx(secp, message, key_pair, tx_out).clone()
         })
         .collect();
 }
 
-fn sign_tx(
-    secp: &Secp256k1<All>,
-    message:Message,
-    key_pair: &KeyPair,
-    tx_out: &TxOut,
-) -> Input {
-
+fn sign_tx(secp: &Secp256k1<All>, message: Message, key_pair: &KeyPair, tx_out: &TxOut) -> Input {
     let tweaked_key_pair = key_pair.tap_tweak(&secp, None);
 
-    let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
+    assert!(tweaked_key_pair
+        .to_inner()
+        .x_only_public_key()
+        .0
+        .eq(&whatis_tap_tweak(&secp, key_pair)
+            .to_inner()
+            .x_only_public_key()
+            .0));
 
-    secp.verify_schnorr(
-        &sig,
-        &message,
-        &tweaked_key_pair.to_inner().x_only_public_key().0,
-    )
-    .unwrap();
+    let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
 
     let schnorr_sig = SchnorrSig {
         sig,
@@ -153,6 +148,26 @@ fn sign_tx(
     input.witness_utxo = Some(tx_out.clone());
 
     return input;
+}
+
+pub fn whatis_tap_tweak(secp: &Secp256k1<All>, key_pair: &KeyPair) -> TweakedKeyPair {
+    // q=p+H(P|c)
+
+    let mut engine = TapTweakHash::engine();
+    let x_only = key_pair.x_only_public_key().0;
+    engine.input(&x_only.serialize());
+
+    // because our tapbranch is none we aren't hashing anything else
+    // so our equation looks more like q=p+H(P)
+
+    let tap_tweak_hash = TapTweakHash::from_engine(engine).to_scalar();
+    let secret_key = key_pair.secret_key();
+    let tweak_pair = secret_key
+        .add_tweak(&tap_tweak_hash)
+        .unwrap()
+        .keypair(&secp)
+        .dangerous_assume_tweaked();
+    return tweak_pair;
 }
 
 pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
