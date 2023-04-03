@@ -32,97 +32,6 @@ pub mod simple_wallet;
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "full");
-    // connect_lnd_and_lightingd().await;
-
-    // let mut lnd = connect_lightning(
-    //     "10.5.0.6".to_string(),
-    //     10006,
-    //     "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
-    //     "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
-    // )
-    // .await
-    // .expect("failed to connect");
-
-    // let lightningd =
-    //     clightningrpc::LightningRPC::new("/home/ash/.docker/volumes/lightningd_data/lightning-rpc");
-    // let node_pubkey = lightningd.getinfo().unwrap().id;
-    // let lightning_address = LightningAddress {
-    //     pubkey: node_pubkey.clone(),
-    //     host: "10.5.0.5:19846".to_string(),
-    // };
-
-    // let connect = ConnectPeerRequest {
-    //     addr: Some(lightning_address),
-    //     perm: true,
-    //     timeout: 30,
-    // };
-
-    // let connect_peer = lnd.connect_peer(connect).await.unwrap();
-
-    // dbg!(connect_peer);
-
-    // // // dbg!(peers);
-
-    // let new_address = lnd
-    //     .new_address(NewAddressRequest {
-    //         account: "".to_string(),
-    //         r#type: 4,
-    //     })
-    //     .await
-    //     .unwrap()
-    //     .get_ref()
-    //     .address
-    //     .clone();
-
-    // dbg!(new_address.clone());
-    // // // let new_address.get_ref().address;
-    // println!("Testing layer 1 pay to tap root with key signature");
-    // let client = RegtestCall::init(
-    //     &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
-    //     "my_wallet",
-    //     110,
-    // );
-
-    // P2TR::new(Some(SEED), &client).send(single_output_with_value(new_address));
-
-    // let open_channel_req = OpenChannelRequest {
-    //     sat_per_vbyte: 30,
-    //     node_pubkey: hex::decode(node_pubkey).unwrap(),
-    //     local_funding_amount: 1000000,
-    //     node_pubkey_string: "".to_owned(),
-    //     push_sat: 750000,
-    //     target_conf: 0,
-    //     sat_per_byte: 0,
-    //     private: false,
-    //     min_htlc_msat: 100,
-    //     remote_csv_delay: 600,
-    //     min_confs: 0,
-    //     spend_unconfirmed: true,
-    //     close_address: "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"
-    //         .to_owned(),
-    //     funding_shim: None,
-    //     remote_max_value_in_flight_msat: 880000000,
-    //     remote_max_htlcs: 10,
-    //     max_local_csv: 900,
-    //     commitment_type: 0,
-    //     zero_conf: false,
-    //     scid_alias: false,
-    //     base_fee: 700,
-    //     fee_rate: 0,
-    //     use_base_fee: false,
-    //     use_fee_rate: false,
-    //     remote_chan_reserve_sat: 20000,
-    // };
-
-    // let open_channel_response = lnd.open_channel(open_channel_req).await.unwrap();
-    // // We only print it here, note that in real-life code you may want to call `.into_inner()` on
-    // // the response to get the message.
-    // println!("{:#?}", open_channel_response);
-
-    // dbg!(lightningd.getinfo().unwrap());
-    // let list_peer_request = ListPeersRequest { latest_error: true };
-
-    // dbg!(lnd.list_peers(list_peer_request).await.unwrap());
 }
 
 #[test]
@@ -131,7 +40,7 @@ fn test_tap_root_key_sig() {
     let client = RegtestCall::init(
         &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
         "my_wallet",
-        110,
+        10,
     );
 
     P2TR::new(Some(SEED), &client).send(single_output());
