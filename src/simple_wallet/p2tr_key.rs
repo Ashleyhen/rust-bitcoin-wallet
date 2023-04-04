@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, ops::BitXor};
 
 use bitcoin::{
     psbt::{Input, PartiallySignedTransaction, Prevouts},
@@ -125,18 +125,21 @@ fn sign_tx(secp: &Secp256k1<All>, message: Message, key_pair: &KeyPair, tx_out: 
     let tweaked_key_pair = key_pair.tap_tweak(&secp, None);
     key_pair.tap_tweak(&secp, None);
 
+
+    let info=P2TRInfo::new();
+
     assert!(tweaked_key_pair
         .to_inner()
         .x_only_public_key()
         .0
-        .eq(&whatis_tap_tweak(&secp, key_pair)
+        .eq(&info.whatis_tap_tweak( key_pair)
             .to_inner()
             .x_only_public_key()
             .0));
 
     let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
-    
-    how_is_shnorr_verified(secp, &sig,&message,&tweaked_key_pair.to_inner().x_only_public_key().0);
+    info.whatis_shnorr(&message,&key_pair.secret_key());
+
     let schnorr_sig = SchnorrSig {
         sig,
         hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
@@ -153,13 +156,36 @@ fn sign_tx(secp: &Secp256k1<All>, message: Message, key_pair: &KeyPair, tx_out: 
     return input;
 }
 
+pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
+    let sighash = SighashCache::new(&mut unsigned_tx.clone())
+        .taproot_key_spend_signature_hash(
+            index,
+            &Prevouts::All(&prevouts),
+            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+        )
+        .unwrap();
+    let message = Message::from_slice(&sighash).unwrap();
+    return message;
+}
+
+
+
+
+
+struct P2TRInfo {
+    secp:Secp256k1<All>
+ }
+
+impl P2TRInfo{
+    pub fn new()->Self{ P2TRInfo { secp:Secp256k1::new() } }
+
 pub fn how_is_shnorr_verified(secp: &Secp256k1<All>,signature:&Signature,message: &Message, x_only: &XOnlyPublicKey) -> () {
     secp.verify_schnorr(signature, message, x_only).unwrap();
     let random_aux=signature[..32].to_vec();
     let sig=signature[32..].to_vec();
 
 
-    let e =tagged_hash(&"BIP0340/challenge".to_owned(), vec![&random_aux,&x_only.serialize().to_vec(),&message[..].to_vec()]);
+    let e =Self::tagged_hash(&"BIP0340/challenge".to_owned(), vec![&random_aux,&x_only.serialize().to_vec(),&message[..].to_vec()]);
 
 
     // PH(R|P|m)+R
@@ -169,13 +195,11 @@ pub fn how_is_shnorr_verified(secp: &Secp256k1<All>,signature:&Signature,message
     
     // sG-PH(R|P|m)=R
     let their_sig=SecretKey::from_slice(&sig).unwrap().public_key(&secp);
-
+    assert_eq!(their_sig.serialize(),my_sig.serialize());
     println!("{}: bitcoin rust sig \n{}: my sig value\n",their_sig.serialize().to_hex(),my_sig.serialize().to_hex());
-
-
 }
 
-pub fn tagged_hash(tag:&String,args:Vec<&Vec<u8>>)->[u8;32]{
+pub fn tagged_hash(tag:&str,args:Vec<&Vec<u8>>)->[u8;32]{
     
     // SHA256(SHA256(tag) || SHA256(tag) || x).
     ;
@@ -193,34 +217,70 @@ return bitcoin::hashes::sha256::Hash::from_engine(sha_256).into_inner();
 
 }
  
-pub fn whatis_shnorr(secp: &Secp256k1<All>,message: &Message, key_pair: &KeyPair) -> () {
-    // q=p+H(P|c)
 
-// P=sG
-// t= s XOR hash(r)
-// r=hash(t|P|m)
-// R=rG
+// The secret key sk: a 32-byte array
+// The message m: a 32-byte array
+// Auxiliary random data a: a 32-byte array
 
-// let tag="aux";
+// The algorithm Sign(sk, m) is defined as:
+// Let d' = int(sk)
+// Fail if d' = 0 or d' ≥ n
+// Let P = d'⋅G
+// Let d = d' if has_even_y(P), otherwise let d = n - d' .
+// Let t be the byte-wise xor of bytes(d) and hashBIP0340/aux(a)[11].
+// Let rand = hashBIP0340/nonce(t || bytes(P) || m)[12].
+// Let k' = int(rand) mod n[13].
+// Fail if k' = 0.
+// Let R = k'⋅G.
+
+// Let k = k' if has_even_y(R), otherwise let k = n - k' .
+// Let e = int(hashBIP0340/challenge(bytes(R) || bytes(P) || m)) mod n.
+// Let sig = bytes(R) || bytes((k + ed) mod n).
+// If Verify(bytes(P), m, sig) (see below) returns failure, abort[14].
+// Return the signature sig.
+
+pub fn whatis_shnorr(&self,message: &Message, secret_key: &SecretKey) -> () {
+    let key_pair =secret_key.keypair(&self.secp);
+    let auxilary=Scalar::random();
+    let sig=self.secp.sign_schnorr_with_aux_rand(&message, &key_pair, &auxilary.to_be_bytes());
+
+    let x_only=secret_key.x_only_public_key(&self.secp).0;
+    let d=secret_key.secret_bytes().to_vec();
+
+    let t=d
+    .iter()
+    .zip(Self::tagged_hash(&"BIP0340/aux".to_owned(),vec![&auxilary.to_be_bytes().to_vec()] ).iter())
+    .map(|(&x1, &x2)| x1 ^ x2)
+    .collect();
+
+   let rand = Self::tagged_hash("BIP0340/nonce", vec![&t,&x_only.serialize().to_vec(),&message[..].to_vec()]); 
+   let k=SecretKey::from_slice(&rand).unwrap();
+   let our_r=k.x_only_public_key(&self.secp).0;
+
+   let e=Self::tagged_hash(&"BIP0340/challenge".to_owned(), vec![&our_r.serialize().to_vec(),&x_only.serialize().to_vec(),&message[..].to_vec()]);
+   let our_sig=SecretKey::from_slice(&e).unwrap().mul_tweak(&Scalar::from_be_bytes(d.try_into().unwrap()).unwrap()).unwrap()
+   .add_tweak(&Scalar::from_be_bytes(k.secret_bytes()).unwrap()).unwrap();
+
+    let mut our_signature=our_r.serialize().to_vec();
+
+    our_signature.extend(our_sig.secret_bytes());
+
+//    println!("{}: bitcoin rust R \n{}: our random R\n",
+//         sig.to_hex(),
+//         our_signature.to_hex()
+//     );
+
+   println!("{}: bitcoin rust sig \n{}: our sig\n",
+        SecretKey::from_slice(&sig[32..].to_vec()).unwrap().secret_bytes().to_vec().to_hex(),
+        our_sig.secret_bytes().to_hex()
+    );
 
 
-    let mut engine = TapTweakHash::engine();
-    let x_only = key_pair.x_only_public_key().0;
-    engine.input(&x_only.serialize());
 
-    // because our tapbranch is none we aren't hashing anything else
-    // so our equation looks more like q=p+H(P)
 
-    let tap_tweak_hash = TapTweakHash::from_engine(engine).to_scalar();
-    let secret_key = key_pair.secret_key();
-    let tweak_pair = secret_key
-        .add_tweak(&tap_tweak_hash)
-        .unwrap()
-        .keypair(&secp)
-        .dangerous_assume_tweaked();
 }
 
-pub fn whatis_tap_tweak(secp: &Secp256k1<All>, key_pair: &KeyPair) -> TweakedKeyPair {
+pub fn whatis_tap_tweak(&self, key_pair: &KeyPair) -> TweakedKeyPair {
     // q=p+H(P|c)
 
     let mut engine = TapTweakHash::engine();
@@ -230,31 +290,15 @@ pub fn whatis_tap_tweak(secp: &Secp256k1<All>, key_pair: &KeyPair) -> TweakedKey
     // because our tapbranch is none we aren't hashing anything else
     // so our equation looks more like q=p+H(P)
 
-
     let tap_tweak_hash = TapTweakHash::from_engine(engine).to_scalar();
-    let my_tagged_hash=tagged_hash(&"TapTweak".to_string(), vec![&x_only.serialize().to_vec()].to_vec());
-
-    // println!("{} my tagged hash\n{} there tagged hash \n",my_tagged_hash.to_vec().to_hex(), tap_tweak_hash.to_be_bytes().to_vec().to_hex());
     
-    
-// tap_tweak_hash
+    // tap_tweak_hash
     let secret_key = key_pair.secret_key();
     let tweak_pair = secret_key
         .add_tweak(&tap_tweak_hash)
         .unwrap()
-        .keypair(&secp)
+        .keypair(&self.secp)
         .dangerous_assume_tweaked();
     return tweak_pair;
 }
-
-pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
-    let sighash = SighashCache::new(&mut unsigned_tx.clone())
-        .taproot_key_spend_signature_hash(
-            index,
-            &Prevouts::All(&prevouts),
-            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-        )
-        .unwrap();
-    let message = Message::from_slice(&sighash).unwrap();
-    return message;
 }
