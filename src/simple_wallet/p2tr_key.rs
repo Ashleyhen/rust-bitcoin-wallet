@@ -7,11 +7,11 @@ use bitcoin::{
     util::{
         bip32::{ExtendedPrivKey, ExtendedPubKey},
         sighash::SighashCache,
-        taproot::{TapTweakHash, TapSighashTag},
+        taproot::{TapTweakHash, TapSighashTag, TapTweakTag},
     },
     Address, KeyPair, PackedLockTime, SchnorrSig, Transaction, TxOut, XOnlyPublicKey,
 };
-use bitcoin_hashes::{Hash, HashEngine, sha256t::{Tag, self}, hex::ToHex};
+use bitcoin_hashes::{Hash, HashEngine, sha256t::{Tag, self}, hex::ToHex, sha256};
 use miniscript::psbt::PsbtExt;
 use serde::Serialize;
 
@@ -158,25 +158,19 @@ pub fn how_is_shnorr_verified(secp: &Secp256k1<All>,signature:&Signature,message
     let random_aux=signature[..32].to_vec();
     let sig=signature[32..].to_vec();
 
-let mut engine =TapSighashTag::engine();
-engine.input(&random_aux);
-engine.input(&x_only.serialize().to_vec());
-engine.input(&message[..].to_vec());
 
-let e =bitcoin::hashes::sha256::Hash::from_engine(engine).into_inner();
-// let e =bitcoin::hash_types::Sighash::from_engine(engine).as_inner().clone();
-
-    // let e =tagged_hash(&"BIP0340/challenge".to_owned(), vec![&random_aux,&x_only.serialize().to_vec(),&message[..].to_vec()].to_vec());
+    let e =tagged_hash(&"BIP0340/challenge".to_owned(), vec![&random_aux,&x_only.serialize().to_vec(),&message[..].to_vec()]);
 
 
+    // PH(R|P|m)+R
+    let my_sig=x_only.public_key(bitcoin::secp256k1::Parity::Even).mul_tweak(&secp,&Scalar::from_be_bytes(e).unwrap()).unwrap()
+    .combine(&XOnlyPublicKey::from_slice(&random_aux).unwrap().public_key(bitcoin::secp256k1::Parity::Even)).unwrap();
 
-    let (xonlypublickey,parity)=x_only
     
-    .add_tweak(&secp, &Scalar::from_be_bytes(e).unwrap()).unwrap();
-    // Let e = int(hashBIP0340/challenge(bytes(r) || bytes(P) || m)) mod n.
-    let random_aux=SecretKey::from_slice(&sig).unwrap().public_key(&secp).negate(&secp).combine(&xonlypublickey.public_key(parity)).unwrap();
+    // sG-PH(R|P|m)=R
+    let their_sig=SecretKey::from_slice(&sig).unwrap().public_key(&secp);
 
-    println!("{}: bitcoin rust random \n{}: my random value\n",signature[..32].to_vec().to_hex(),random_aux.x_only_public_key().0.serialize().to_hex());
+    println!("{}: bitcoin rust sig \n{}: my sig value\n",their_sig.serialize().to_hex(),my_sig.serialize().to_hex());
 
 
 }
@@ -236,7 +230,14 @@ pub fn whatis_tap_tweak(secp: &Secp256k1<All>, key_pair: &KeyPair) -> TweakedKey
     // because our tapbranch is none we aren't hashing anything else
     // so our equation looks more like q=p+H(P)
 
+
     let tap_tweak_hash = TapTweakHash::from_engine(engine).to_scalar();
+    let my_tagged_hash=tagged_hash(&"TapTweak".to_string(), vec![&x_only.serialize().to_vec()].to_vec());
+
+    // println!("{} my tagged hash\n{} there tagged hash \n",my_tagged_hash.to_vec().to_hex(), tap_tweak_hash.to_be_bytes().to_vec().to_hex());
+    
+    
+// tap_tweak_hash
     let secret_key = key_pair.secret_key();
     let tweak_pair = secret_key
         .add_tweak(&tap_tweak_hash)
