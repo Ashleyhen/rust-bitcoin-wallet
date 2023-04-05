@@ -101,6 +101,12 @@ where
 
         let tx = psbt.finalize(&self.secp).unwrap().extract_tx();
 
+        tx.input.iter().for_each(|tx_in|{
+            tx_in.witness.to_vec().iter().for_each(|sig|{
+                println!("signature: {}",sig.to_hex());
+            });
+        });
+
         self.client.broadcasts_transacton(&tx);
     }
 }
@@ -136,13 +142,17 @@ fn sign_tx(secp: &Secp256k1<All>, message: Message, key_pair: &KeyPair, tx_out: 
             .x_only_public_key()
             .0));
 
-    // let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
-    let sig=info.whatis_shnorr(&message,&tweaked_key_pair.to_inner());
 
-    let schnorr_sig = SchnorrSig {
-        sig,
-        hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-    };
+    let schnorr_sig=info.whatis_shnorr(&message,&tweaked_key_pair.to_inner());
+
+    // let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
+
+    // let schnorr_sig = SchnorrSig {
+    //     sig,
+    //     hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+    // };
+
+    // println!("{} our shnorr sig\n",schnorr_sig.to_vec().to_hex());
 
     let mut input = Input::default();
 
@@ -240,7 +250,7 @@ pub fn even_secret(&self,secret:&SecretKey)->SecretKey{
 // If Verify(bytes(P), m, sig) (see below) returns failure, abort[14].
 // Return the signature sig.
 
-pub fn whatis_shnorr(&self,message: &Message, key_pair: &KeyPair) -> (Signature) {
+pub fn whatis_shnorr(&self,message: &Message, key_pair: &KeyPair) -> SchnorrSig {
     // let key_pair =secret_key.keypair(&self.secp);
     let secret_key=self.even_secret(&key_pair.secret_key());
     let auxilary=Scalar::random();
@@ -267,22 +277,16 @@ pub fn whatis_shnorr(&self,message: &Message, key_pair: &KeyPair) -> (Signature)
     let mut our_signature=our_r.serialize().to_vec();
 
     our_signature.extend(our_sig.secret_bytes());
+    our_signature.push(0x81 as u8);
 
+     let shnorr_sig=SchnorrSig { sig: sig, hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay };
    println!("{}: bitcoin rust R \n{}: our random R\n",
-        sig.to_hex(),
+        shnorr_sig.to_vec().to_hex(),
         our_signature.to_hex()
     );
-    return Signature::from_slice(&sig[..]).unwrap();
-    // return Signature::from_slice(&our_signature).unwrap();
 
-//    println!("{}: bitcoin rust sig \n{}: our sig\n",
-//         SecretKey::from_slice(&sig[32..].to_vec()).unwrap().secret_bytes().to_vec().to_hex(),
-//         our_sig.secret_bytes().to_hex()
-//     );
-
-
-
-
+    return SchnorrSig::from_slice(&our_signature[..]).unwrap();
+    // return shnorr_sig;
 }
 
 pub fn whatis_tap_tweak(&self, key_pair: &KeyPair, merkle_root: Option<TapBranchHash>) -> TweakedKeyPair {
