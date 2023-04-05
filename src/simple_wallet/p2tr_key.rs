@@ -136,8 +136,8 @@ fn sign_tx(secp: &Secp256k1<All>, message: Message, key_pair: &KeyPair, tx_out: 
             .x_only_public_key()
             .0));
 
-    let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
-    info.whatis_shnorr(&message,&tweaked_key_pair.to_inner());
+    // let sig = secp.sign_schnorr(&message, &tweaked_key_pair.to_inner());
+    let sig=info.whatis_shnorr(&message,&tweaked_key_pair.to_inner());
 
     let schnorr_sig = SchnorrSig {
         sig,
@@ -242,9 +242,9 @@ pub fn even_secret(&self,secret:&SecretKey)->SecretKey{
 
 pub fn whatis_shnorr(&self,message: &Message, key_pair: &KeyPair) -> (Signature) {
     // let key_pair =secret_key.keypair(&self.secp);
-    let secret_key=key_pair.secret_key();
-
+    let secret_key=self.even_secret(&key_pair.secret_key());
     let auxilary=Scalar::random();
+
     let sig=self.secp.sign_schnorr_with_aux_rand(&message, &key_pair, &auxilary.to_be_bytes());
 
     let x_only=secret_key.x_only_public_key(&self.secp).0;
