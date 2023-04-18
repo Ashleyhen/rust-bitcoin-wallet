@@ -101,11 +101,11 @@ where
 
         let tx = psbt.finalize(&self.secp).unwrap().extract_tx();
 
-        tx.input.iter().for_each(|tx_in|{
-            tx_in.witness.to_vec().iter().for_each(|sig|{
-                println!("signature: {}",sig.to_hex());
-            });
-        });
+        // tx.input.iter().for_each(|tx_in|{
+        //     tx_in.witness.to_vec().iter().for_each(|sig|{
+        //         println!("signature: {}",sig.to_hex());
+        //     });
+        // });
 
         self.client.broadcasts_transacton(&tx);
     }
@@ -280,10 +280,10 @@ pub fn whatis_shnorr(&self,message: &Message, key_pair: &KeyPair) -> SchnorrSig 
     our_signature.push(0x81 as u8);
 
      let shnorr_sig=SchnorrSig { sig: sig, hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay };
-   println!("{}: bitcoin rust R \n{}: our random R\n",
-        shnorr_sig.to_vec().to_hex(),
-        our_signature.to_hex()
-    );
+//    println!("{}: bitcoin rust R \n{}: our random R\n",
+//         shnorr_sig.to_vec().to_hex(),
+//         our_signature.to_hex()
+//     );
 
     return SchnorrSig::from_slice(&our_signature[..]).unwrap();
     // return shnorr_sig;
