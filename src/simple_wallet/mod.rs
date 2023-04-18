@@ -45,7 +45,7 @@ pub fn single_output_with_value(string: String) -> Box<dyn Fn(u64) -> Vec<TxOut>
 }
 
 pub fn bisq_output(trade: String, bond: String) -> Box<dyn Fn(u64) -> Vec<TxOut>> {
-    
+
     return Box::new(move |total| {
         // 3/5
         let trade_total=(total*3)/5;
