@@ -22,7 +22,7 @@ use crate::{
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
         p2wpkh::P2WPKH,
         p2wsh::P2WSH,
-        single_output, single_output_with_value, SendToImpl, Wallet,
+        single_output, single_output_with_value, SendToImpl, Wallet, bisq, bisq_output,
     },
 };
 pub mod bitcoin_wallet;
@@ -116,4 +116,43 @@ fn test_pay_2_taproot_script() {
     let bob_wallet = P2trs::new(bob_seed, bob_image, &client);
 
     bob_wallet.sign(&output, single_output());
+}
+
+#[test]
+fn bisq_with_tr() {
+    println!("Testing layer 1 pay to witness public key signature");
+
+    let secret_host = "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90";
+
+    let secret_client = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
+
+    let support_team = "107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f";
+
+    let host_xonly = p2tr_script::seed_to_xonly(&Some(secret_host));
+
+    let client_xonly = p2tr_script::seed_to_xonly(&Some(secret_client));
+
+    let support_team_xonly = p2tr_script::seed_to_xonly(&Some(support_team));
+
+    let output =bisq::create_address(&host_xonly, &client_xonly, &support_team_xonly);
+
+    let address=Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
+
+    dbg!(address.to_string());
+
+    let regtestcall = RegtestCall::init(&vec![&address.to_string()], "my_wallet", 1);
+
+    let client_wallet=bisq::Bisq::new(secret_client, &regtestcall);
+    let host_wallet=bisq::Bisq::new(secret_host, &regtestcall);
+
+    let mut client_psbt=client_wallet.sign(&output, single_output());
+    let mut host_psbt=host_wallet.sign(&output,single_output());
+
+    let psbt=bisq::merge_psbt(&mut client_psbt, &host_psbt);
+    dbg!(&client_wallet.finalize_script(psbt, false).input[0]);
+    // client_wallet.finalize_script(psbt, true);
+    // dbg!(tx);
+
+
+    // bcrt1pm5rr5nnx6nygupqnnt893nyugd0p438cy9zch88385d80szahs8s4rekuh
 }
