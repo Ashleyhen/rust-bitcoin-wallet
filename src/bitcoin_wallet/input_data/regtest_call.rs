@@ -177,7 +177,7 @@ impl<'a> RegtestCall {
 
     pub fn from_address(address_list: Vec<Address>) -> Self {
         let client = RegtestCall::get_client();
-        let tx_in = RegtestCall::get_txin(&client, &address_list).to_vec();
+        let tx_in = vec![RegtestCall::get_txin(&client, &address_list)[0].clone()];
         let previous_tx = RegtestCall::get_previous_tx(&client, &tx_in);
         let amt = RegtestCall::get_amount(&previous_tx, &address_list);
         return RegtestCall {

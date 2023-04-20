@@ -1,12 +1,32 @@
-use bitcoin::{blockdata::{script::Builder, opcodes::all::OP_CHECKSIGADD},  Script, util::taproot::TaprootBuilder, psbt::TapTree, secp256k1::PublicKey, XOnlyPublicKey, Address };
+use bitcoin::{blockdata::{script::Builder, opcodes::all::{OP_CHECKSIGADD, OP_CHECKSIG, OP_CHECKSIGVERIFY, OP_EQUAL, OP_NUMEQUAL}},  Script, util::taproot::TaprootBuilder, psbt::TapTree, secp256k1::PublicKey, XOnlyPublicKey, Address };
+use std::{str::FromStr, ops::Add, borrow::BorrowMut};
 
+use bitcoin::{
+    blockdata::{opcodes::all, },
+    psbt::{Input, Output, PartiallySignedTransaction, Prevouts},
+    secp256k1::{All, Message, Scalar, Secp256k1, SecretKey},
+    util::{
+        bip32::{DerivationPath, Fingerprint},
+        sighash::{ScriptPath, SighashCache},
+        taproot::{LeafVersion, TapLeafHash },
+    },
+     KeyPair, PackedLockTime, SchnorrSig, SchnorrSighashType,  Transaction, TxIn,
+    TxOut, Witness, 
+};
+use bitcoin_hashes::{hex::{FromHex, ToHex}, Hash};
+
+use crate::bitcoin_wallet::{ input_data::RpcCall};
 use crate::bitcoin_wallet::constants::{secp, NETWORK};
-
+// https://github.com/ElementsProject/elements-miniscript/blob/dc1f5ee748191086095a2c31284161a917174494/src/miniscript/astelem.rs
 pub fn unlock_bond(host:&XOnlyPublicKey,client:&XOnlyPublicKey)->Script{
     Builder::new()
         .push_x_only_key(&host)
+        .push_opcode(OP_CHECKSIG)
         .push_x_only_key(&client)
-        .push_opcode(OP_CHECKSIGADD).into_script()
+        .push_opcode(OP_CHECKSIGADD)
+        .push_int(2)
+        .push_opcode(OP_NUMEQUAL)
+        .into_script()
 }
 
 fn unlock_support(support_key:&XOnlyPublicKey)->Script{
@@ -40,56 +60,10 @@ pub fn create_address(host:&XOnlyPublicKey,client:&XOnlyPublicKey,support_key:&X
     output.tap_internal_key = Some(*support_key);
     output.witness_script = Some(script);
     output.redeem_script=Some(bond_script.clone());
-
-    let bond_leaf_hash = vec![TapLeafHash::from_script(&bond_script, LeafVersion::TapScript)];
-
-    output.tap_key_origins.insert(
-        *host,
-        (
-            bond_leaf_hash.clone(),
-            (Fingerprint::default(), DerivationPath::default()),
-        ),
-    );
-
-    output.tap_key_origins.insert(
-        *client,
-        (
-            bond_leaf_hash.clone(),
-            (Fingerprint::default(), DerivationPath::default()),
-        ),
-    );
-
-
-    let support_leaf_hash = vec![TapLeafHash::from_script(&support_script, LeafVersion::TapScript)];
-
-    output.tap_key_origins.insert(
-        *support_key,
-        (
-            support_leaf_hash,
-            (Fingerprint::default(), DerivationPath::default()),
-        ),
-    );
-
     return output;
 }
 
-use std::{str::FromStr, ops::Add, borrow::BorrowMut};
 
-use bitcoin::{
-    blockdata::{opcodes::all, },
-    psbt::{Input, Output, PartiallySignedTransaction, Prevouts},
-    secp256k1::{All, Message, Scalar, Secp256k1, SecretKey},
-    util::{
-        bip32::{DerivationPath, Fingerprint},
-        sighash::{ScriptPath, SighashCache},
-        taproot::{LeafVersion, TapLeafHash },
-    },
-     KeyPair, PackedLockTime, SchnorrSig, SchnorrSighashType,  Transaction, TxIn,
-    TxOut, Witness, 
-};
-use bitcoin_hashes::{hex::{FromHex, ToHex}, Hash};
-
-use crate::bitcoin_wallet::{ input_data::RpcCall};
 
 pub struct Bisq<'a, R: RpcCall> {
     secret_key: SecretKey,
@@ -208,7 +182,7 @@ where
             .taproot_script_spend_signature_hash(
                 index,
                 &Prevouts::All(&prevouts),
-                ScriptPath::with_defaults(&tx_out.script_pubkey),
+                ScriptPath::with_defaults(&output.redeem_script.clone().unwrap()),
                 SchnorrSighashType::AllPlusAnyoneCanPay,
             )
             .unwrap();
@@ -222,7 +196,7 @@ where
             hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
         };
 
-        let tap_leaf_hash = TapLeafHash::from_script(&tx_out.script_pubkey, LeafVersion::TapScript);
+        let tap_leaf_hash = TapLeafHash::from_script(&output.redeem_script.clone().unwrap(), LeafVersion::TapScript);
 
         let mut input = Input::default();
 
@@ -236,7 +210,7 @@ where
 
         input.tap_scripts.insert(
             control.unwrap(),
-            (tx_out.script_pubkey.clone(), LeafVersion::TapScript),
+            (output.clone().redeem_script.unwrap(), LeafVersion::TapScript),
         );
 
         let x_only = &self.secret_key.x_only_public_key(&secp()).0;
@@ -260,13 +234,12 @@ where
 
                 input.tap_script_sigs.iter().for_each(|sig| {
                     let shnor = sig.1;
+                    witness.push(shnor.to_vec());
                     dbg!(shnor.sig.to_hex());
                 });
 
-                let bond_script = input.clone().redeem_script.unwrap();
-                witness.push(bond_script.as_bytes());
-
                 input.tap_scripts.iter().for_each(|control| {
+                    witness.push(control.1.0.as_bytes());
                     witness.push(control.0.serialize());
                 });
                 return witness;
