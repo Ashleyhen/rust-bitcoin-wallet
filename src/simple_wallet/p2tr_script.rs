@@ -75,7 +75,7 @@ where
 
         psbt.outputs = vec![output.clone()];
 
-        let tx = self.finialize_script(psbt);
+        let tx = self.finalize_script(psbt);
 
         self.client.broadcasts_transacton(&tx);
     }
@@ -177,7 +177,7 @@ where
         return input;
     }
 
-    pub fn finialize_script(&self, psbt: PartiallySignedTransaction) -> Transaction {
+    pub fn finalize_script(&self, psbt: PartiallySignedTransaction) -> Transaction {
         let tx = psbt.clone().extract_tx().clone();
         let tx_in = psbt
             .inputs
@@ -192,13 +192,10 @@ where
 
                 witness.push(Vec::from_hex(&self.image).unwrap());
 
-                let bob_script = bob_scripts(
-                    &self.secret_key.x_only_public_key(&self.secp).0,
-                    &preimage(&self.image),
-                );
-                witness.push(bob_script.as_bytes());
+                
 
                 input.tap_scripts.iter().for_each(|control| {
+                    witness.push(control.1.0.as_bytes());
                     witness.push(control.0.serialize());
                 });
                 return witness;
