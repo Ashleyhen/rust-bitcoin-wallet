@@ -192,10 +192,8 @@ where
 
                 witness.push(Vec::from_hex(&self.image).unwrap());
 
-                
-
                 input.tap_scripts.iter().for_each(|control| {
-                    witness.push(control.1.0.as_bytes());
+                    witness.push(control.1 .0.as_bytes());
                     witness.push(control.0.serialize());
                 });
                 return witness;
