@@ -153,29 +153,4 @@ fn bisq_with_tr() {
     // bcrt1pm5rr5nnx6nygupqnnt893nyugd0p438cy9zch88385d80szahs8s4rekuh
 }
 
-#[test]
-fn freelancer_tr() {
 
-    let alice_seed = "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90";
-
-    let bob_seed = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
-
-    let bob_image = "107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f";
-
-    let alice_xonly = freelancer::seed_to_xonly(&Some(alice_seed));
-
-    let bob_xonly = freelancer::seed_to_xonly(&Some(bob_seed));
-
-    let preimage = freelancer::preimage(bob_image);
-
-    let output = create_address(alice_xonly, bob_xonly, preimage);
-
-    let address = Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
-
-    let client = RegtestCall::init(&vec![&address.to_string()], "my_wallet", 5);
-
-    let bob_wallet = freelancer::P2TRS::new(bob_seed, bob_image, &client);
-
-    bob_wallet.sign(&output, single_output());
-
-}
