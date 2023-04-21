@@ -15,7 +15,7 @@ use crate::{
         input_data::regtest_call::RegtestCall,
     },
     simple_wallet::{
-        freelancer::{bisq, bisq_script::BisqScript},
+        freelancer::{bisq, bisq_script::BisqScript, bisq_key::BisqKey},
         p2tr_key::P2TR,
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
         p2wpkh::P2WPKH,
@@ -117,7 +117,7 @@ fn test_pay_2_taproot_script() {
 }
 
 #[test]
-fn bisq_with_tr() {
+fn bisq_with_tr_script() {
     println!("Testing layer 1 pay to witness public key signature");
 
     let secret_host = "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90";
@@ -162,4 +162,41 @@ fn bisq_with_tr() {
     let client_psbt = client_wallet.sign(&output, Some(host_psbt), single_output());
 
     client_wallet.finalize_script(client_psbt);
+}
+
+#[test]
+fn bisq_with_tr_key() {
+    println!("Testing layer 1 pay to witness public key signature");
+
+    let secret_host = "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90";
+
+    let secret_client = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
+
+    let support_team = "107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f";
+
+    let host_xonly = p2tr_script::seed_to_xonly(&Some(secret_host));
+
+    let client_xonly = p2tr_script::seed_to_xonly(&Some(secret_client));
+
+    let support_team_xonly = p2tr_script::seed_to_xonly(&Some(support_team));
+
+    let output = bisq::create_address(&host_xonly, &client_xonly, &support_team_xonly);
+
+    let address = Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
+
+    dbg!(address.to_string());
+
+    let regtestcall = RegtestCall::init(&vec![&address.to_string()], "my_wallet", MINE);
+
+    let support_team_wallet = bisq::Bisq::new(
+        support_team,
+        &regtestcall,
+        BisqKey {
+            output: output.clone(),
+        },
+    );
+
+    let psbt = support_team_wallet.sign(&output, None, single_output());
+
+    support_team_wallet.finalize_script(psbt);
 }

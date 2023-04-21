@@ -3,7 +3,7 @@ use bitcoin::{
     schnorr::TapTweak,
     secp256k1::{Message, SecretKey},
     util::sighash::SighashCache,
-    SchnorrSig, Transaction, TxOut,
+    SchnorrSig, Transaction, TxOut, Script,
 };
 use miniscript::psbt::PsbtExt;
 
@@ -12,7 +12,7 @@ use crate::bitcoin_wallet::{constants::secp, input_data::RpcCall};
 use super::{ISigner, TrType};
 
 pub struct BisqKey {
-    output: Output,
+    pub output: Output,
 }
 
 impl ISigner for BisqKey {
@@ -76,7 +76,6 @@ fn sign_tx(
     let tweaked_key_pair = secret_key
         .keypair(&secp())
         .tap_tweak(&secp(), tap_info.merkle_root());
-    tweaked_key_pair.to_inner().tap_tweak(&secp(), None);
 
     let sig = secp().sign_schnorr(&message, &tweaked_key_pair.to_inner());
 
