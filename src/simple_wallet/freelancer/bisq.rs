@@ -111,7 +111,6 @@ where
         maybe_psbt: Option<PartiallySignedTransaction>,
         send_to: Box<dyn Fn(u64) -> Vec<TxOut>>,
     ) -> PartiallySignedTransaction {
-
         let tx_in_list = self.client.prev_input();
 
         let transaction_list = self.client.contract_source();
@@ -137,60 +136,15 @@ where
             PartiallySignedTransaction::from_unsigned_tx(unsigned_tx.clone()).unwrap()
         });
 
-        psbt.inputs = self.signer.sign_all_unsigned_tx(
-            &self.secret_key,
-            &prevouts,
-            &unsigned_tx,
-        );
+        psbt.inputs = self
+            .signer
+            .sign_all_unsigned_tx(&self.secret_key, &prevouts, &unsigned_tx);
 
         return psbt;
     }
 
-    pub fn finalize_script(
-        &self,
-        psbt: PartiallySignedTransaction,
-        should_broad_cast: bool,
-    ) -> Transaction {
-        let tx = psbt.clone().extract_tx().clone();
-        let tx_in = psbt
-            .inputs
-            .iter()
-            .map(|input| {
-                let mut witness = Witness::new();
-
-                input.tap_script_sigs.iter().for_each(|sig| {
-                    let shnor = sig.1;
-                    witness.push(shnor.to_vec());
-                });
-
-                input.tap_scripts.iter().for_each(|control| {
-                    witness.push(control.1 .0.as_bytes());
-                    witness.push(control.0.serialize());
-                });
-                return witness;
-            })
-            .zip(tx.input)
-            .map(|(witness, tx_input)| {
-                return TxIn {
-                    previous_output: tx_input.previous_output,
-                    script_sig: tx_input.script_sig,
-                    sequence: tx_input.sequence,
-                    witness,
-                };
-            })
-            .collect::<Vec<TxIn>>();
-
-        let tx = Transaction {
-            version: tx.version,
-            lock_time: tx.lock_time,
-            input: tx_in,
-            output: tx.output,
-        };
-        if (should_broad_cast) {
-            self.client.broadcasts_transacton(&tx);
-        }
-
-        return tx;
+    pub fn finalize_script(&self, psbt: PartiallySignedTransaction)  {
+        I::finalize_tx(self.client, psbt);
     }
 }
 pub fn seed_to_xonly(secret_string: &Option<&str>) -> bitcoin::XOnlyPublicKey {

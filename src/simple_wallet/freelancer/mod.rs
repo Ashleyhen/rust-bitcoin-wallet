@@ -1,8 +1,10 @@
 use bitcoin::{
-    psbt::{Input, Output},
+    psbt::{Input, Output, PartiallySignedTransaction},
     secp256k1::{Message, SecretKey},
     Transaction, TxOut,
 };
+
+use crate::bitcoin_wallet::input_data::RpcCall;
 
 pub mod bisq;
 pub mod bisq_key;
@@ -15,6 +17,8 @@ pub trait ISigner {
         prevouts: &Vec<TxOut>,
         unsigned_tx: &Transaction,
     ) -> Vec<Input>;
+
+    fn finalize_tx<R: RpcCall>(rpc_call: &R, psbt: PartiallySignedTransaction) -> Transaction;
 }
 pub enum TrType {
     Script,

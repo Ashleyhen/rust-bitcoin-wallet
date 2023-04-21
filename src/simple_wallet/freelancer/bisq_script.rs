@@ -1,14 +1,14 @@
 use bitcoin::{
-    psbt::{Input, Output, Prevouts},
+    psbt::{Input, Output, PartiallySignedTransaction, Prevouts},
     secp256k1::{Message, SecretKey},
     util::{
         sighash::{ScriptPath, SighashCache},
         taproot::{LeafVersion, TapLeafHash},
     },
-    SchnorrSig, SchnorrSighashType, Script, Transaction, TxOut,
+    SchnorrSig, SchnorrSighashType, Script, Transaction, TxIn, TxOut, Witness,
 };
 
-use crate::bitcoin_wallet::constants::secp;
+use crate::bitcoin_wallet::{constants::secp, input_data::RpcCall};
 
 use super::{ISigner, TrType};
 
@@ -22,8 +22,8 @@ impl ISigner for BisqScript {
     fn sign_all_unsigned_tx(
         &self,
         secret_key: &SecretKey,
-        prevouts: &Vec<TxOut>,     //
-        unsigned_tx: &Transaction, //
+        prevouts: &Vec<TxOut>,     
+        unsigned_tx: &Transaction, 
     ) -> Vec<Input> {
         return prevouts
             .iter()
@@ -35,7 +35,8 @@ impl ISigner for BisqScript {
                 sign_tx(
                     &secret_key,
                     tx_out,
-                    &self.input
+                    &self
+                        .input
                         .get(index)
                         .clone()
                         .unwrap_or(&Input::default())
@@ -46,6 +47,49 @@ impl ISigner for BisqScript {
                 .clone()
             })
             .collect();
+    }
+
+    fn finalize_tx<R: RpcCall>(
+        rpc_call: &R,
+        psbt: PartiallySignedTransaction,
+    ) -> bitcoin::Transaction {
+        let tx = psbt.clone().extract_tx().clone();
+        let tx_in = psbt
+            .inputs
+            .iter()
+            .map(|input| {
+                let mut witness = Witness::new();
+
+                input.tap_script_sigs.iter().for_each(|sig| {
+                    let shnor = sig.1;
+                    witness.push(shnor.to_vec());
+                });
+
+                input.tap_scripts.iter().for_each(|control| {
+                    witness.push(control.1 .0.as_bytes());
+                    witness.push(control.0.serialize());
+                });
+                return witness;
+            })
+            .zip(tx.input)
+            .map(|(witness, tx_input)| {
+                return TxIn {
+                    previous_output: tx_input.previous_output,
+                    script_sig: tx_input.script_sig,
+                    sequence: tx_input.sequence,
+                    witness,
+                };
+            })
+            .collect::<Vec<TxIn>>();
+
+        let tx = Transaction {
+            version: tx.version,
+            lock_time: tx.lock_time,
+            input: tx_in,
+            output: tx.output,
+        };
+        rpc_call.broadcasts_transacton(&tx);
+        return tx;
     }
 }
 

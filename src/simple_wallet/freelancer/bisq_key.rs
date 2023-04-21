@@ -1,12 +1,13 @@
 use bitcoin::{
-    psbt::{Input, Output, Prevouts},
+    psbt::{Input, Output, PartiallySignedTransaction, Prevouts},
     schnorr::TapTweak,
     secp256k1::{Message, SecretKey},
     util::sighash::SighashCache,
     SchnorrSig, Transaction, TxOut,
 };
+use miniscript::psbt::PsbtExt;
 
-use crate::bitcoin_wallet::constants::secp;
+use crate::bitcoin_wallet::{constants::secp, input_data::RpcCall};
 
 use super::{ISigner, TrType};
 
@@ -15,7 +16,6 @@ pub struct BisqKey {
 }
 
 impl ISigner for BisqKey {
-
     fn sign_all_unsigned_tx(
         &self,
         secret_key: &SecretKey,
@@ -36,6 +36,12 @@ impl ISigner for BisqKey {
                 );
             })
             .collect();
+    }
+
+    fn finalize_tx<R: RpcCall>(rpc_call: &R, psbt: PartiallySignedTransaction) -> Transaction {
+        let tx = psbt.finalize(&secp()).unwrap().extract_tx();
+        rpc_call.broadcasts_transacton(&tx);
+        return tx;
     }
 }
 
