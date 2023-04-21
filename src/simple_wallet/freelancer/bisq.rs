@@ -144,22 +144,29 @@ where
                 let binding = output.clone().tap_tree.unwrap();
                 let target_script = binding.script_leaves().next().unwrap().script();
                 let message = create_script_message(index, unsigned_tx, prevouts, target_script);
+
                 self.sign_tx(
                     tx_out,
-                    output,
                     inputs
                         .get(index)
                         .clone()
                         .unwrap_or(&Input::default())
                         .clone(),
                     &message,
+                    output
                 )
                 .clone()
             })
             .collect();
     }
 
-    fn sign_tx(&self, tx_out: &TxOut, output: &Output, inputs: Input, message: &Message) -> Input {
+    fn sign_tx(
+        &self,
+        tx_out: &TxOut, //
+        inputs: Input,     // okay
+        message: &Message, //
+        output: &Output,
+    ) -> Input {
 
         let tap_info = output
             .clone()
@@ -171,6 +178,7 @@ where
             .unwrap();
 
         let binding = output.clone().tap_tree.unwrap();
+
         let target_script = binding.script_leaves().next().unwrap().script();
 
         let control = tap_info.control_block(&(target_script.clone(), LeafVersion::TapScript));
@@ -181,15 +189,11 @@ where
             &target_script,
         );
 
-        if (!verify) {
+        if !verify {
             panic!("invalid block {:#?}", control.unwrap());
         }
-        let sig = secp().sign_schnorr(&message, &self.secret_key.keypair(&secp()));
 
-        let schnorr_sig = SchnorrSig {
-            sig,
-            hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-        };
+        let sig = secp().sign_schnorr(&message, &self.secret_key.keypair(&secp()));
 
         let tap_leaf_hash = TapLeafHash::from_script(&target_script, LeafVersion::TapScript);
 
@@ -207,6 +211,11 @@ where
         );
 
         let x_only = &self.secret_key.x_only_public_key(&secp()).0;
+
+        let schnorr_sig = SchnorrSig {
+            sig,
+            hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+        };
 
         input
             .tap_script_sigs
@@ -293,6 +302,16 @@ pub fn create_script_message(
 
     return Message::from_slice(&sighash).unwrap();
 }
-
+pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
+    let sighash = SighashCache::new(&mut unsigned_tx.clone())
+        .taproot_key_spend_signature_hash(
+            index,
+            &Prevouts::All(&prevouts),
+            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+        )
+        .unwrap();
+    let message = Message::from_slice(&sighash).unwrap();
+    return message;
+}
 //  "Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)"
 // "Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)"
