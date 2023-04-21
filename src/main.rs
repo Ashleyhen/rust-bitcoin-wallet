@@ -15,11 +15,12 @@ use crate::{
         input_data::regtest_call::RegtestCall,
     },
     simple_wallet::{
+        freelancer::bisq,
         p2tr_key::P2TR,
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
         p2wpkh::P2WPKH,
         p2wsh::P2WSH,
-        single_output, single_output_with_value, SendToImpl, Wallet, freelancer::bisq,
+        single_output, single_output_with_value, SendToImpl, Wallet,
     },
 };
 pub mod bitcoin_wallet;
