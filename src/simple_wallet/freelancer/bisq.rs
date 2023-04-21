@@ -29,6 +29,8 @@ use bitcoin_hashes::{
 
 use crate::bitcoin_wallet::constants::{secp, NETWORK};
 use crate::bitcoin_wallet::input_data::RpcCall;
+
+use super::{bisq_key, bisq_script, ISigner};
 // https://github.com/ElementsProject/elements-miniscript/blob/dc1f5ee748191086095a2c31284161a917174494/src/miniscript/astelem.rs
 pub fn unlock_bond(host: &XOnlyPublicKey, client: &XOnlyPublicKey) -> Script {
     Builder::new()
@@ -77,24 +79,31 @@ pub fn create_address(
     return output;
 }
 
-pub struct Bisq<'a, R: RpcCall> {
+pub struct Bisq<'a, R: RpcCall, I: ISigner> {
     secret_key: SecretKey,
     client: &'a R,
+    signer: I,
 }
 
-impl<'a, R> Bisq<'a, R>
+impl<'a, R, I> Bisq<'a, R, I>
 where
     R: RpcCall,
+    I: ISigner,
 {
-    pub fn new(secret_string: &str, client: &'a R) -> Bisq<'a, R> {
+    pub fn new(secret_string: &str, client: &'a R, signer: I) -> Bisq<'a, R, I> {
         let secret_key = SecretKey::from_str(&secret_string).unwrap();
-        return Self { secret_key, client };
+        return Self {
+            secret_key,
+            client,
+            signer,
+        };
     }
 }
 
-impl<'a, R> Bisq<'a, R>
+impl<'a, R, I> Bisq<'a, R, I>
 where
     R: RpcCall,
+    I: ISigner,
 {
     pub fn sign(
         &self,
@@ -122,144 +131,20 @@ where
             input: tx_in_list,
             output: tx_out,
         };
+
         let mut psbt = maybe_psbt.unwrap_or_else(|| {
             PartiallySignedTransaction::from_unsigned_tx(unsigned_tx.clone()).unwrap()
         });
-        psbt.inputs = self.sign_all_unsigned_tx(&prevouts, &unsigned_tx, &output, psbt.inputs);
+
+        psbt.inputs = self
+            .signer
+            .sign_all_unsigned_tx(&self.secret_key, &prevouts, &unsigned_tx);
 
         return psbt;
     }
 
-    fn sign_all_unsigned_tx(
-        &self,
-        prevouts: &Vec<TxOut>,
-        unsigned_tx: &Transaction,
-        output: &Output,
-        inputs: Vec<Input>,
-    ) -> Vec<Input> {
-        return prevouts
-            .iter()
-            .enumerate()
-            .map(|(index, tx_out)| {
-                let binding = output.clone().tap_tree.unwrap();
-                let target_script = binding.script_leaves().next().unwrap().script();
-                let message = create_script_message(index, unsigned_tx, prevouts, target_script);
-                self.sign_tx(
-                    tx_out,
-                    output,
-                    inputs
-                        .get(index)
-                        .clone()
-                        .unwrap_or(&Input::default())
-                        .clone(),
-                    &message,
-                )
-                .clone()
-            })
-            .collect();
-    }
-
-    fn sign_tx(&self, tx_out: &TxOut, output: &Output, inputs: Input, message: &Message) -> Input {
-
-        let tap_info = output
-            .clone()
-            .tap_tree
-            .unwrap()
-            .clone()
-            .into_builder()
-            .finalize(&secp(), output.tap_internal_key.unwrap())
-            .unwrap();
-
-        let binding = output.clone().tap_tree.unwrap();
-        let target_script = binding.script_leaves().next().unwrap().script();
-
-        let control = tap_info.control_block(&(target_script.clone(), LeafVersion::TapScript));
-
-        let verify = control.as_ref().unwrap().verify_taproot_commitment(
-            &secp(),
-            tap_info.output_key().to_inner(),
-            &target_script,
-        );
-
-        if (!verify) {
-            panic!("invalid block {:#?}", control.unwrap());
-        }
-        let sig = secp().sign_schnorr(&message, &self.secret_key.keypair(&secp()));
-
-        let schnorr_sig = SchnorrSig {
-            sig,
-            hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-        };
-
-        let tap_leaf_hash = TapLeafHash::from_script(&target_script, LeafVersion::TapScript);
-
-        let mut input = inputs.clone();
-
-        input.witness_script = Some(tx_out.script_pubkey.clone());
-
-        input.witness_utxo = Some(tx_out.clone());
-
-        input.tap_merkle_root = tap_info.merkle_root();
-
-        input.tap_scripts.insert(
-            control.unwrap(),
-            (target_script.clone(), LeafVersion::TapScript),
-        );
-
-        let x_only = &self.secret_key.x_only_public_key(&secp()).0;
-
-        input
-            .tap_script_sigs
-            .insert((x_only.clone(), tap_leaf_hash), schnorr_sig);
-
-        return input;
-    }
-
-    pub fn finalize_script(
-        &self,
-        psbt: PartiallySignedTransaction,
-        should_broad_cast: bool,
-    ) -> Transaction {
-        let tx = psbt.clone().extract_tx().clone();
-        let tx_in = psbt
-            .inputs
-            .iter()
-            .map(|input| {
-                let mut witness = Witness::new();
-
-                input.tap_script_sigs.iter().for_each(|sig| {
-                    let shnor = sig.1;
-                    witness.push(shnor.to_vec());
-                });
-
-                input.tap_scripts.iter().for_each(|control| {
-                    witness.push(control.1 .0.as_bytes());
-                    witness.push(control.0.serialize());
-                });
-                return witness;
-            })
-            .zip(tx.input)
-            .map(|(witness, tx_input)| {
-                return TxIn {
-                    previous_output: tx_input.previous_output,
-                    script_sig: tx_input.script_sig,
-                    sequence: tx_input.sequence,
-                    witness,
-                };
-            })
-            .collect::<Vec<TxIn>>();
-
-        let tx = Transaction {
-            version: tx.version,
-            lock_time: tx.lock_time,
-            input: tx_in,
-            output: tx.output,
-        };
-        if (should_broad_cast) {
-            self.client.broadcasts_transacton(&tx);
-        }
-
-        return tx;
+    pub fn finalize_script(&self, psbt: PartiallySignedTransaction)  {
+        I::finalize_tx(self.client, psbt);
     }
 }
 pub fn seed_to_xonly(secret_string: &Option<&str>) -> bitcoin::XOnlyPublicKey {
@@ -274,24 +159,6 @@ pub fn seed_to_xonly(secret_string: &Option<&str>) -> bitcoin::XOnlyPublicKey {
         }
     };
     return secret.public_key(&secp).x_only_public_key().0;
-}
-
-pub fn create_script_message(
-    index: usize,
-    unsigned_tx: &Transaction,
-    prevouts: &Vec<TxOut>,
-    target_script: &Script,
-) -> Message {
-    let sighash = SighashCache::new(unsigned_tx)
-        .taproot_script_spend_signature_hash(
-            index,
-            &Prevouts::All(&prevouts),
-            ScriptPath::with_defaults(&target_script),
-            SchnorrSighashType::AllPlusAnyoneCanPay,
-        )
-        .unwrap();
-
-    return Message::from_slice(&sighash).unwrap();
 }
 
 //  "Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)"
