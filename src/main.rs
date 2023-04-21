@@ -1,9 +1,6 @@
-use std::{env, rc::Rc, str::FromStr, sync::Arc};
+use std::env;
 
-use bitcoin::{Address, Script, XOnlyPublicKey};
-use bitcoin_hashes::hex::{FromHex, ToHex};
-use bitcoin_wallet::configuration::tap_script_demo::script_demo;
-
+use bitcoin::Address;
 use traproot_bdk::{
     connect_lightning,
     lnrpc::{
@@ -14,10 +11,11 @@ use traproot_bdk::{
 
 use crate::{
     bitcoin_wallet::{
-        constants::{NETWORK, SEED},
+        constants::{MINE, NETWORK, SEED},
         input_data::regtest_call::RegtestCall,
     },
     simple_wallet::{
+        freelancer::bisq,
         p2tr_key::P2TR,
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
         p2wpkh::P2WPKH,
@@ -40,7 +38,7 @@ fn test_tap_root_key_sig() {
     let client = RegtestCall::init(
         &vec!["bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj"],
         "my_wallet",
-        10,
+        MINE,
     );
 
     P2TR::new(Some(SEED), &client).send(single_output());
@@ -52,7 +50,7 @@ fn test_pay_2_witness_public_key_hash() {
     let client = RegtestCall::init(
         &vec!["bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d"],
         "my_wallet",
-        110,
+        MINE,
     );
     P2WPKH::new(Some(SEED), &client).send(single_output_with_value(
         "bcrt1pz7f9jke4mpa6gfwgcqn370ajpk8jz484yfyypy3mqwnqjtj9vhdqf0rrnp".to_owned(),
@@ -78,7 +76,7 @@ fn test_pay_2_witness_script_hash() {
 
     println!("target address {}", target_address.to_string());
 
-    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", 110);
+    let client = RegtestCall::init(&vec![&target_address.to_string()], "my_wallet", MINE);
     let output = single_output();
     let alice_psbt = P2WSH::new(Some(alice_seed), &client).parital_sig(&pub_keys, None, &output);
 
@@ -111,9 +109,42 @@ fn test_pay_2_taproot_script() {
 
     let address = Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
 
-    let client = RegtestCall::init(&vec![&address.to_string()], "my_wallet", 110);
+    let client = RegtestCall::init(&vec![&address.to_string()], "my_wallet", MINE);
 
     let bob_wallet = P2trs::new(bob_seed, bob_image, &client);
 
     bob_wallet.sign(&output, single_output());
+}
+
+#[test]
+fn bisq_with_tr() {
+    println!("Testing layer 1 pay to witness public key signature");
+
+    let secret_host = "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90";
+
+    let secret_client = "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9";
+
+    let support_team = "107661134f21fc7c02223d50ab9eb3600bc3ffc3712423a1e47bb1f9a9dbf55f";
+
+    let host_xonly = p2tr_script::seed_to_xonly(&Some(secret_host));
+
+    let client_xonly = p2tr_script::seed_to_xonly(&Some(secret_client));
+
+    let support_team_xonly = p2tr_script::seed_to_xonly(&Some(support_team));
+
+    let output = bisq::create_address(&host_xonly, &client_xonly, &support_team_xonly);
+
+    let address = Address::from_script(&output.clone().witness_script.unwrap(), NETWORK).unwrap();
+
+    dbg!(address.to_string());
+
+    let regtestcall = RegtestCall::init(&vec![&address.to_string()], "my_wallet", MINE);
+
+    let client_wallet = bisq::Bisq::new(secret_client, &regtestcall);
+    let host_wallet = bisq::Bisq::new(secret_host, &regtestcall);
+
+    let host_psbt = host_wallet.sign(&output, None, single_output());
+    let client_psbt = client_wallet.sign(&output, Some(host_psbt), single_output());
+
+    client_wallet.finalize_script(client_psbt, true);
 }
