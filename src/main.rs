@@ -15,7 +15,7 @@ use crate::{
         input_data::regtest_call::RegtestCall,
     },
     simple_wallet::{
-        freelancer::bisq,
+        freelancer::{bisq, bisq_script::BisqScript},
         p2tr_key::P2TR,
         p2tr_script::{self, bob_scripts, create_address, preimage, P2TRS},
         p2wpkh::P2WPKH,
@@ -140,10 +140,26 @@ fn bisq_with_tr() {
 
     let regtestcall = RegtestCall::init(&vec![&address.to_string()], "my_wallet", MINE);
 
-    let client_wallet = bisq::Bisq::new(secret_client, &regtestcall);
-    let host_wallet = bisq::Bisq::new(secret_host, &regtestcall);
+    
+    let host_wallet = bisq::Bisq::new(
+        secret_host,
+        &regtestcall,
+        BisqScript {
+            output: output.clone(),
+            input:vec![]
+        },
+    );
 
     let host_psbt = host_wallet.sign(&output, None, single_output());
+
+    let client_wallet = bisq::Bisq::new(
+        secret_client,
+        &regtestcall,
+        BisqScript {
+            output: output.clone(),
+            input:host_psbt.inputs.clone()
+        },
+    );
     let client_psbt = client_wallet.sign(&output, Some(host_psbt), single_output());
 
     client_wallet.finalize_script(client_psbt, true);

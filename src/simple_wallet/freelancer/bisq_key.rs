@@ -1,42 +1,91 @@
-use bitcoin::{TxOut, psbt::{Input, Output}, secp256k1::{Message, SecretKey}, schnorr::TapTweak, SchnorrSig};
+use bitcoin::{
+    psbt::{Input, Output, Prevouts},
+    schnorr::TapTweak,
+    secp256k1::{Message, SecretKey},
+    util::sighash::SighashCache,
+    SchnorrSig, Transaction, TxOut,
+};
 
 use crate::bitcoin_wallet::constants::secp;
 
-use super::FreeLancerWallet;
+use super::{ISigner, TrType};
 
-pub struct BisqKey{
-	secret_key:SecretKey
- }
- 
- impl FreeLancerWallet for BisqKey{
-    fn sign_tx(secret_key:&SecretKey,tx_out:&TxOut, input:&Input, message:&Message,output:&Output)->Input {
-		let tap_info = output
-            .clone()
-            .tap_tree
-            .unwrap()
-            .clone()
-            .into_builder()
-            .finalize(&secp(), output.tap_internal_key.unwrap())
-            .unwrap();
+pub struct BisqKey {
+    output: Output,
+}
 
-		let tweaked_key_pair = secret_key.keypair(&secp()).tap_tweak(&secp(), tap_info.merkle_root());
-		tweaked_key_pair.to_inner().tap_tweak(&secp(), None);
-	
-		let sig = secp().sign_schnorr(&message, &tweaked_key_pair.to_inner());
-	
-		let schnorr_sig = SchnorrSig {
-		    sig,
-		    hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-		};
-	
-		let mut input = input.clone();
-	
-		input.witness_script = Some(tx_out.script_pubkey.clone());
-	
-		input.tap_key_sig = Some(schnorr_sig);
-	
-		input.witness_utxo = Some(tx_out.clone());
-	
-		return input;
+impl ISigner for BisqKey {
+
+    fn sign_all_unsigned_tx(
+        &self,
+        secret_key: &SecretKey,
+        prevouts: &Vec<TxOut>,
+        unsigned_tx: &Transaction,
+    ) -> Vec<Input> {
+        return prevouts
+            .iter()
+            .enumerate()
+            .map(|(index, tx_out)| {
+                let message = create_message(index, unsigned_tx, &prevouts);
+                return sign_tx(
+                    secret_key,
+                    tx_out,
+                    &Input::default(),
+                    &message,
+                    &self.output,
+                );
+            })
+            .collect();
     }
+}
+
+pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
+    let sighash = SighashCache::new(&mut unsigned_tx.clone())
+        .taproot_key_spend_signature_hash(
+            index,
+            &Prevouts::All(&prevouts),
+            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+        )
+        .unwrap();
+    let message = Message::from_slice(&sighash).unwrap();
+    return message;
+}
+
+fn sign_tx(
+    secret_key: &SecretKey,
+    tx_out: &TxOut,
+    input: &Input,
+    message: &Message,
+    output: &Output,
+) -> Input {
+    let tap_info = output
+        .clone()
+        .tap_tree
+        .unwrap()
+        .clone()
+        .into_builder()
+        .finalize(&secp(), output.tap_internal_key.unwrap())
+        .unwrap();
+
+    let tweaked_key_pair = secret_key
+        .keypair(&secp())
+        .tap_tweak(&secp(), tap_info.merkle_root());
+    tweaked_key_pair.to_inner().tap_tweak(&secp(), None);
+
+    let sig = secp().sign_schnorr(&message, &tweaked_key_pair.to_inner());
+
+    let schnorr_sig = SchnorrSig {
+        sig,
+        hash_ty: bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
+    };
+
+    let mut input = input.clone();
+
+    input.witness_script = Some(tx_out.script_pubkey.clone());
+
+    input.tap_key_sig = Some(schnorr_sig);
+
+    input.witness_utxo = Some(tx_out.clone());
+
+    return input;
 }
