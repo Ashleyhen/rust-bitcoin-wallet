@@ -293,16 +293,6 @@ pub fn create_script_message(
 
     return Message::from_slice(&sighash).unwrap();
 }
-pub fn create_message(index: usize, unsigned_tx: &Transaction, prevouts: &Vec<TxOut>) -> Message {
-    let sighash = SighashCache::new(&mut unsigned_tx.clone())
-        .taproot_key_spend_signature_hash(
-            index,
-            &Prevouts::All(&prevouts),
-            bitcoin::SchnorrSighashType::AllPlusAnyoneCanPay,
-        )
-        .unwrap();
-    let message = Message::from_slice(&sighash).unwrap();
-    return message;
-}
+
 //  "Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)"
 // "Script(OP_SHA256 OP_PUSHBYTES_32 6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333 OP_EQUALVERIFY OP_PUSHBYTES_32 4edfcf9dfe6c0b5c83d1ab3f78d1b39a46ebac6798e08e19761f5ed89ec83c10 OP_CHECKSIG)"
