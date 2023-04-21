@@ -4,11 +4,11 @@ use bitcoin::{Address, TxOut};
 
 use crate::bitcoin_wallet::input_data::RpcCall;
 
-pub mod bisq;
 pub mod p2tr_key;
 pub mod p2tr_script;
 pub mod p2wpkh;
 pub mod p2wsh;
+pub mod freelancer;
 
 pub struct SendToImpl {}
 
