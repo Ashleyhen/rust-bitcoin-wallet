@@ -26,7 +26,7 @@ use crate::{
 pub mod bitcoin_wallet;
 pub mod lighting;
 pub mod simple_wallet;
-// rm -rf ~/.docker/volumes/lightningd_data/ && rm -rf ~/.docker/volumes/lnd_data/
+// rm -rf .meta/lightningd_data/ && rm -rf .meta/lnd_data/
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "full");

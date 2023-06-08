@@ -160,7 +160,7 @@ impl Lightingd {
     pub async fn new() -> Self {
         return Lightingd {
             client: clightningrpc::LightningRPC::new(
-                "/home/ash/.docker/volumes/lightningd_data/lightning-rpc",
+                ".meta/lightningd_data/lightning-rpc",
             ),
         };
     }
