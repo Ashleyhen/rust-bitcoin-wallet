@@ -49,6 +49,8 @@ where
 
         let (x_only, _) = key_pair.x_only_public_key();
 
+        println!("x-xonly: {}",x_only.to_string());
+
         let address = Address::p2tr(&secp, x_only, None, NETWORK);
 
         println!("address {}", address.to_string());

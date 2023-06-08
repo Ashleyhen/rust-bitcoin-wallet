@@ -41,6 +41,7 @@ fn test_tap_root_key_sig() {
         MINE,
     );
 
+
     P2TR::new(Some(SEED), &client).send(single_output());
 }
 
@@ -115,6 +116,7 @@ fn test_pay_2_taproot_script() {
 
     bob_wallet.sign(&output, single_output());
 }
+
 
 #[test]
 fn bisq_with_tr_script() {
