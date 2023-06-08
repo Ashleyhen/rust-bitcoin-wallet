@@ -19,6 +19,7 @@ services:
         server=1
         debug=1
         rpcbind=bitcoind
+        txindex=1
         rpcport=18443
         rpcauth=foo:7d9ba5ae63c3d4dc30583ff4fe65a67e$$9e3634e81c11659e3de036d0bf88f89cd169c1039e6e09607562d54765c649cc
         rpcallowip=0.0.0.0/0
@@ -37,7 +38,8 @@ services:
       dockerfile: lightningd
 
     volumes:
-      - ~/.docker/volumes/lightningd_data/:/root/.lightning/regtest:rw
+      - .meta/lightningd_data/:/root/.lightning/regtest:rw
+
     networks:
       lightningd_network:
         ipv4_address: 10.5.0.5
@@ -50,7 +52,7 @@ services:
       dockerfile: lnd
     
     volumes:
-      - ~/.docker/volumes/lnd_data/:/shared/
+      - .meta/lnd_data/:/shared/
 
     networks:
       lightningd_network:
@@ -62,13 +64,99 @@ services:
     build: 
       context: ./src/context
       dockerfile: lnd
-    
+
     volumes:
-      - ~/.docker/volumes/lnd_data2/:/shared/
+      - .meta/lnd_data2/:/shared/
 
     networks:
       lightningd_network:
-        ipv4_address: 10.5.0.7
+        ipv4_address: 10.5.0.7 
+
+# mempool:
+  #   container_name: mempool
+  #   image: mempool/mempool:v1.0
+  #   expose:
+  #     - 80
+  #   environment:
+  #     MEMPOOL_BACKEND: "none"
+  #     BITCOIN_NODE_HOST: bitcoind
+  #     BITCOIN_NODE_PORT: 18443
+  #     BITCOIN_NODE_USER: foo
+  #     INITIAL_BLOCK_AMOUNT: 1
+  #     BITCOIN_NODE_PASS: qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
+  #     CORE_RPC_TIMEOUT: 60000
+
+
+  mempool_frontend:
+    environment:
+      FRONTEND_HTTP_PORT: "8080"
+      BACKEND_MAINNET_HTTP_HOST: "mempool_backend"
+    image: mempool/frontend:latest
+    container_name: mempool_frontend
+    user: "1000:1000"
+    restart: always
+    stop_grace_period: 1m
+    command: "./wait-for mariadb:3306 --timeout=720 -- nginx -g 'daemon off;'"
+    ports:
+      - 80:8080
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.8
+
+  mempool_backend:
+    environment:
+      MEMPOOL_BACKEND: "bitcoind"
+      MEMPOOL_NETWORK: "regtest"
+      MEMPOOL_ENABLE: "true"
+      CORE_RPC_HOST: "10.5.0.2"
+      CORE_RPC_PORT: "18443"
+      CORE_RPC_USERNAME: "foo"
+      CORE_RPC_PASSWORD: "qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0="
+      DATABASE_ENABLED: "true"
+      DATABASE_HOST: "mariadb"
+      DATABASE_DATABASE: "mempool"
+      DATABASE_USERNAME: mempool
+      DATABASE_PASSWORD: mempool
+      STATISTICS_ENABLED: "true"
+      CORE_RPC_TIMEOUT: 60000
+    image: mempool/backend:latest
+    container_name: mempool_backend
+    # user: "1000:1000"
+    restart: always
+    stop_grace_period: 1m
+    command: "./wait-for-it.sh mariadb:3306 --timeout=720 --strict -- ./start.sh"
+    # command: sleep 1m
+    volumes:
+      - .meta/data:/backend/cache
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.9
+
+  mariadb:
+    image: mariadb:latest
+    expose:
+      - 3306
+    container_name: mariadb
+    environment:
+      MYSQL_DATABASE: "mempool"
+      MYSQL_USER: "mempool"
+      MYSQL_PASSWORD: "mempool"
+      MYSQL_ROOT_PASSWORD: "admin"
+      user: "1000:1000" # Specify the UID:GID of a non-root user
+      command: >
+        bash -c "/usr/sbin/mysqld --skip-grant-tables --user=root --log-error=/var/lib/mysql/ddl_recovery.log"
+      restart: always
+      stop_grace_period: 1m
+    volumes:
+      - .meta/mysql/data:/var/lib/mysql
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.10
+
+
+      
+
+
 
   # docker pull 
 
@@ -83,22 +171,3 @@ networks:
     ipam:
       config:
         - subnet: 10.5.0.0/16
-
-  #  lnd
-  # --noseedbackup
-  # --trickledelay=5000
-  # --alias={{name}}
-  # --externalip={{name}}
-  # --tlsextradomain={{name}}
-  # --tlsextradomain={{containerName}}
-  # --listen=0.0.0.0:9735
-  # --rpclisten=0.0.0.0:10009
-  # --restlisten=0.0.0.0:8080
-  # --bitcoin.active
-  # --bitcoin.regtest
-  # --bitcoin.node=bitcoind
-  # --bitcoind.rpchost={{backendName}}
-  # --bitcoind.rpcuser={{rpcUser}}
-  # --bitcoind.rpcpass={{rpcPass}}
-  # --bitcoind.zmqpubrawblock=tcp://{{backendName}}:28334
-  # --bitcoind.zmqpubrawtx=tcp://{{backendName}}:28335

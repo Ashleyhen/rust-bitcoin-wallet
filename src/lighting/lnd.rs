@@ -30,8 +30,8 @@ impl Lnd {
         let router = connect_router(
             "10.5.0.6".to_string(),
             10006,
-            "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
-            "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+            ".meta/lnd_data/tls.cert".to_owned(),
+            ".meta/lnd_data/admin.macaroon".to_owned(),
         )
         .await
         .expect("failed to connect");
@@ -41,8 +41,8 @@ impl Lnd {
             client: connect_lightning(
                 "10.5.0.6".to_string(),
                 10006,
-                "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
-                "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+                ".meta/lnd_data/tls.cert".to_owned(),
+                ".meta/lnd_data/admin.macaroon".to_owned(),
             )
             .await
             .expect("failed to connect"),
@@ -53,8 +53,8 @@ impl Lnd {
         let router = connect_router(
             "10.5.0.6".to_string(),
             10006,
-            "/home/ash/.docker/volumes/lnd_data/tls.cert".to_owned(),
-            "/home/ash/.docker/volumes/lnd_data/admin.macaroon".to_owned(),
+            ".meta/lnd_data/tls.cert".to_owned(),
+            ".meta/lnd_data/admin.macaroon".to_owned(),
         )
         .await
         .expect("failed to connect");
@@ -65,8 +65,8 @@ impl Lnd {
             client: connect_lightning(
                 "10.5.0.7".to_string(),
                 10006,
-                "/home/ash/.docker/volumes/lnd_data2/tls.cert".to_owned(),
-                "/home/ash/.docker/volumes/lnd_data2/admin.macaroon".to_owned(),
+                ".meta/lnd_data2/tls.cert".to_owned(),
+                ".meta/lnd_data2/admin.macaroon".to_owned(),
             )
             .await
             .expect("failed to connect"),

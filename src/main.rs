@@ -26,7 +26,7 @@ use crate::{
 pub mod bitcoin_wallet;
 pub mod lighting;
 pub mod simple_wallet;
-// rm -rf ~/.docker/volumes/lightningd_data/ && rm -rf ~/.docker/volumes/lnd_data/
+// rm -rf .meta/lightningd_data/ && rm -rf .meta/lnd_data/
 #[tokio::main]
 async fn main() {
     env::set_var("RUST_BACKTRACE", "full");
@@ -40,6 +40,7 @@ fn test_tap_root_key_sig() {
         "my_wallet",
         MINE,
     );
+
 
     P2TR::new(Some(SEED), &client).send(single_output());
 }
@@ -115,6 +116,7 @@ fn test_pay_2_taproot_script() {
 
     bob_wallet.sign(&output, single_output());
 }
+
 
 #[test]
 fn bisq_with_tr_script() {

@@ -23,7 +23,7 @@ pub fn single_output() -> Box<dyn Fn(u64) -> Vec<TxOut>> {
         let out_put = vec![TxOut {
             value: total,
             script_pubkey: Address::from_str(
-                "bcrt1prnpxwf9tpjm4jll4ts72s2xscq66qxep6w9hf6sqnvwe9t4gvqasklfhyj",
+                "bcrt1p3z3qayjd0ss65gm660el84j896af9zmcmxg0u7fd2rkx4an2ykzqe7s5c7",
             )
             .unwrap()
             .script_pubkey(),
