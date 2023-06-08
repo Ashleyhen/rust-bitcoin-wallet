@@ -142,7 +142,7 @@ services:
       MYSQL_USER: "mempool"
       MYSQL_PASSWORD: "mempool"
       MYSQL_ROOT_PASSWORD: "admin"
-      # user: "1000:1000" # Specify the UID:GID of a non-root user
+      user: "1000:1000" # Specify the UID:GID of a non-root user
       command: >
         bash -c "/usr/sbin/mysqld --skip-grant-tables --user=root --log-error=/var/lib/mysql/ddl_recovery.log"
       restart: always
