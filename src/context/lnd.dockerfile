@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:2
-FROM lightninglabs/lnd:v0.16.0-beta.rc2
+FROM lightninglabs/lnd:v0.16.4-beta.rc1
 EXPOSE 9730 8080 10006
 
 RUN mkdir shared 
@@ -30,4 +30,5 @@ ENTRYPOINT ( \
         --restlisten=0.0.0.0:8080 \
         --rpclisten=0.0.0.0:10006 \
         --trickledelay=5000 \
-        --minchansize=0
+        --minchansize=0 \
+        --tlsextradomain=lnd

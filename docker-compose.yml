@@ -35,7 +35,7 @@ services:
     restart: always
     build: 
       context: ./src/context
-      dockerfile: lightningd
+      dockerfile: lightningd.dockerfile
 
     volumes:
       - .meta/lightningd_data/:/root/.lightning/regtest:rw
@@ -49,7 +49,7 @@ services:
     restart: always
     build: 
       context: ./src/context
-      dockerfile: lnd
+      dockerfile: lnd.dockerfile
     
     volumes:
       - .meta/lnd_data/:/shared/
@@ -63,7 +63,7 @@ services:
     restart: always
     build: 
       context: ./src/context
-      dockerfile: lnd
+      dockerfile: lnd.dockerfile
 
     volumes:
       - .meta/lnd_data2/:/shared/
@@ -71,21 +71,6 @@ services:
     networks:
       lightningd_network:
         ipv4_address: 10.5.0.7 
-
-# mempool:
-  #   container_name: mempool
-  #   image: mempool/mempool:v1.0
-  #   expose:
-  #     - 80
-  #   environment:
-  #     MEMPOOL_BACKEND: "none"
-  #     BITCOIN_NODE_HOST: bitcoind
-  #     BITCOIN_NODE_PORT: 18443
-  #     BITCOIN_NODE_USER: foo
-  #     INITIAL_BLOCK_AMOUNT: 1
-  #     BITCOIN_NODE_PASS: qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
-  #     CORE_RPC_TIMEOUT: 60000
-
 
   mempool_frontend:
     environment:
@@ -153,13 +138,28 @@ services:
       lightningd_network:
         ipv4_address: 10.5.0.10
 
-
+  tapd:
+    container_name: tapd   
+    restart: always
+    build: 
+      context: ./src/context
+      dockerfile: tapd.dockerfile
+    volumes:
+    - .meta/tapd:/root/.tapd
+    - .meta/lnd_data:/root/.lnd
+    command: 
+      --network=regtest 
+      --debuglevel=debug 
+      --tlsextradomain=lnd
+      --rpclisten=0.0.0.0:18443
+      --lnd.host=lnd:10006 
+      --lnd.macaroonpath=/root/.lnd/admin.macaroon 
+      --lnd.tlspath=/root/.lnd/tls.cert
+      --macaroonpath=/root/.tapd/data
       
-
-
-
-  # docker pull 
-
+    networks:
+      lightningd_network:
+        ipv4_address: 10.5.0.11     
 
 volumes:
   lightningd_data:
@@ -171,3 +171,7 @@ networks:
     ipam:
       config:
         - subnet: 10.5.0.0/16
+
+
+
+# docker run  -v /home/ash/bitcoin-app/rust-bitcoin-wallet/.meta/lnd_data/:/root/.lnd/:ro -v /home/ash/bitcoin-app/rust-bitcoin-wallet/.meta/tapd:/root/.tapd/ --net=host taproot-assets --network=regtest --debuglevel=debug --lnd.host=10.5.0.6:10006 --lnd.macaroonpath=/root/.lnd/admin.macaroon --lnd.tlspath=/root/.lnd/tls.cert
