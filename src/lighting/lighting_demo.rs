@@ -89,6 +89,7 @@ pub async fn open_channel_request() {
     connect_open_channel(lnd_client, client, "10.5.0.7:9730", &id).await
 }
 
+
 #[tokio::test]
 pub async fn clighting_sends_open_channel_request() {
     let mut lnd = Lnd::new().await;
@@ -211,12 +212,15 @@ pub async fn lightingd_create_invoice_and_pay() {
 
     thread::sleep(Duration::from_secs(2));
 
+    dbg!(lighting_d.get_info().await.id);
     dbg!(invoice.clone());
 
     let payment_response = lnd.send_payment(&invoice.bolt11).await;
 
     println!("invoice paid: {:#?}", payment_response);
 }
+
+
 
 #[tokio::test]
 pub async fn lnd_create_invoice_and_pay() {
@@ -253,6 +257,7 @@ pub async fn quick_pay() {
         .get_ref()
         .identity_pubkey
         .clone();
+    // dbg!(pub_key_1);
 
     let result = lnd_client
         .send_amp_payment(Vec::from_hex(pub_key_1).unwrap(), 10000)

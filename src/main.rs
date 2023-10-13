@@ -1,6 +1,10 @@
 use std::env;
 
 use bitcoin::Address;
+
+use rocket::{ routes, post, FromForm, Rocket, launch, Build, data::FromData, form::Form, serde::json::Json  };
+use serde::Deserialize;
+use tokio::runtime::Runtime;
 use traproot_bdk::{
     connect_lightning,
     lnrpc::{
@@ -21,16 +25,25 @@ use crate::{
         p2wpkh::P2WPKH,
         p2wsh::P2WSH,
         single_output, single_output_with_value, SendToImpl, Wallet,
-    },
+    }, api::controller::{send_payment},
 };
+
+use crate::api::controller::post_handler;
+
 pub mod bitcoin_wallet;
 pub mod lighting;
 pub mod simple_wallet;
-// rm -rf .meta/lightningd_data/ && rm -rf .meta/lnd_data/
-#[tokio::main]
-async fn main() {
-    env::set_var("RUST_BACKTRACE", "full");
+pub mod api;
+pub mod service;
+
+
+#[launch]
+fn rocket() -> Rocket<Build> {
+    rocket::build().mount("/", routes![post_handler])
 }
+
+
+
 
 #[test]
 fn test_tap_root_key_sig() {

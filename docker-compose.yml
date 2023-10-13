@@ -153,11 +153,6 @@ services:
       lightningd_network:
         ipv4_address: 10.5.0.10
 
-
-      
-
-
-
   # docker pull 
 
 

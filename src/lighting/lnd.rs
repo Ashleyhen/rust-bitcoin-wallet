@@ -182,9 +182,9 @@ impl LNInvoice<Response<AddInvoiceResponse>, Response<ListInvoiceResponse>, Send
             vec![],
             value.try_into().unwrap(),
             vec![],
-            expiry.unwrap_or(6555).try_into().unwrap(),
+            expiry.unwrap_or(0).try_into().unwrap(),
             "bcrt1qzvsdwjay5x69088n27h0qgu0tm4u6gwqgxna9d".to_string(),
-            6555,
+            0,
             false,
             false,
         );
@@ -211,6 +211,7 @@ impl LNInvoice<Response<AddInvoiceResponse>, Response<ListInvoiceResponse>, Send
     }
 
     async fn send_payment<'a>(&mut self, bolt11: &'a String) -> SendResponse {
+        
         let send_req = SendRequest {
             allow_self_payment: true,
             amt: 0,
@@ -221,7 +222,7 @@ impl LNInvoice<Response<AddInvoiceResponse>, Response<ListInvoiceResponse>, Send
             dest_features: vec![],
             dest_string: "".to_owned(),
             fee_limit: None,
-            final_cltv_delta: 1000,
+            final_cltv_delta: 0,
             last_hop_pubkey: vec![],
             outgoing_chan_id: 0,
             payment_addr: vec![],
